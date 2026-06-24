@@ -1,0 +1,27 @@
+# 로컬 개발용 인프라 — PostgreSQL + MongoDB
+# 실행:  docker compose up -d
+# 종료:  docker compose down  (데이터 삭제: docker compose down -v)
+services:
+  postgres:
+    image: postgres:16
+    container_name: monew-postgres
+    environment:
+      POSTGRES_DB: monew
+      POSTGRES_USER: monew_user
+      POSTGRES_PASSWORD: monew1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    container_name: monew-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  postgres-data:
+  mongo-data:

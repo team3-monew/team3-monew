@@ -1,0 +1,31 @@
+# 운영용 — 값은 환경변수로 주입 (ECS Task Definition 등)
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    root: info
+    com.monew: info
+    org.hibernate.SQL: warn
+
+# 운영에서는 헬스 상세 노출을 제한 (정보 노출 방지)
+management:
+  endpoint:
+    health:
+      show-details: when-authorized

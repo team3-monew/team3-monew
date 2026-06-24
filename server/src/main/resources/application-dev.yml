@@ -1,0 +1,30 @@
+# 로컬 개발용 — docker-compose.yml 의 postgres/mongo 와 연결
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/monew
+    username: monew_user
+    password: monew1234
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/monew
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+logging:
+  level:
+    root: info
+    com.monew: debug
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace

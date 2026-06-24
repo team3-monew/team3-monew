@@ -1,0 +1,35 @@
+# 운영용 — 값은 환경변수로 주입 (ECS Task Definition 등)
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  datasource:
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  batch:
+    jdbc:
+      initialize-schema: never
+
+logging:
+  level:
+    root: info
+    com.monew: info
+    org.hibernate.SQL: warn
+
+# 배치 스케줄(cron) — 잡 구현 후 활성화
+#monew:
+#  batch:
+#    article-collect-cron: ${ARTICLE_COLLECT_CRON:0 0 * * * *}
+#    article-backup-cron: ${ARTICLE_BACKUP_CRON:0 0 2 * * *}

@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: monew-batch
+
+  profiles:
+    active: dev
+
+  batch:
+    # 부팅 시 자동 실행 막고, 실행할 잡은 --spring.batch.job.name=... 로 지정
+    job:
+      enabled: false
+
+logging:
+  level:
+    root: info
+    com.monew: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    // Java toolchain(17) 자동 다운로드용 (로컬에 JDK 17이 없어도 빌드 가능)
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'monew'
+
+include 'server'
+include 'batch'
