@@ -12,6 +12,10 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 수집한 기사를 저장하는 articles 테이블 Entity입니다.
+ * sourceUrl에 unique 제약이 있어 같은 원문 기사가 중복 저장되지 않도록 합니다.
+ */
 @Getter
 @NoArgsConstructor
 @Entity
@@ -42,17 +46,34 @@ public class Article {
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
+  /**
+   * 외부 API에서 변환된 CollectedArticle 값을 실제 저장 Entity로 만들 때 사용합니다.
+   */
+  public Article(ArticleSource source, String sourceUrl, String title, LocalDateTime publishDate,
+      String summary) {
+    this.source = source;
+    this.sourceUrl = sourceUrl;
+    this.title = title;
+    this.publishDate = publishDate;
+    this.summary = summary;
+    this.commentCount = 0L;
+    this.viewCount = 0L;
+  }
+
+  /**
+   * 저장 직전에 id와 생성/수정 시간을 채웁니다.
+   */
   @PrePersist
   void prePersist() {
-      if (id == null) {
-          id = UUID.randomUUID();
-      }
+    if (id == null) {
+      id = UUID.randomUUID();
+    }
     LocalDateTime now = LocalDateTime.now();
-      if (createdAt == null) {
-          createdAt = now;
-      }
-      if (updatedAt == null) {
-          updatedAt = now;
-      }
+    if (createdAt == null) {
+      createdAt = now;
+    }
+    if (updatedAt == null) {
+      updatedAt = now;
+    }
   }
 }

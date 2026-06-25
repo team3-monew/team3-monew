@@ -2,6 +2,9 @@ spring:
   application:
     name: monew-batch
 
+  config:
+    import: optional:file:.env[.properties]
+
   profiles:
     active: dev
 
@@ -24,3 +27,17 @@ management:
   endpoint:
     health:
       show-details: always
+
+monew:
+  api:
+    naver:
+      base-url: ${NAVER_BASE_URL:https://openapi.naver.com}
+      client-id: ${NAVER_CLIENT_ID:}
+      client-secret: ${NAVER_CLIENT_SECRET:}
+
+  article-collect:
+    cron: ${ARTICLE_COLLECT_CRON:0 * * * * *}
+    naver-display: ${ARTICLE_COLLECT_NAVER_DISPLAY:100}
+    retry-max-attempts: ${ARTICLE_COLLECT_RETRY_MAX_ATTEMPTS:3}
+    retry-initial-delay-millis: ${ARTICLE_COLLECT_RETRY_INITIAL_DELAY_MILLIS:1000}
+    retry-max-delay-millis: ${ARTICLE_COLLECT_RETRY_MAX_DELAY_MILLIS:2000}
