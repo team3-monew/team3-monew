@@ -1,4 +1,4 @@
-package com.monew.server.article.entity;
+package com.monew.batch.article.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
