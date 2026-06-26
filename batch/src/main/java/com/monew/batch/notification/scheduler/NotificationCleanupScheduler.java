@@ -1,6 +1,5 @@
 package com.monew.batch.notification.scheduler;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -11,13 +10,18 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class NotificationCleanupScheduler {
 
     private final JobLauncher jobLauncher;
-
-    @Qualifier("notificationCleanupJob")
     private final Job notificationCleanupJob;
+
+    public NotificationCleanupScheduler(
+            JobLauncher jobLauncher,
+            @Qualifier("notificationCleanupJob") Job notificationCleanupJob
+    ) {
+        this.jobLauncher = jobLauncher;
+        this.notificationCleanupJob = notificationCleanupJob;
+    }
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     public void runNotificationCleanupJob() {
