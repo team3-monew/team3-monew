@@ -3,24 +3,19 @@ package com.monew.batch.article.collect.collector;
 import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
 import com.monew.batch.article.collect.collector.dto.RssCollectResultDto;
 import com.monew.batch.article.config.ArticleCollectProperties;
-import com.rometools.rome.feed.synd.SyndContent;
-import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import java.io.StringReader;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.util.HtmlUtils;
 
 /**
  * RSS 수집기들이 공유하는 공통 로직을 담은 추상 클래스입니다.
@@ -82,6 +77,16 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
         String xml = restClientBuilder.build()
             .get()
             .uri(feedUrl)
+            .header(HttpHeaders.USER_AGENT,
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+            .header(HttpHeaders.ACCEPT,
+                String.join(", ",
+                    MediaType.APPLICATION_RSS_XML_VALUE,
+                    MediaType.APPLICATION_XML_VALUE,
+                    MediaType.TEXT_XML_VALUE,
+                    MediaType.TEXT_HTML_VALUE,
+                    MediaType.ALL_VALUE))
             .retrieve()
             .body(String.class);
 
