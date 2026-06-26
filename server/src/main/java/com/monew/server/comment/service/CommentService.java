@@ -2,6 +2,7 @@ package com.monew.server.comment.service;
 
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.repository.ArticleRepository; // 기사 조회용 가정
+import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
@@ -108,5 +109,43 @@ public class CommentService {
   }
 
 
+  //뉴스 기사 별 댓글 목록 조회
+  public CommentSliceResult getCommentsByArticleCursor
+      (UUID articleId, String sortBy, LocalDateTime lastCreatedAt, Long lastLikeCount, int size) {
+
+    Pageable pageable = PageRequest.of(0, size + 1);
+    List<Comment> comments;
+
+    if ("LIKE".equalsIgnoreCase(sortBy)) {
+      comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, pageable);
+    } else {
+      comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, pageable);
+    }
+
+    //다음 페이지가 있는지 확인
+    boolean hasNext = comments.size() > size;
+    if (hasNext) {
+      comments = comments.subList(0, size);
+    }
+
+    //공통 스펙에 넣을 커서 변수 초기화
+    String nextCursor = null;
+    LocalDateTime nextAfter = null;
+
+    //데이터가 존재한다면 마지막 조각을 기준으로 커서 계산
+    if (!comments.isEmpty()) {
+      Comment lastComment = comments.get(comments.size() - 1);
+
+      //메인 커서(nextCursor): 정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
+      nextCursor = "LIKE".equalsIgnoreCase(sortBy)
+          ? String.valueOf(lastComment.getLikeCount())
+          : lastComment.getCreatedAt().toString();
+
+      //보조 커서(nextAfter): 팀 공통 스펙의 LocalDateTime 타입에 맞춰 마지막 댓글의 생성일시 바인딩
+      nextAfter = lastComment.getCreatedAt();
+    }
+
+    return new CommentSliceResult(comments, nextCursor, nextAfter, hasNext, size);
+  }
 
 }
