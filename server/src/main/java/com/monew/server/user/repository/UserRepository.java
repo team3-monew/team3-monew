@@ -15,4 +15,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     // 활성 사용자 조회 (논리삭제 제외)
     Optional<User> findByIdAndDeletedAtIsNull(UUID id);
+
+    // 인증 인터셉터 — 활성 사용자 존재 확인
+    boolean existsByIdAndDeletedAtIsNull(UUID id);
 }

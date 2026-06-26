@@ -1,5 +1,6 @@
 package com.monew.server.user.controller;
 
+import com.monew.server.common.security.LoginUser;
 import com.monew.server.user.dto.UserDto;
 import com.monew.server.user.dto.UserLoginRequest;
 import com.monew.server.user.dto.UserRegisterRequest;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,20 +39,20 @@ public class UserController {
         return ResponseEntity.ok(userService.login(request));
     }
 
-    // 사용자 정보 수정 (닉네임)
+    // 사용자 정보 수정 (닉네임) - 본인만
     @PatchMapping("/{userId}")
     public ResponseEntity<UserDto> update(
             @PathVariable UUID userId,
-            @RequestHeader("MoNew-Request-User-ID") UUID requesterId,
+            @LoginUser UUID requesterId,
             @Valid @RequestBody UserUpdateRequest request) {
         return ResponseEntity.ok(userService.updateNickname(userId, requesterId, request));
     }
 
-    // 사용자 논리 삭제
+    // 사용자 논리 삭제 - 본인만
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> delete(
             @PathVariable UUID userId,
-            @RequestHeader("MoNew-Request-User-ID") UUID requesterId) {
+            @LoginUser UUID requesterId) {
         userService.delete(userId, requesterId);
         return ResponseEntity.noContent().build();
     }
