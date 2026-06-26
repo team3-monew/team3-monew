@@ -2,8 +2,9 @@ package com.monew.server.notification.repository.querydsl;
 
 import static com.monew.server.notification.entity.QNotification.notification;
 
+import com.monew.server.common.exception.notification.NotificationErrorCode;
+import com.monew.server.common.exception.notification.NotificationException;
 import com.monew.server.notification.dto.NotificationResponse;
-import com.monew.server.notification.repository.NotificationQueryRepository;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -71,12 +72,23 @@ public class NotificationQueryRepositoryImpl implements NotificationQueryReposit
             return null;
         }
 
-        UUID cursorId = UUID.fromString(cursor);
+        UUID cursorId = parseCursor(cursor);
 
         return notification.createdAt.lt(after)
                 .or(
                         notification.createdAt.eq(after)
                                 .and(notification.id.lt(cursorId))
                 );
+    }
+
+    private UUID parseCursor(String cursor) {
+        try {
+            return UUID.fromString(cursor);
+        } catch (IllegalArgumentException e) {
+            NotificationException exception =
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR, e);
+            exception.addDetail("cursor", cursor);
+            throw exception;
+        }
     }
 }

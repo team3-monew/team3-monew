@@ -1,5 +1,7 @@
 package com.monew.server.notification.controller;
 
+import com.monew.server.common.exception.notification.NotificationErrorCode;
+import com.monew.server.common.exception.notification.NotificationException;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.notification.dto.NotificationResponse;
 import com.monew.server.notification.service.NotificationService;
@@ -22,13 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private static final String REQUEST_USER_ID_HEADER = "Monew-Request-User-ID";
-
     private final NotificationService notificationService;
 
     @GetMapping
     public ResponseEntity<CursorPageResponse<NotificationResponse>> findUnreadNotifications(
-            @RequestHeader(REQUEST_USER_ID_HEADER) UUID userId,
+            @RequestHeader("Monew-Request-User-ID") UUID userId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) String after,
             @RequestParam int limit
@@ -46,7 +46,7 @@ public class NotificationController {
 
     @PatchMapping("/{notificationId}")
     public ResponseEntity<Void> confirm(
-            @RequestHeader(REQUEST_USER_ID_HEADER) UUID userId,
+            @RequestHeader("Monew-Request-User-ID") UUID userId,
             @PathVariable UUID notificationId
     ) {
         notificationService.confirm(userId, notificationId);
@@ -56,7 +56,7 @@ public class NotificationController {
 
     @PatchMapping
     public ResponseEntity<Void> confirmAll(
-            @RequestHeader(REQUEST_USER_ID_HEADER) UUID userId
+            @RequestHeader("Monew-Request-User-ID") UUID userId
     ) {
         notificationService.confirmAll(userId);
 
@@ -70,8 +70,15 @@ public class NotificationController {
 
         try {
             return OffsetDateTime.parse(after).toLocalDateTime();
-        } catch (DateTimeParseException e) {
-            return LocalDateTime.parse(after);
+        } catch (DateTimeParseException ignored) {
+            try {
+                return LocalDateTime.parse(after);
+            } catch (DateTimeParseException e) {
+                NotificationException exception =
+                        new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR, e);
+                exception.addDetail("after", after);
+                throw exception;
+            }
         }
     }
 }

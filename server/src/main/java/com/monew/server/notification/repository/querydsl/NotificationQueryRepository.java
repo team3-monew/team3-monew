@@ -1,4 +1,4 @@
-package com.monew.server.notification.repository;
+package com.monew.server.notification.repository.querydsl;
 
 import com.monew.server.notification.dto.NotificationResponse;
 import java.time.LocalDateTime;
