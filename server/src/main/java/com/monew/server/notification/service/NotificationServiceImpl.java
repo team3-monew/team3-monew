@@ -1,11 +1,15 @@
 package com.monew.server.notification.service;
 
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.notification.NotificationErrorCode;
+import com.monew.server.common.exception.notification.NotificationException;
+import com.monew.server.common.exception.user.UserErrorCode;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.notification.dto.NotificationResponse;
 import com.monew.server.notification.entity.Notification;
 import com.monew.server.notification.entity.NotificationResourceType;
-import com.monew.server.notification.repository.NotificationQueryRepository;
 import com.monew.server.notification.repository.NotificationRepository;
+import com.monew.server.notification.repository.querydsl.NotificationQueryRepository;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -31,7 +35,9 @@ public class NotificationServiceImpl implements NotificationService {
             LocalDateTime after,
             int limit
     ) {
+        validateUserExists(userId);
         validateLimit(limit);
+        validateCursorPair(cursor, after);
 
         List<NotificationResponse> queriedNotifications =
                 notificationQueryRepository.findUnreadNotifications(
@@ -71,9 +77,18 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void confirm(UUID userId, UUID notificationId) {
+        validateUserExists(userId);
+        validateRequired("notificationId", notificationId);
+
         Notification notification = notificationRepository
                 .findByIdAndUserId(notificationId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("알림을 찾을 수 없습니다."));
+                .orElseThrow(() -> {
+                    NotificationException exception =
+                            new NotificationException(NotificationErrorCode.NOTIFICATION_NOT_FOUND);
+                    exception.addDetail("notificationId", notificationId);
+                    exception.addDetail("userId", userId);
+                    return exception;
+                });
 
         notification.confirm();
     }
@@ -81,6 +96,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void confirmAll(UUID userId) {
+        validateUserExists(userId);
+
         notificationRepository.confirmAllByUserId(userId, LocalDateTime.now());
     }
 
@@ -91,7 +108,11 @@ public class NotificationServiceImpl implements NotificationService {
             UUID commentId,
             String likerNickname
     ) {
-        String content = likerNickname + "님이 회원님의 댓글을 좋아합니다.";
+        validateRequired("receiverUserId", receiverUserId);
+        validateRequired("commentId", commentId);
+        validateText("likerNickname", likerNickname);
+
+        String content = likerNickname + "님이 나의 댓글을 좋아합니다.";
 
         createNotification(
                 receiverUserId,
@@ -109,7 +130,12 @@ public class NotificationServiceImpl implements NotificationService {
             UUID articleId,
             String articleTitle
     ) {
-        String content = "관심사와 관련된 새 기사가 등록되었습니다: " + articleTitle;
+        validateRequired("receiverUserId", receiverUserId);
+        validateRequired("interestId", interestId);
+
+        // articleId/articleTitle은 추후 알림 클릭 시 기사 상세 또는 뉴스 목록 라우팅 확장을 위해 전달받는다.
+        // 현재 프론트는 알림에서 상세 라우팅을 하지 않으므로, 건수/관심사별 집계 없이 단순 알림 문구만 제공한다.
+        String content = "구독한 관심사와 관련된 새 기사가 등록되었습니다.";
 
         createNotification(
                 receiverUserId,
@@ -125,8 +151,17 @@ public class NotificationServiceImpl implements NotificationService {
             NotificationResourceType resourceType,
             UUID resourceId
     ) {
+        validateRequired("receiverUserId", receiverUserId);
+        validateText("content", content);
+        validateRequired("resourceType", resourceType);
+        validateRequired("resourceId", resourceId);
+
         User receiver = userRepository.findById(receiverUserId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> {
+                    BaseException exception = new BaseException(UserErrorCode.USER_NOT_FOUND);
+                    exception.addDetail("receiverUserId", receiverUserId);
+                    return exception;
+                });
 
         Notification notification = Notification.builder()
                 .user(receiver)
@@ -138,9 +173,53 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.save(notification);
     }
 
+    private void validateUserExists(UUID userId) {
+        validateRequired("userId", userId);
+
+        if (!userRepository.existsById(userId)) {
+            BaseException exception = new BaseException(UserErrorCode.USER_NOT_FOUND);
+            exception.addDetail("userId", userId);
+            throw exception;
+        }
+    }
+
     private void validateLimit(int limit) {
         if (limit <= 0) {
-            throw new IllegalArgumentException("limit은 1 이상이어야 합니다.");
+            NotificationException exception =
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+            exception.addDetail("limit", limit);
+            throw exception;
+        }
+    }
+
+    private void validateCursorPair(String cursor, LocalDateTime after) {
+        boolean hasCursor = cursor != null && !cursor.isBlank();
+        boolean hasAfter = after != null;
+
+        if (hasCursor != hasAfter) {
+            NotificationException exception =
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR);
+            exception.addDetail("cursor", cursor);
+            exception.addDetail("after", after);
+            throw exception;
+        }
+    }
+
+    private void validateRequired(String fieldName, Object value) {
+        if (value == null) {
+            NotificationException exception =
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+            exception.addDetail(fieldName, null);
+            throw exception;
+        }
+    }
+
+    private void validateText(String fieldName, String value) {
+        if (value == null || value.isBlank()) {
+            NotificationException exception =
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+            exception.addDetail(fieldName, value);
+            throw exception;
         }
     }
 }

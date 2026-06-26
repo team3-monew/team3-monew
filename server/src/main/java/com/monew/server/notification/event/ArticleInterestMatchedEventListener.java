@@ -3,8 +3,9 @@ package com.monew.server.notification.event;
 import com.monew.server.interest.event.ArticleInterestMatchedEvent;
 import com.monew.server.interest.repository.SubscriptionRepository;
 import com.monew.server.notification.service.NotificationService;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -20,22 +21,36 @@ public class ArticleInterestMatchedEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ArticleInterestMatchedEvent event) {
-        if (event.interestIds().isEmpty()) {
+        if (event == null || event.interestIds() == null || event.interestIds().isEmpty()) {
             return;
         }
 
-        Set<UUID> subscriberIds = new HashSet<>();
+        Map<UUID, UUID> subscriberInterestMap = new LinkedHashMap<>();
 
         for (UUID interestId : event.interestIds()) {
-            subscriberIds.addAll(subscriptionRepository.findUserIdsByInterestId(interestId));
+            if (interestId == null) {
+                continue;
+            }
+
+            List<UUID> subscriberIds = subscriptionRepository.findUserIdsByInterestId(interestId);
+
+            if (subscriberIds == null || subscriberIds.isEmpty()) {
+                continue;
+            }
+
+            for (UUID subscriberId : subscriberIds) {
+                if (subscriberId == null) {
+                    continue;
+                }
+
+                subscriberInterestMap.putIfAbsent(subscriberId, interestId);
+            }
         }
 
-        UUID resourceInterestId = event.interestIds().get(0);
-
-        for (UUID subscriberId : subscriberIds) {
+        for (Map.Entry<UUID, UUID> entry : subscriberInterestMap.entrySet()) {
             notificationService.createInterestNewsNotification(
-                    subscriberId,
-                    resourceInterestId,
+                    entry.getKey(),
+                    entry.getValue(),
                     event.articleId(),
                     event.articleTitle()
             );
