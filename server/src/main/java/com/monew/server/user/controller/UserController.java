@@ -1,6 +1,7 @@
 package com.monew.server.user.controller;
 
 import com.monew.server.user.dto.UserDto;
+import com.monew.server.user.dto.UserLoginRequest;
 import com.monew.server.user.dto.UserRegisterRequest;
 import com.monew.server.user.service.UserService;
 import jakarta.validation.Valid;
@@ -24,5 +25,11 @@ public class UserController {
     public ResponseEntity<UserDto> register(@Valid @RequestBody UserRegisterRequest request) {
         UserDto created = userService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    // 로그인
+    @PostMapping("/login")
+    public ResponseEntity<UserDto> login(@Valid @RequestBody UserLoginRequest request) {
+        return ResponseEntity.ok(userService.login(request));
     }
 }
