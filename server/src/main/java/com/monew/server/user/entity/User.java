@@ -1,43 +1,61 @@
 package com.monew.server.user.entity;
 
+import com.monew.server.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "users")
-public class User {
+public class User extends BaseTimeEntity {
 
-  @Id
-  private UUID id;
-  @Column(nullable = false, unique = true)
-  private String email;
-  @Column(nullable = false, length = 20)
-  private String nickname;
-  @Column(nullable = false)
-  private String password;
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
-  @Column(name = "updated_at")
-  private LocalDateTime updatedAt;
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-  @PrePersist
-  void prePersist() {
-      if (id == null) {
-          id = UUID.randomUUID();
-      }
-      if (createdAt == null) {
-          createdAt = LocalDateTime.now();
-      }
-  }
+    @Column(nullable = false, unique = true, length = 320)
+    private String email;
+
+    @Column(nullable = false, length = 20)
+    private String nickname;
+
+    @Column(nullable = false)            // BCrypt 해시(60자) -> 기본 255
+    private String password;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    // 회원가입용 생성자 (password 는 서비스에서 해싱된 값을 넘김)
+    public User(String email, String nickname, String password) {
+        this.email = email;
+        this.nickname = nickname;
+        this.password = password;
+    }
+
+    // ── 비즈니스 메서드 ──
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }
