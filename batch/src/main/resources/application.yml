@@ -9,7 +9,6 @@ spring:
     active: dev
 
   batch:
-    # 부팅 시 자동 실행 막고, 실행할 잡은 --spring.batch.job.name=... 로 지정
     job:
       enabled: false
 
@@ -38,6 +37,23 @@ monew:
   article-collect:
     cron: ${ARTICLE_COLLECT_CRON:0 * * * * *}
     naver-display: ${ARTICLE_COLLECT_NAVER_DISPLAY:100}
+    rss-limit: ${ARTICLE_COLLECT_RSS_LIMIT:100}
     retry-max-attempts: ${ARTICLE_COLLECT_RETRY_MAX_ATTEMPTS:3}
     retry-initial-delay-millis: ${ARTICLE_COLLECT_RETRY_INITIAL_DELAY_MILLIS:1000}
     retry-max-delay-millis: ${ARTICLE_COLLECT_RETRY_MAX_DELAY_MILLIS:2000}
+
+  rss:
+    hankyung:
+      url: ${HANKYUNG_RSS_URL:https://www.hankyung.com/feed/all-news}
+    chosun:
+      url: ${CHOSUN_RSS_URL:https://www.chosun.com/arc/outboundfeeds/rss/?outputType=xml}
+    yeonhap:
+      urls:
+        - ${YEONHAP_RSS_POLITICS_URL:http://www.yonhapnewstv.co.kr/category/news/politics/feed/}
+        - ${YEONHAP_RSS_ECONOMY_URL:http://www.yonhapnewstv.co.kr/category/news/economy/feed/}
+        - ${YEONHAP_RSS_SOCIETY_URL:http://www.yonhapnewstv.co.kr/category/news/society/feed/}
+        - ${YEONHAP_RSS_LOCAL_URL:http://www.yonhapnewstv.co.kr/category/news/local/feed/}
+        - ${YEONHAP_RSS_INTERNATIONAL_URL:http://www.yonhapnewstv.co.kr/category/news/international/feed/}
+        - ${YEONHAP_RSS_CULTURE_URL:http://www.yonhapnewstv.co.kr/category/news/culture/feed/}
+        - ${YEONHAP_RSS_SPORTS_URL:http://www.yonhapnewstv.co.kr/category/news/sports/feed/}
+        - ${YEONHAP_RSS_WEATHER_URL:http://www.yonhapnewstv.co.kr/category/news/weather/feed/}

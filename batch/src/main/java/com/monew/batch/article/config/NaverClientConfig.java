@@ -10,10 +10,8 @@ import org.springframework.web.client.RestClient;
  */
 @Configuration
 public class NaverClientConfig {
-
-  /**
-   * Naver 뉴스 검색 API를 호출할 때 사용할 HTTP client입니다.
-   */
+  
+  // Naver 뉴스 검색 API를 호출할 때 사용할 HTTP client
   @Bean
   RestClient naverRestClient(NaverApiProperties properties) {
     return RestClient.builder()
