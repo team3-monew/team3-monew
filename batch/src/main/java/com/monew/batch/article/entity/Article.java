@@ -1,5 +1,6 @@
 package com.monew.batch.article.entity;
 
+import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -58,6 +59,16 @@ public class Article {
     this.summary = summary;
     this.commentCount = 0L;
     this.viewCount = 0L;
+  }
+
+  public static Article from(CollectedArticleDto collectedArticleDto){
+    return new Article(
+        collectedArticleDto.source(),
+        collectedArticleDto.sourceUrl(),
+        collectedArticleDto.title(),
+        collectedArticleDto.publishDate(),
+        collectedArticleDto.summary()
+    );
   }
 
   /**

@@ -1,16 +1,21 @@
 package com.monew.batch.article.collect.collector;
 
 import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
+import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
 import com.monew.batch.article.entity.ArticleSource;
 import java.util.List;
 
+/**
+ * 관심사 키워드를 검색어로 받아 기사를 수집하는 수집기 인터페이스입니다.
+ */
 public interface KeywordBasedArticleCollector {
 
   ArticleSource getSource();
 
-  /**
-   * 전달받은 키워드로 외부 API를 조회하고, 저장 가능한 기사 DTO 목록으로 변환합니다.
-   */
-  List<CollectedArticleDto> collectByKeyword(String keyword, int limit);
+  default KeywordCollectResultDto collectByKeywordResult(String keyword, int limit) {
+    List<CollectedArticleDto> articles = collectByKeyword(keyword, limit);
+    return new KeywordCollectResultDto(articles, 1, 1, 0);
+  }
 
+  List<CollectedArticleDto> collectByKeyword(String keyword, int limit);
 }

@@ -6,7 +6,6 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-// 확인 완료
 public interface InterestKeywordRepository extends JpaRepository<InterestKeyword, UUID> {
 
   @EntityGraph(attributePaths = "interest")

@@ -3,7 +3,6 @@ package com.monew.batch.article.collect.collector;
 import com.monew.batch.article.config.ArticleCollectProperties;
 import com.monew.batch.article.config.RssProperties;
 import com.monew.batch.article.entity.ArticleSource;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -12,7 +11,6 @@ import org.springframework.web.client.RestClient;
  * RSS URL은 monew.rss.chosun.url 설정값을 사용합니다.
  */
 @Component
-@Order(2)
 public class ChosunRssArticleCollector extends AbstractRssArticleCollector {
 
   private final RssProperties rssProperties;

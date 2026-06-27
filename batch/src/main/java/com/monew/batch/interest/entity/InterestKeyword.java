@@ -14,7 +14,6 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 확인 완료
 @Getter
 @NoArgsConstructor
 @Entity

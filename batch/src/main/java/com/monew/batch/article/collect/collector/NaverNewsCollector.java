@@ -1,13 +1,10 @@
 package com.monew.batch.article.collect.collector;
 
 import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
-import com.monew.batch.article.collect.dto.NaverNewsItemResponseDto;
+import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
 import com.monew.batch.article.collect.dto.NaverNewsResponseDto;
 import com.monew.batch.article.config.ArticleCollectProperties;
 import com.monew.batch.article.entity.ArticleSource;
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.util.HtmlUtils;
 
 /**
  * 관심사 키워드로 Naver 뉴스 검색 Open API를 호출하는 수집기입니다.
- * RSS 수집보다 먼저 실행되며, 응답 item을 공통 DTO인 CollectedArticle로 변환합니다.
  */
 @Slf4j
 @Component
@@ -32,30 +27,33 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
   private final RestClient naverRestClient;
   private final ArticleCollectProperties properties;
 
-  /**
-   * 이 수집기가 저장할 기사 출처는 NAVER입니다.
-   */
   @Override
   public ArticleSource getSource() {
     return ArticleSource.NAVER;
   }
 
-  /**
-   * 키워드 하나에 대해 Naver 검색 API를 호출하고, 응답 item 목록을 CollectedArticle 목록으로 바꿉니다.
-   */
   @Override
   public List<CollectedArticleDto> collectByKeyword(String keyword, int limit) {
+    return collectByKeywordResult(keyword, limit).articles();
+  }
+
+  @Override
+  public KeywordCollectResultDto collectByKeywordResult(String keyword, int limit) {
     int display = Math.min(limit, properties.naverDisplay());
     NaverNewsResponseDto response = requestWithRetry(keyword, display);
 
-    if (response == null || response.items() == null) {
-      return List.of();
+    if (response == null) {
+      return new KeywordCollectResultDto(List.of(), 1, 0, 1);
+    }
+    if (response.items() == null) {
+      return new KeywordCollectResultDto(List.of(), 1, 1, 0);
     }
 
-    return response.items().stream()
+    List<CollectedArticleDto> articles = response.items().stream()
         .map(CollectedArticleDto::from)
         .filter(article -> article.sourceUrl() != null && !article.sourceUrl().isBlank())
         .toList();
+    return new KeywordCollectResultDto(articles, 1, 1, 0);
   }
 
   /**
@@ -111,19 +109,11 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
         .body(NaverNewsResponseDto.class);
   }
 
-  /**
-   * 429 또는 5xx 응답처럼 다시 시도할 만한 오류인지 판단합니다.
-   */
   private boolean shouldRetry(RestClientResponseException ex) {
     int status = ex.getStatusCode().value();
     return status == 429 || status >= 500;
   }
 
-  /**
-   * 재시도 전 대기 시간입니다.
-   * exponential backoff(재시도할수록 기다리는 시간 점점늘리는 방식)와
-   * jitter를 적용해 재시도 요청이 한 시점에 몰리지 않게 합니다.
-   */
   private void sleepBeforeRetry(int failedAttempt) {
     // 재시도할수록 기다리는시간 점점 늘림
     long baseDelay = properties.retryInitialDelayMillis() * (1L << Math.max(0, failedAttempt - 1));

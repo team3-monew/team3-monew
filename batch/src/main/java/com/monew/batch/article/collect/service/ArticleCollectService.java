@@ -1,15 +1,20 @@
 package com.monew.batch.article.collect.service;
 
-import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
 import com.monew.batch.article.collect.collector.FeedBasedArticleCollector;
 import com.monew.batch.article.collect.collector.KeywordBasedArticleCollector;
+import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
+import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
 import com.monew.batch.article.collect.collector.dto.RssCollectResultDto;
-import com.monew.batch.article.collect.dto.ArticleCollectResultDto;
+import com.monew.batch.article.collect.dto.ArticleCollectStagingCleanupResultDto;
+import com.monew.batch.article.collect.dto.ArticleCollectStepResultDto;
+import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultDto;
+import com.monew.batch.article.collect.entity.ArticleCollectStaging;
+import com.monew.batch.article.collect.repository.ArticleCollectStagingRepository;
 import com.monew.batch.article.config.ArticleCollectProperties;
-import com.monew.batch.article.entity.ArticleSource;
 import com.monew.batch.article.entity.Article;
 import com.monew.batch.article.entity.ArticleInterest;
 import com.monew.batch.article.entity.ArticleInterestId;
+import com.monew.batch.article.entity.ArticleSource;
 import com.monew.batch.article.repository.ArticleInterestRepository;
 import com.monew.batch.article.repository.ArticleRepository;
 import com.monew.batch.interest.entity.Interest;
@@ -28,10 +33,13 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 기사 수집 배치의 전체 흐름을 조율하는 서비스입니다. Naver 키워드 검색을 먼저 실행하고, 그 다음 RSS 수집 결과를 합쳐 기존 저장/관심사 연결 로직으로 처리합니다.
+ * 기사 수집 배치의 실제 업무 로직을 담당하는 서비스입니다.
+ * 각 수집 Step은 외부 API/RSS 호출 결과를 바로 articles에 저장하지 않고 staging 테이블에 먼저 저장하며,
+ * 이후 저장 Step과 관심사 연결 Step이 staging 데이터를 기준으로 후속 처리를 수행합니다.
  */
 @Slf4j
 @Service
@@ -44,121 +52,149 @@ public class ArticleCollectService {
   private final InterestKeywordRepository interestKeywordRepository;
   private final ArticleRepository articleRepository;
   private final ArticleInterestRepository articleInterestRepository;
+  private final ArticleCollectStagingRepository stagingRepository;
 
+  // Naver 뉴스 검색 API로 기사 수집
   @Transactional
-  public ArticleCollectResultDto collect() {
-    // 관심사 키워드 조회
-    List<InterestKeyword> interestKeywords = interestKeywordRepository.findAll();
+  public ArticleCollectStepResultDto collectNaverArticlesToStaging(Long jobExecutionId) {
+    // 관심사 키워드 찾기
+    List<InterestKeyword> interestKeywords = findInterestKeywords();
     if (interestKeywords.isEmpty()) {
-      log.info("Skip article collect because no interest keywords exist.");
-      return emptyResult();
+      log.info("Skip Naver article collect because no interest keywords exist.");
+      return ArticleCollectStepResultDto.empty(ArticleSource.NAVER);
     }
 
-    Map<String, List<InterestKeyword>> interestKeywordsByKeyword = groupByNormalizedKeyword(
+    Set<String> keywords = groupByNormalizedKeyword(interestKeywords).keySet();
+    List<CollectedArticleDto> collectedArticles = new ArrayList<>();
+    int requestCount = 0;
+    int successCount = 0;
+    int failureCount = 0;
+
+    // naver api 호출해서 기사 수집
+    for (KeywordBasedArticleCollector collector : keywordCollectors) {
+      for (String keyword : keywords) {
+        KeywordCollectResultDto collected = collector.collectByKeywordResult(keyword,
+            properties.naverDisplay());
+        collectedArticles.addAll(collected.articles());
+        requestCount += collected.requestCount();
+        successCount += collected.successCount();
+        failureCount += collected.failureCount();
+      }
+    }
+
+    // 관심사 포함된 기사 필터링
+    List<CollectedArticleDto> matchedArticles = filterMatchedArticles(collectedArticles,
         interestKeywords);
-    // 관심사 기반 뉴스 api 호출해 기사 수집
-    CollectArticleStepResult keywordResult = collectKeywordArticles(interestKeywordsByKeyword.keySet());
-    // RSS 기사 수집
-    CollectArticleStepResult feedResult = collectFeedArticles();
+    // db에 staging 기사들 저장
+    StageResult stageResult = saveStagingArticles(jobExecutionId, matchedArticles);
 
-    List<CollectedArticleDto> collectedArticleDtos = new ArrayList<>();
-    collectedArticleDtos.addAll(keywordResult.articles());
-    collectedArticleDtos.addAll(feedResult.articles());
+    ArticleCollectStepResultDto result = new ArticleCollectStepResultDto(
+        ArticleSource.NAVER,
+        requestCount,
+        successCount,
+        failureCount,
+        collectedArticles.size(),
+        matchedArticles.size(),
+        stageResult.savedCount(),
+        stageResult.duplicateSkippedCount()
+    );
+    log.info("Naver collect step finished. result={}", result);
+    return result;
+  }
 
-    // 키워드 매칭
-    List<CollectedArticleDto> matchedArticles = filterMatchedArticles(collectedArticleDtos,
+  // RSS로 뉴스 기사 수집
+  @Transactional
+  public ArticleCollectStepResultDto collectRssArticlesToStaging(Long jobExecutionId,
+      ArticleSource source) {
+    // 관심사 키워드 찾기
+    List<InterestKeyword> interestKeywords = findInterestKeywords();
+    if (interestKeywords.isEmpty()) {
+      log.info("Skip RSS article collect because no interest keywords exist. source={}", source);
+      return ArticleCollectStepResultDto.empty(source);
+    }
+
+    // 뉴스 기사 출처에 해당하는 수집기 찾기
+    FeedBasedArticleCollector collector = findFeedCollector(source);
+    if (collector == null) {
+      log.warn("Skip RSS article collect because collector does not exist. source={}", source);
+      return ArticleCollectStepResultDto.empty(source);
+    }
+
+    // 수집기 통해 뉴스 기사 수집
+    RssCollectResultDto collectResult = collector.collectLatestResult(properties.rssLimit());
+    // 관심사 포함된 기사 필터링
+    List<CollectedArticleDto> matchedArticles = filterMatchedArticles(collectResult.articles(),
         interestKeywords);
-    // 중복 체크 후 db에 기사 저장
-    SaveResult saveResult = saveArticles(matchedArticles);
-    // ArticleInterest 저장
-    int savedMappings = saveArticleInterests(saveResult.articlesByUrl().values(), interestKeywords);
+    // db에 staging 기사들 저장
+    StageResult stageResult = saveStagingArticles(jobExecutionId, matchedArticles);
 
-    ArticleCollectResultDto result = new ArticleCollectResultDto(
-        keywordResult.requestCount(),
-        keywordResult.successCount(),
-        keywordResult.failureCount(),
-        false,
-        feedResult.requestCount(),
-        feedResult.successCount(),
-        feedResult.failureCount(),
-        feedResult.yeonhapRequestCount(),
-        feedResult.yeonhapSuccessCount(),
-        feedResult.yeonhapFailureCount(),
-        collectedArticleDtos.size(),
+    ArticleCollectStepResultDto result = new ArticleCollectStepResultDto(
+        source,
+        collectResult.requestCount(),
+        collectResult.successCount(),
+        collectResult.failureCount(),
+        collectResult.articles().size(),
+        matchedArticles.size(),
+        stageResult.savedCount(),
+        stageResult.duplicateSkippedCount()
+    );
+    log.info("RSS collect step finished. result={}", result);
+    return result;
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public ArticleSaveAndInterestLinkStepResultDto saveStagedArticlesAndLinkInterests(
+      Long jobExecutionId) {
+    List<InterestKeyword> interestKeywords = findInterestKeywords();
+    List<CollectedArticleDto> stagedArticles = stagingRepository.findAllByJobExecutionId(
+            jobExecutionId)
+        .stream()
+        .map(ArticleCollectStaging::toCollectedArticleDto)
+        .toList();
+
+    SaveResult saveResult = saveArticles(stagedArticles);
+    int linkedCount = saveArticleInterests(saveResult.articlesByUrl().values(), interestKeywords);
+
+    ArticleSaveAndInterestLinkStepResultDto result = new ArticleSaveAndInterestLinkStepResultDto(
+        stagedArticles.size(),
         saveResult.savedCount(),
         saveResult.duplicateSkippedCount(),
         saveResult.invalidSkippedCount(),
-        savedMappings,
-        keywordResult.failureCount() + feedResult.failureCount()
+        linkedCount
     );
-
-    log.info("Article collect finished. result={}", result);
+    log.info("Article save and interest link step finished. result={}", result);
     return result;
   }
 
   /**
-   * 관심사 키워드를 기준으로 Naver 같은 키워드 기반 수집기를 실행합니다.
-   * 수집기 내부에서 실패를 빈 목록으로 처리하므로, 일부 실패가 나도 다음 RSS 단계는 계속
-   * 실행됩니다.
+   * 이번 배치 실행에서 사용한 staging 데이터를 삭제합니다.
+   * 저장과 관심사 연결이 끝난 뒤 호출되므로 staging 테이블은 중간 저장소 역할만 하고 비워집니다.
    */
-  private CollectArticleStepResult collectKeywordArticles(Set<String> keywords) {
-    List<CollectedArticleDto> articles = new ArrayList<>();
-    int requestCount = 0;
-    int successCount = 0;
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public ArticleCollectStagingCleanupResultDto cleanupStaging(Long jobExecutionId) {
+    long deletedCount = stagingRepository.deleteByJobExecutionId(jobExecutionId);
+    ArticleCollectStagingCleanupResultDto result =
+        new ArticleCollectStagingCleanupResultDto(deletedCount);
+    log.info("Article collect staging cleanup step finished. result={}", result);
+    return result;
+  }
 
-    for (KeywordBasedArticleCollector collector : keywordCollectors) {
-      for (String keyword : keywords) {
-        requestCount++;
-        List<CollectedArticleDto> collected = collector.collectByKeyword(keyword,
-            properties.naverDisplay());
-        articles.addAll(collected);
-        successCount++;
-      }
-    }
-
-    return new CollectArticleStepResult(articles, requestCount, successCount, requestCount - successCount,
-        0, 0, 0);
+  private List<InterestKeyword> findInterestKeywords() {
+    return interestKeywordRepository.findAll();
   }
 
   /**
-   * RSS 수집기들을 Order 순서대로 실행합니다.
-   * 현재 순서는 한국경제 -> 조선일보 -> 연합뉴스TV이고, 연합뉴스TV는 내부에서 카테고리 RSS들을 다시 순회합니다.
+   * RSS 수집기 목록에서 요청한 출처를 담당하는 수집기를 찾습니다.
    */
-  private CollectArticleStepResult collectFeedArticles() {
-    log.info("RSS 기사 수집 시작. collectorCount={}", feedCollectors.size());
-
-    List<CollectedArticleDto> articles = new ArrayList<>();
-    int requestCount = 0;
-    int successCount = 0;
-    int failureCount = 0;
-    int yeonhapRequestCount = 0;
-    int yeonhapSuccessCount = 0;
-    int yeonhapFailureCount = 0;
-
-    for (FeedBasedArticleCollector collector : feedCollectors) {
-      // api 링크 없는 경우 null값 empty값 반환 해당 부분 어떻게 흘러가는지 체크 필요
-      RssCollectResultDto result = collector.collectLatestResult(properties.rssLimit());
-      requestCount += result.requestCount();
-      successCount += result.successCount();
-      failureCount += result.failureCount();
-      articles.addAll(result.articles());
-
-      if (collector.getSource() == ArticleSource.YEONHAP) {
-        yeonhapRequestCount += result.requestCount();
-        yeonhapSuccessCount += result.successCount();
-        yeonhapFailureCount += result.failureCount();
-      }
-      log.info("RSS article collect finished for source={}. collected={}",
-          collector.getSource(), result.articles().size());
-    }
-
-    log.info("Finish RSS article collect. collected={}", articles.size());
-    return new CollectArticleStepResult(articles, requestCount, successCount, failureCount,
-        yeonhapRequestCount, yeonhapSuccessCount, yeonhapFailureCount);
+  private FeedBasedArticleCollector findFeedCollector(ArticleSource source) {
+    return feedCollectors.stream()
+        .filter(collector -> collector.getSource() == source)
+        .findFirst()
+        .orElse(null);
   }
 
   /**
-   * 제목과 요약에 관심사 키워드가 하나도 포함되지 않은 기사는 저장 대상에서 제외합니다.
+   * 제목과 요약에 관심사 키워드가 하나라도 포함된 기사만 저장 후보로 남깁니다.
    */
   private List<CollectedArticleDto> filterMatchedArticles(
       List<CollectedArticleDto> collectedArticleDtos,
@@ -170,8 +206,46 @@ public class ArticleCollectService {
   }
 
   /**
-   * DB에 없는 기사만 새 Article로 저장
+   * 수집 Step에서 얻은 저장 후보 기사를 staging 테이블에 저장합니다.
+   * 같은 배치 실행 안에서 sourceUrl이 중복되면 첫 번째 기사만 남기고 나머지는 건너뜁니다.
    */
+  private StageResult saveStagingArticles(Long jobExecutionId,
+      List<CollectedArticleDto> collectedArticleDtos) {
+    int invalidSkippedCount = (int) collectedArticleDtos.stream()
+        .filter(article -> article.sourceUrl() == null || article.sourceUrl().isBlank())
+        .count();
+
+    // sourceUrl 중복 시 첫번째 기사만 남김
+    Map<String, CollectedArticleDto> collectedByUrl = collectedArticleDtos.stream()
+        .filter(article -> article.sourceUrl() != null && !article.sourceUrl().isBlank())
+        .collect(Collectors.toMap(
+            CollectedArticleDto::sourceUrl,
+            Function.identity(),
+            (first, ignored) -> first,
+            LinkedHashMap::new
+        ));
+
+    // 현재 실행중인 job에서 staging 테이블에 저장되어 있는 url 목록
+    Set<String> existingStagingUrls = stagingRepository.findAllByJobExecutionIdAndSourceUrlIn(
+            jobExecutionId, collectedByUrl.keySet())
+        .stream()
+        .map(ArticleCollectStaging::getSourceUrl)
+        .collect(Collectors.toSet());
+
+    // staging에 없는 기사들 목록
+    List<ArticleCollectStaging> stagingArticles = collectedByUrl.entrySet().stream()
+        .filter(entry -> !existingStagingUrls.contains(entry.getKey()))
+        .map(entry -> new ArticleCollectStaging(jobExecutionId, entry.getValue()))
+        .toList();
+    // staging에 새 기사들 저장
+    stagingRepository.saveAll(stagingArticles);
+
+    int duplicateSkippedCount =
+        collectedArticleDtos.size() - invalidSkippedCount - collectedByUrl.size()
+            + existingStagingUrls.size();
+    return new StageResult(stagingArticles.size(), duplicateSkippedCount, invalidSkippedCount);
+  }
+
   private SaveResult saveArticles(List<CollectedArticleDto> collectedArticleDtos) {
     int invalidSkippedCount = (int) collectedArticleDtos.stream()
         .filter(article -> article.sourceUrl() == null || article.sourceUrl().isBlank())
@@ -195,7 +269,7 @@ public class ArticleCollectService {
     int savedCount = 0;
     for (Map.Entry<String, CollectedArticleDto> entry : collectedByUrl.entrySet()) {
       if (!articlesByUrl.containsKey(entry.getKey())) {
-        articlesByUrl.put(entry.getKey(), articleRepository.save(toArticle(entry.getValue())));
+        articlesByUrl.put(entry.getKey(), articleRepository.save(Article.from(entry.getValue())));
         savedCount++;
       }
     }
@@ -206,9 +280,6 @@ public class ArticleCollectService {
     return new SaveResult(articlesByUrl, savedCount, duplicateSkippedCount, invalidSkippedCount);
   }
 
-  /**
-   * 저장된 기사 또는 이미 존재하던 기사를 관심사와 연결합니다.
-   */
   private int saveArticleInterests(Iterable<Article> articles,
       List<InterestKeyword> interestKeywords) {
     int savedCount = 0;
@@ -227,6 +298,10 @@ public class ArticleCollectService {
     return savedCount;
   }
 
+  /**
+   * 기사 제목/요약에 포함된 키워드를 기준으로 매칭되는 관심사 목록을 찾습니다.
+   * 하나의 관심사에 여러 키워드가 매칭되어도 같은 관심사는 한 번만 반환합니다.
+   */
   private List<Interest> matchInterests(String title, String summary,
       List<InterestKeyword> interestKeywords) {
     String searchableText = normalize(title + " " + summary);
@@ -243,7 +318,7 @@ public class ArticleCollectService {
   }
 
   /**
-   * 같은 키워드가 여러 관심사에 등록되어 있어도 Naver API 호출은 한 번만 하도록 정규화해 묶습니다.
+   * 같은 키워드가 여러 관심사에 등록되어 있어도 외부 API 요청은 한 번만 보내도록 정규화한 키워드로 묶습니다.
    */
   private Map<String, List<InterestKeyword>> groupByNormalizedKeyword(
       List<InterestKeyword> interestKeywords) {
@@ -258,9 +333,6 @@ public class ArticleCollectService {
         ));
   }
 
-  /**
-   * 키워드 비교가 일관되도록 null 방어, 소문자 변환, 앞뒤 공백 제거를 수행합니다.
-   */
   private String normalize(String value) {
     if (value == null) {
       return "";
@@ -268,50 +340,18 @@ public class ArticleCollectService {
     return value.toLowerCase(Locale.ROOT).trim();
   }
 
-  /**
-   * 외부 수집 결과 DTO를 DB 저장용 Article Entity로 변환합니다.
-   */
-  private Article toArticle(CollectedArticleDto collectedArticleDto) {
-    return new Article(
-        collectedArticleDto.source(),
-        collectedArticleDto.sourceUrl(),
-        collectedArticleDto.title(),
-        collectedArticleDto.publishDate(),
-        collectedArticleDto.summary()
-    );
-  }
-
-  /**
-   * 관심사 키워드가 없어 배치를 건너뛸 때 반환하는 빈 결과입니다.
-   */
-  private ArticleCollectResultDto emptyResult() {
-    return new ArticleCollectResultDto(0, 0, 0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-  }
-
-  /**
-   * Naver 또는 RSS 수집 단계의 기사 목록과 요청 성공/실패 카운트를 함께 담는 내부 DTO입니다.
-   */
-  private record CollectArticleStepResult(
-      List<CollectedArticleDto> articles,
-      int requestCount,
-      int successCount,
-      int failureCount,
-      int yeonhapRequestCount,
-      int yeonhapSuccessCount,
-      int yeonhapFailureCount
+  private record StageResult(
+      int savedCount,
+      int duplicateSkippedCount,
+      int invalidSkippedCount
   ) {
-
   }
 
-  /**
-   * Article 저장 단계에서 필요한 저장 결과와 스킵 카운트를 묶어 반환하기 위한 내부 DTO입니다.
-   */
   private record SaveResult(
       Map<String, Article> articlesByUrl,
       int savedCount,
       int duplicateSkippedCount,
       int invalidSkippedCount
   ) {
-
   }
 }

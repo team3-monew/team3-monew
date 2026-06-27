@@ -32,8 +32,8 @@ public record CollectedArticleDto(
   }
 
   public static CollectedArticleDto from(SyndEntry entry, ArticleSource source){
-    String sourceUrl = cleanText(entry.getLink());
-    String title = cleanText(entry.getTitle());
+    String sourceUrl = cleanHtmlText(entry.getLink());
+    String title = cleanHtmlText(entry.getTitle());
     if (sourceUrl.isBlank() || title.isBlank()) {
       return null;
     }
@@ -43,13 +43,10 @@ public record CollectedArticleDto(
         sourceUrl,
         title,
         toLocalDateTime(entry),
-        cleanText(descriptionOf(entry))
+        cleanHtmlText(descriptionOf(entry))
     );
   }
 
-  /**
-   * Naver title/description에 포함된 HTML 태그와 entity를 제거합니다.
-   */
   private static String cleanHtmlText(String value) {
     if (value == null) {
       return "";
@@ -65,16 +62,6 @@ public record CollectedArticleDto(
       return LocalDateTime.now();
     }
     return ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME).toLocalDateTime();
-  }
-
-  /**
-   * RSS 본문에 포함될 수 있는 HTML 태그와 entity를 제거합니다.
-   */
-  private static String cleanText(String value) {
-    if (value == null) {
-      return "";
-    }
-    return HtmlUtils.htmlUnescape(value.replaceAll("<[^>]*>", "")).trim();
   }
 
   /**

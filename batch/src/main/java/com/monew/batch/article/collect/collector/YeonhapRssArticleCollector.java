@@ -10,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -20,7 +19,6 @@ import org.springframework.web.client.RestClient;
  */
 @Slf4j
 @Component
-@Order(3)
 public class YeonhapRssArticleCollector extends AbstractRssArticleCollector {
 
   private final RssProperties rssProperties;
@@ -45,11 +43,6 @@ public class YeonhapRssArticleCollector extends AbstractRssArticleCollector {
     return null;
   }
 
-  /**
-   * 설정된 연합뉴스TV 카테고리 RSS URL들을 순서대로 호출합니다.
-   * 특정 카테고리 호출이 실패해도 다음 카테고리를 계속 수집하고,
-   * 여러 카테고리에서 같은 기사가 내려오면 sourceUrl 기준으로 중복 제거합니다.
-   */
   @Override
   public RssCollectResultDto collectLatestResult(int limit) {
     List<String> urls = rssProperties.yeonhap().urls();

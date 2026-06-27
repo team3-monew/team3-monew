@@ -28,23 +28,13 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
   private final RestClient.Builder restClientBuilder;
   private final ArticleCollectProperties properties;
 
-  /**
-   * 단일 RSS URL을 사용하는 수집기의 기본 수집 흐름입니다.
-   */
   @Override
   public RssCollectResultDto collectLatestResult(int limit) {
     return collectFeed(getFeedUrl(), limit);
   }
 
-  /**
-   * 하위 클래스가 자신이 호출할 RSS URL을 제공하도록 합니다.
-   */
   protected abstract String getFeedUrl();
 
-  /**
-   * RSS URL 하나를 수집합니다.
-   * 연합뉴스TV처럼 여러 URL을 도는 수집기는 이 메서드를 URL 개수만큼 반복 호출합니다.
-   */
   protected RssCollectResultDto collectFeed(String feedUrl, int limit) {
     if (feedUrl == null || feedUrl.isBlank()) {
       log.info("Skip RSS collect because feed URL is empty. source={}", getSource());
@@ -66,9 +56,6 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
     }
   }
 
-  /**
-   * RSS XML을 HTTP로 가져오고, 네트워크 오류나 5xx 응답이면 설정된 횟수만큼 재시도합니다.
-   */
   private String requestWithRetry(String feedUrl) {
     int maxAttempts = Math.max(1, properties.retryMaxAttempts());
 
@@ -119,19 +106,11 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
     return null;
   }
 
-  /**
-   * RSS 호출에서 재시도할 HTTP 상태인지 판단합니다.
-   * 400/401/403/404는 요청 자체 문제로 보고 재시도하지 않습니다.
-   */
   private boolean shouldRetry(RestClientResponseException ex) {
     int status = ex.getStatusCode().value();
-    return status >= 500;
+    return status == 429 || status >= 500;
   }
 
-  /**
-   * 재시도 전 대기 시간입니다.
-   * exponential backoff에 약간의 jitter를 더해 동시에 재시도 요청이 몰리는 것을 줄입니다.
-   */
   private void sleepBeforeRetry(int failedAttempt) {
     long baseDelay = properties.retryInitialDelayMillis() * (1L << Math.max(0, failedAttempt - 1));
     long cappedDelay = Math.min(baseDelay, properties.retryMaxDelayMillis());
@@ -144,9 +123,6 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
     }
   }
 
-  /**
-   * Rome 라이브러리로 RSS XML을 파싱해 CollectedArticleDto 목록으로 변환합니다.
-   */
   protected List<CollectedArticleDto> parseItems(String xml, int limit) throws Exception {
     SyndFeed feed = new SyndFeedInput().build(new StringReader(xml));
 
