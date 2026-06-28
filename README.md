@@ -58,4 +58,4 @@ docker compose up -d
 
 ## 모듈별 담당 (사용자 관리 등 도메인 패키지에서 작업)
 
-각 도메인 패키지(`user`, `article`, ...) 안에 controller/service/repository/entity/dto 를 추가하세요.
+각 도메인 패키지(`user`, `article`, ...) 안에 controller/service/repository/entity/dto 를 추가하세요. 
