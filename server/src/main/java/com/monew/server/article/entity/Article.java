@@ -1,5 +1,6 @@
 package com.monew.server.article.entity;
 
+import com.monew.server.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Entity
 @Table(name = "articles")
-public class Article {
+public class Article extends BaseTimeEntity {
 
   @Id
   private UUID id;
@@ -46,36 +47,18 @@ public class Article {
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
-
-  @Column(name = "updated_at", nullable = false)
-  private LocalDateTime updatedAt;
-
   public void increaseViewCount() {
     this.viewCount++;
-    this.updatedAt = LocalDateTime.now();
   }
 
   public void softDelete() {
     this.deletedAt = LocalDateTime.now();
-    this.updatedAt = LocalDateTime.now();
   }
 
   @PrePersist
   void prePersist() {
     if (id == null) {
       id = UUID.randomUUID();
-    }
-
-    LocalDateTime now = LocalDateTime.now();
-
-    if (createdAt == null) {
-      createdAt = now;
-    }
-
-    if (updatedAt == null) {
-      updatedAt = now;
     }
   }
 }
