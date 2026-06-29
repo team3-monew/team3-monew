@@ -6,6 +6,7 @@ import com.monew.server.article.dto.ArticleViewResponse;
 import com.monew.server.article.entity.ArticleSource;
 import com.monew.server.article.service.ArticleService;
 import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.common.security.LoginUser;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,8 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/articles")
 @RequiredArgsConstructor
 public class ArticleController {
-
-    private static final String REQUEST_USER_ID_HEADER = "Monew-Request-User-ID";
 
     private final ArticleService articleService;
 
@@ -48,7 +46,7 @@ public class ArticleController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime after,
             @RequestParam int limit,
-            @RequestHeader(REQUEST_USER_ID_HEADER) UUID userId
+            @LoginUser UUID userId
     ) {
         ArticleSearchCondition condition = new ArticleSearchCondition(
                 keyword,
@@ -72,7 +70,7 @@ public class ArticleController {
     @GetMapping("/{articleId}")
     public ResponseEntity<ArticleResponse> findArticle(
             @PathVariable UUID articleId,
-            @RequestHeader(REQUEST_USER_ID_HEADER) UUID userId
+            @LoginUser UUID userId
     ) {
         ArticleResponse response = articleService.findArticle(articleId, userId);
         return ResponseEntity.ok(response);
@@ -81,7 +79,7 @@ public class ArticleController {
     @PostMapping("/{articleId}/article-views")
     public ResponseEntity<ArticleViewResponse> registerArticleView(
             @PathVariable UUID articleId,
-            @RequestHeader(REQUEST_USER_ID_HEADER) UUID userId
+            @LoginUser UUID userId
     ) {
         ArticleViewResponse response = articleService.registerArticleView(articleId, userId);
         return ResponseEntity.ok(response);
