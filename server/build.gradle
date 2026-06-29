@@ -5,6 +5,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // 비밀번호 해싱(BCrypt)용 — Spring Security 미사용, 순수 BCrypt 라이브러리
+    implementation 'at.favre.lib:bcrypt:0.10.2'
+
     // 영속성: PostgreSQL(JPA) + MongoDB
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
