@@ -31,7 +31,7 @@ public class CommentController {
       @RequestParam(required = false) String cursor,
       @RequestParam(required = false) LocalDateTime after,
       @RequestParam(defaultValue = "10") int limit,
-      @RequestHeader("MoNew-Request-User-ID") UUID userId
+      @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
 
     Long lastLikeCount = "likeCount".equalsIgnoreCase(orderBy) && cursor != null ? Long.parseLong(cursor) : null;
@@ -71,7 +71,7 @@ public class CommentController {
   @PostMapping("/comments")
   public ResponseEntity<UUID> createComment(
       @Valid @RequestBody CommentRequest request,
-      @RequestHeader("MoNew-Request-User-ID") UUID userId
+      @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
     UUID commentId = commentService.createComment(request.articleId(), userId, request.content());
     return ResponseEntity.ok(commentId);
@@ -81,7 +81,7 @@ public class CommentController {
   @PatchMapping("/comments/{commentId}")
   public ResponseEntity<Void> updateComment(
       @PathVariable UUID commentId,
-      @RequestHeader("MoNew-Request-User-ID") UUID userId,
+      @RequestHeader("Monew-Request-User-ID") UUID userId,
       @Valid @RequestBody CommentRequest request
   ) {
     commentService.updateComment(commentId, userId, request.content());
@@ -92,7 +92,7 @@ public class CommentController {
   @DeleteMapping("/comments/{commentId}")
   public ResponseEntity<Void> deleteComment(
       @PathVariable UUID commentId,
-      @RequestHeader("MoNew-Request-User-ID") UUID userId
+      @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
     commentService.deleteComment(commentId, userId);
     return ResponseEntity.noContent().build();
