@@ -1,8 +1,8 @@
 package com.monew.server.article.dto;
 
 import com.monew.server.article.entity.Article;
-import com.monew.server.article.entity.ArticleView;
 import com.monew.server.article.entity.ArticleSource;
+import com.monew.server.article.entity.ArticleView;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,11 +13,11 @@ public record ArticleViewResponse(
         UUID articleId,
         ArticleSource source,
         String sourceUrl,
-        String title,
-        LocalDateTime publishDate,
-        String summary,
-        long commentCount,
-        long viewCount
+        String articleTitle,
+        LocalDateTime articlePublishedDate,
+        String articleSummary,
+        long articleCommentCount,
+        long articleViewCount
 ) {
 
     public static ArticleViewResponse from(ArticleView articleView) {

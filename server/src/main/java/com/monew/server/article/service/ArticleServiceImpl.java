@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ArticleServiceImpl implements ArticleService {
 
-    private static final int MAX_LIMIT = 10;
+    private static final int MAX_LIMIT = 50;
 
     private final ArticleRepository articleRepository;
     private final ArticleViewRepository articleViewRepository;
