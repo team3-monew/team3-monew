@@ -1,6 +1,7 @@
 package com.monew.batch.article.entity;
 
 import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
+import com.monew.batch.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,31 +22,35 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Entity
 @Table(name = "articles")
-public class Article {
+public class Article extends BaseTimeEntity {
 
   @Id
   private UUID id;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
   private ArticleSource source;
+
   @Column(name = "source_url", nullable = false, unique = true, columnDefinition = "TEXT")
   private String sourceUrl;
+
   @Column(nullable = false, length = 500)
   private String title;
+
   @Column(name = "publish_date", nullable = false)
   private LocalDateTime publishDate;
+
   @Column(columnDefinition = "TEXT")
   private String summary;
+
   @Column(name = "comment_count", nullable = false)
   private long commentCount;
+
   @Column(name = "view_count", nullable = false)
   private long viewCount;
+
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
-  @Column(name = "updated_at", nullable = false)
-  private LocalDateTime updatedAt;
 
   /**
    * 외부 API에서 변환된 CollectedArticle 값을 실제 저장 Entity로 만들 때 사용합니다.
@@ -78,13 +83,6 @@ public class Article {
   void prePersist() {
     if (id == null) {
       id = UUID.randomUUID();
-    }
-    LocalDateTime now = LocalDateTime.now();
-    if (createdAt == null) {
-      createdAt = now;
-    }
-    if (updatedAt == null) {
-      updatedAt = now;
     }
   }
 }

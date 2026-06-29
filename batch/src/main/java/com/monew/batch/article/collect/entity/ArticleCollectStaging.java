@@ -2,6 +2,7 @@ package com.monew.batch.article.collect.entity;
 
 import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
 import com.monew.batch.article.entity.ArticleSource;
+import com.monew.batch.common.entity.BaseCreatedEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,7 +31,7 @@ import lombok.NoArgsConstructor;
         columnNames = {"job_execution_id", "source_url"}
     )
 )
-public class ArticleCollectStaging {
+public class ArticleCollectStaging extends BaseCreatedEntity {
 
   @Id
   private UUID id;
@@ -54,9 +55,6 @@ public class ArticleCollectStaging {
   @Column(columnDefinition = "TEXT")
   private String summary;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
-
   public ArticleCollectStaging(Long jobExecutionId, CollectedArticleDto article) {
     this.jobExecutionId = jobExecutionId;
     this.source = article.source();
@@ -77,9 +75,6 @@ public class ArticleCollectStaging {
   void prePersist() {
     if (id == null) {
       id = UUID.randomUUID();
-    }
-    if (createdAt == null) {
-      createdAt = LocalDateTime.now();
     }
   }
 }

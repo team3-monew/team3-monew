@@ -35,7 +35,7 @@ monew:
       client-secret: ${NAVER_CLIENT_SECRET:}
 
   article-collect:
-    cron: ${ARTICLE_COLLECT_CRON:0 * * * * *}
+    cron: ${ARTICLE_COLLECT_CRON:0 0 * * * *}
     naver-display: ${ARTICLE_COLLECT_NAVER_DISPLAY:100}
     rss-limit: ${ARTICLE_COLLECT_RSS_LIMIT:100}
     retry-max-attempts: ${ARTICLE_COLLECT_RETRY_MAX_ATTEMPTS:4}
