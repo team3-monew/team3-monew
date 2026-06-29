@@ -103,23 +103,21 @@ public class CommentService {
       commentLikeRepository.save(commentLike);
       comment.increaseLikeCount(); // 댓글 엔티티 카운트 +1
 
-      // 💡 [알림 관리 요구사항 참고]: 여기에 나중에 알림 생성 로직 추가 예정!
-      // 예: notificationService.createNotification(comment.getUser(), "[사용자]님이 나의 댓글을 좋아합니다.", comment);
     }
   }
 
 
   //뉴스 기사 별 댓글 목록 조회
   public CommentSliceResult getCommentsByArticleCursor
-      (UUID articleId, String sortBy, LocalDateTime lastCreatedAt, Long lastLikeCount, int size) {
+      (UUID articleId, String sortBy, LocalDateTime lastCreatedAt, Long lastLikeCount, UUID lastId,int size) {
 
     Pageable pageable = PageRequest.of(0, size + 1);
     List<Comment> comments;
 
     if ("LIKE".equalsIgnoreCase(sortBy)) {
-      comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, pageable);
+      comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId, pageable);
     } else {
-      comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, pageable);
+      comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId, pageable);
     }
 
     //다음 페이지가 있는지 확인

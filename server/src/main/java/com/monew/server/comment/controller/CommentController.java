@@ -25,11 +25,12 @@ public class CommentController {
       @RequestParam(defaultValue = "CREATED_AT") String sortBy,
       @RequestParam(required = false) LocalDateTime lastCreatedAt,
       @RequestParam(required = false) Long lastLikeCount,
+      @RequestParam(required = false) UUID lastId,
       @RequestParam(defaultValue = "10") int size
   ) {
 
     CommentSliceResult result = commentService
-        .getCommentsByArticleCursor(articleId, sortBy, lastCreatedAt, lastLikeCount, size);
+        .getCommentsByArticleCursor(articleId, sortBy, lastCreatedAt, lastLikeCount, lastId, size);
 
     List<CommentResponse> commentResponses = result.content().stream()
         .map(CommentResponse::from)
