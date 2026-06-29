@@ -1,14 +1,14 @@
 package com.monew.server.comment.service;
 
 import com.monew.server.article.entity.Article;
-import com.monew.server.article.repository.ArticleRepository; // 기사 조회용 가정
+import com.monew.server.article.repository.ArticleRepository;       // 기사 조회용 임시
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.repository.CommentRepository;
 import com.monew.server.user.entity.User;
-import com.monew.server.user.repository.UserRepository; // 유저 조회용 가정
+import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -27,17 +27,16 @@ public class CommentService {
 
   private final CommentRepository commentRepository;
   private final CommentLikeRepository commentLikeRepository;
-  private final ArticleRepository articleRepository; // 기사 조회용 가정
-  private final UserRepository userRepository;     // 유저 조회용 가정
-
+  private final ArticleRepository articleRepository;          // 기사 조회용 임시
+  private final UserRepository userRepository;
 
   //댓글 등록
   @Transactional
   public UUID createComment(UUID articleId, UUID userId, String content) {
 
-    Article article = articleRepository.findById(articleId)   // 기사 조회용 가정
+    Article article = articleRepository.findById(articleId)     // 기사 조회용 임시
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 기사입니다."));
-    User user = userRepository.findById(userId)               // 유저 조회용 가정
+    User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
 
@@ -84,9 +83,9 @@ public class CommentService {
   //댓글 좋아요, 좋아요 취소
   @Transactional
   public void toggleCommentLike(UUID commentId, UUID userId) {
-    Comment comment = commentRepository.findById(commentId)
+    Comment comment = commentRepository.findById(commentId)         //기사 조회용 임시
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
-    User user = userRepository.findById(userId)             // 유저 조회용 가정
+    User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
     Optional<CommentLike> existingLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId);

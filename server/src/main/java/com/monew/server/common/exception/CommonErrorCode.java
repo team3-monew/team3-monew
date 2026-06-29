@@ -13,7 +13,8 @@ public enum CommonErrorCode implements ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "요청 데이터 유효성 검사에 실패하였습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
 
-    // 인증/권한
+    // 인증, 권한
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 일치하지 않습니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "요청 권한이 없습니다.");
 
