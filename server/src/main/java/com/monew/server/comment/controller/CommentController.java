@@ -1,9 +1,11 @@
 package com.monew.server.comment.controller;
 
+import com.monew.server.comment.dto.CommentRequest;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.service.CommentService;
 import com.monew.server.common.response.CursorPageResponse;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -54,9 +56,9 @@ public class CommentController {
   public ResponseEntity<UUID> createComment(
       @PathVariable UUID articleId,
       @RequestHeader("MoNew-Request-User-ID") UUID userId,
-      @RequestBody String content
+      @Valid @RequestBody CommentRequest request
   ) {
-    UUID commentId = commentService.createComment(articleId, userId, content);
+    UUID commentId = commentService.createComment(articleId, userId, request.content());
     return ResponseEntity.ok(commentId);
   }
 
@@ -66,9 +68,9 @@ public class CommentController {
   public ResponseEntity<Void> updateComment(
       @PathVariable UUID commentId,
       @RequestHeader("MoNew-Request-User-ID") UUID userId,
-      @RequestBody String content
+      @Valid @RequestBody CommentRequest request
   ) {
-    commentService.updateComment(commentId, userId, content);
+    commentService.updateComment(commentId, userId, request.content());
     return ResponseEntity.noContent().build();
   }
 
