@@ -10,8 +10,10 @@ import com.monew.server.article.entity.ArticleView;
 import com.monew.server.article.repository.ArticleRepository;
 import com.monew.server.article.repository.ArticleViewRepository;
 import com.monew.server.article.repository.querydsl.ArticleQueryRepository;
+import com.monew.server.article.type.ArticleSortType;
 import com.monew.server.common.exception.article.ArticleErrorCode;
 import com.monew.server.common.exception.article.ArticleException;
+import com.monew.server.common.exception.user.UserErrorCode;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
@@ -21,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,14 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ArticleServiceImpl implements ArticleService {
 
-    private static final String ORDER_BY_PUBLISH_DATE = "publishDate";
-    private static final String ORDER_BY_COMMENT_COUNT = "commentCount";
-    private static final String ORDER_BY_VIEW_COUNT = "viewCount";
-
-    private static final String DIRECTION_ASC = "ASC";
-    private static final String DIRECTION_DESC = "DESC";
-
-    private static final int MAX_LIMIT = 100;
+    private static final int MAX_LIMIT = 10;
 
     private final ArticleRepository articleRepository;
     private final ArticleViewRepository articleViewRepository;
@@ -50,6 +44,7 @@ public class ArticleServiceImpl implements ArticleService {
             UUID userId
     ) {
         validateSearchCondition(condition);
+        findActiveUser(userId);
 
         List<ArticleListQueryResult> queriedArticles =
                 articleQueryRepository.findArticles(condition, userId);
@@ -88,14 +83,49 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
+    public ArticleResponse findArticle(UUID articleId, UUID userId) {
+        findActiveUser(userId);
+
+        Article article = findActiveArticle(articleId);
+        boolean viewedByMe = articleViewRepository.existsByArticleIdAndUserId(articleId, userId);
+
+        return ArticleResponse.from(article, viewedByMe);
+    }
+
+    @Override
     @Transactional
     public ArticleViewResponse registerArticleView(UUID articleId, UUID userId) {
-        Article article = findActiveArticleForUpdate(articleId);
+        validateActiveArticleExists(articleId);
         User user = findActiveUser(userId);
 
-        return articleViewRepository.findByArticleIdAndUserId(articleId, userId)
-                .map(this::toArticleViewResponse)
-                .orElseGet(() -> createArticleView(article, user));
+        int inserted = articleViewRepository.insertIgnore(
+                UUID.randomUUID(),
+                articleId,
+                user.getId()
+        );
+
+        if (inserted == 1) {
+            int updated = articleRepository.increaseViewCount(articleId);
+
+            if (updated != 1) {
+                ArticleException exception =
+                        new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+                exception.addDetail("articleId", articleId);
+                throw exception;
+            }
+        }
+
+        ArticleView articleView = articleViewRepository
+                .findByArticleIdAndUserId(articleId, user.getId())
+                .orElseThrow(() -> {
+                    ArticleException exception =
+                            new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+                    exception.addDetail("articleId", articleId);
+                    exception.addDetail("userId", user.getId());
+                    return exception;
+                });
+
+        return ArticleViewResponse.from(articleView);
     }
 
     @Override
@@ -106,23 +136,15 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public List<ArticleSource> findSources() {
-        return Arrays.asList(ArticleSource.values());
-    }
-
-    @Override
-    public ArticleResponse findArticle(UUID articleId, UUID userId) {
-        Article article = findActiveArticle(articleId);
-        boolean viewedByMe = articleViewRepository.existsByArticleIdAndUserId(articleId, userId);
-
-        return toArticleResponse(article, viewedByMe);
-    }
-
-    @Override
     @Transactional
     public void hardDelete(UUID articleId) {
         Article article = findArticleIncludingDeleted(articleId);
         articleRepository.delete(article);
+    }
+
+    @Override
+    public List<ArticleSource> findSources() {
+        return Arrays.asList(ArticleSource.values());
     }
 
     private void validateSearchCondition(ArticleSearchCondition condition) {
@@ -139,9 +161,7 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     private void validateOrderBy(String orderBy) {
-        if (ORDER_BY_PUBLISH_DATE.equals(orderBy)
-                || ORDER_BY_COMMENT_COUNT.equals(orderBy)
-                || ORDER_BY_VIEW_COUNT.equals(orderBy)) {
+        if (ArticleSortType.isValid(orderBy)) {
             return;
         }
 
@@ -149,8 +169,7 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     private void validateDirection(String direction) {
-        if (DIRECTION_ASC.equalsIgnoreCase(direction)
-                || DIRECTION_DESC.equalsIgnoreCase(direction)) {
+        if ("ASC".equalsIgnoreCase(direction) || "DESC".equalsIgnoreCase(direction)) {
             return;
         }
 
@@ -201,10 +220,9 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         try {
-            switch (condition.orderBy()) {
-                case ORDER_BY_COMMENT_COUNT, ORDER_BY_VIEW_COUNT -> Long.parseLong(cursor);
-                case ORDER_BY_PUBLISH_DATE -> LocalDateTime.parse(cursor);
-                default -> throwInvalidRequest("orderBy", condition.orderBy());
+            switch (ArticleSortType.from(condition.orderBy())) {
+                case COMMENT_COUNT, VIEW_COUNT -> Long.parseLong(cursor);
+                case PUBLISH_DATE -> LocalDateTime.parse(cursor);
             }
         } catch (NumberFormatException | DateTimeParseException e) {
             ArticleException exception =
@@ -216,33 +234,19 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     private String resolveNextCursor(ArticleResponse article, String orderBy) {
-        return switch (orderBy) {
-            case ORDER_BY_COMMENT_COUNT -> String.valueOf(article.commentCount());
-            case ORDER_BY_VIEW_COUNT -> String.valueOf(article.viewCount());
-            case ORDER_BY_PUBLISH_DATE -> article.publishDate().toString();
-            default -> {
-                ArticleException exception =
-                        new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
-                exception.addDetail("orderBy", orderBy);
-                throw exception;
-            }
+        return switch (ArticleSortType.from(orderBy)) {
+            case COMMENT_COUNT -> String.valueOf(article.commentCount());
+            case VIEW_COUNT -> String.valueOf(article.viewCount());
+            case PUBLISH_DATE -> article.publishDate().toString();
         };
     }
 
-    private ArticleViewResponse createArticleView(Article article, User user) {
-        try {
-            ArticleView articleView = new ArticleView(article, user);
-            ArticleView savedArticleView = articleViewRepository.saveAndFlush(articleView);
-
-            article.increaseViewCount();
-
-            return toArticleViewResponse(savedArticleView);
-        } catch (DataIntegrityViolationException e) {
-            ArticleView existingArticleView = articleViewRepository
-                    .findByArticleIdAndUserId(article.getId(), user.getId())
-                    .orElseThrow(() -> e);
-
-            return toArticleViewResponse(existingArticleView);
+    private void validateActiveArticleExists(UUID articleId) {
+        if (articleId == null || !articleRepository.existsByIdAndDeletedAtIsNull(articleId)) {
+            ArticleException exception =
+                    new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+            exception.addDetail("articleId", articleId);
+            throw exception;
         }
     }
 
@@ -267,28 +271,10 @@ public class ArticleServiceImpl implements ArticleService {
         return userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> {
                     ArticleException exception =
-                            new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+                            new ArticleException(UserErrorCode.USER_NOT_FOUND);
                     exception.addDetail("userId", userId);
                     return exception;
                 });
-    }
-
-    private ArticleViewResponse toArticleViewResponse(ArticleView articleView) {
-        Article article = articleView.getArticle();
-
-        return new ArticleViewResponse(
-                articleView.getId(),
-                articleView.getUser().getId(),
-                articleView.getCreatedAt(),
-                article.getId(),
-                article.getSource(),
-                article.getSourceUrl(),
-                article.getTitle(),
-                article.getPublishDate(),
-                article.getSummary(),
-                article.getCommentCount(),
-                article.getViewCount()
-        );
     }
 
     private void throwInvalidRequest(String fieldName, Object value) {
@@ -317,19 +303,4 @@ public class ArticleServiceImpl implements ArticleService {
                     return exception;
                 });
     }
-
-    private ArticleResponse toArticleResponse(Article article, boolean viewedByMe) {
-        return new ArticleResponse(
-                article.getId(),
-                article.getSource(),
-                article.getSourceUrl(),
-                article.getTitle(),
-                article.getPublishDate(),
-                article.getSummary(),
-                article.getCommentCount(),
-                article.getViewCount(),
-                viewedByMe
-        );
-    }
-
 }

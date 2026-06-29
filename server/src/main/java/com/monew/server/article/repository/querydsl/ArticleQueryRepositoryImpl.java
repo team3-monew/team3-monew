@@ -8,6 +8,7 @@ import com.monew.server.article.dto.ArticleListQueryResult;
 import com.monew.server.article.dto.ArticleResponse;
 import com.monew.server.article.dto.ArticleSearchCondition;
 import com.monew.server.article.entity.ArticleSource;
+import com.monew.server.article.type.ArticleSortType;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -24,11 +25,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
-
-    private static final String ORDER_BY_PUBLISH_DATE = "publishDate";
-    private static final String ORDER_BY_COMMENT_COUNT = "commentCount";
-    private static final String ORDER_BY_VIEW_COUNT = "viewCount";
-    private static final String DIRECTION_ASC = "ASC";
 
     private final JPAQueryFactory queryFactory;
 
@@ -144,29 +140,23 @@ public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
             return null;
         }
 
-        String orderBy = normalizeOrderBy(condition.orderBy());
+        ArticleSortType sortType = ArticleSortType.from(condition.orderBy());
         boolean asc = isAsc(condition.direction());
 
-        return switch (orderBy) {
-            case ORDER_BY_COMMENT_COUNT -> numberCursorCondition(
+        return switch (sortType) {
+            case COMMENT_COUNT -> numberCursorCondition(
                     article.commentCount,
                     Long.parseLong(condition.cursor()),
                     condition.after(),
                     asc
             );
-            case ORDER_BY_VIEW_COUNT -> numberCursorCondition(
+            case VIEW_COUNT -> numberCursorCondition(
                     article.viewCount,
                     Long.parseLong(condition.cursor()),
                     condition.after(),
                     asc
             );
-            case ORDER_BY_PUBLISH_DATE -> dateTimeCursorCondition(
-                    article.publishDate,
-                    LocalDateTime.parse(condition.cursor()),
-                    condition.after(),
-                    asc
-            );
-            default -> dateTimeCursorCondition(
+            case PUBLISH_DATE -> dateTimeCursorCondition(
                     article.publishDate,
                     LocalDateTime.parse(condition.cursor()),
                     condition.after(),
@@ -214,38 +204,29 @@ public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
     }
 
     private OrderSpecifier<?>[] orderSpecifiers(ArticleSearchCondition condition) {
-        String orderBy = normalizeOrderBy(condition.orderBy());
+        ArticleSortType sortType = ArticleSortType.from(condition.orderBy());
         boolean asc = isAsc(condition.direction());
 
-        return switch (orderBy) {
-            case ORDER_BY_COMMENT_COUNT -> new OrderSpecifier<?>[]{
+        return switch (sortType) {
+            case COMMENT_COUNT -> new OrderSpecifier<?>[]{
                     asc ? article.commentCount.asc() : article.commentCount.desc(),
-                    asc ? article.createdAt.asc() : article.createdAt.desc()
+                    asc ? article.createdAt.asc() : article.createdAt.desc(),
+                    asc ? article.id.asc() : article.id.desc()
             };
-            case ORDER_BY_VIEW_COUNT -> new OrderSpecifier<?>[]{
+            case VIEW_COUNT -> new OrderSpecifier<?>[]{
                     asc ? article.viewCount.asc() : article.viewCount.desc(),
-                    asc ? article.createdAt.asc() : article.createdAt.desc()
+                    asc ? article.createdAt.asc() : article.createdAt.desc(),
+                    asc ? article.id.asc() : article.id.desc()
             };
-            case ORDER_BY_PUBLISH_DATE -> new OrderSpecifier<?>[]{
+            case PUBLISH_DATE -> new OrderSpecifier<?>[]{
                     asc ? article.publishDate.asc() : article.publishDate.desc(),
-                    asc ? article.createdAt.asc() : article.createdAt.desc()
-            };
-            default -> new OrderSpecifier<?>[]{
-                    article.publishDate.desc(),
-                    article.createdAt.desc()
+                    asc ? article.createdAt.asc() : article.createdAt.desc(),
+                    asc ? article.id.asc() : article.id.desc()
             };
         };
     }
 
-    private String normalizeOrderBy(String orderBy) {
-        if (orderBy == null || orderBy.isBlank()) {
-            return ORDER_BY_PUBLISH_DATE;
-        }
-
-        return orderBy;
-    }
-
     private boolean isAsc(String direction) {
-        return DIRECTION_ASC.equalsIgnoreCase(direction);
+        return "ASC".equalsIgnoreCase(direction);
     }
 }
