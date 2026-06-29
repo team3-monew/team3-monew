@@ -26,17 +26,17 @@ public class CommentService {
 
   private final CommentRepository commentRepository;
   private final CommentLikeRepository commentLikeRepository;
-  private final ArticleRepository articleRepository;
-  private final UserRepository userRepository;
+  private final ArticleRepository articleRepository; // 기사 조회용 가정
+    private final UserRepository userRepository;     // 유저 조회용 가정
 
 
   //댓글 등록
   @Transactional
   public UUID createComment(UUID articleId, UUID userId, String content) {
 
-    Article article = articleRepository.findById(articleId)
+    Article article = articleRepository.findById(articleId)   // 기사 조회용 가정
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 기사입니다."));
-    User user = userRepository.findById(userId)
+    User user = userRepository.findById(userId)               // 유저 조회용 가정
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
 
@@ -85,7 +85,7 @@ public class CommentService {
   public void toggleCommentLike(UUID commentId, UUID userId) {
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
-    User user = userRepository.findById(userId)
+    User user = userRepository.findById(userId)             // 유저 조회용 가정
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
     Optional<CommentLike> existingLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId);
@@ -114,7 +114,7 @@ public class CommentService {
     Pageable pageable = PageRequest.of(0, size + 1);
     List<Comment> comments;
 
-    if ("LIKE".equalsIgnoreCase(sortBy)) {
+    if ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy)) {
       comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId, pageable);
     } else {
       comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId, pageable);
@@ -134,12 +134,11 @@ public class CommentService {
     if (!comments.isEmpty()) {
       Comment lastComment = comments.get(comments.size() - 1);
 
-      //메인 커서(nextCursor): 정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
-      nextCursor = "LIKE".equalsIgnoreCase(sortBy)
+      //정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
+      nextCursor = ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy))
           ? String.valueOf(lastComment.getLikeCount())
           : lastComment.getCreatedAt().toString();
 
-      //보조 커서(nextAfter): 팀 공통 스펙의 LocalDateTime 타입에 맞춰 마지막 댓글의 생성일시 바인딩
       nextAfter = lastComment.getCreatedAt();
     }
 
