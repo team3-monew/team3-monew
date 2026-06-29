@@ -33,6 +33,7 @@ public class CommentLike {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "comment_id")
+  @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
   private Comment comment;
 
   @Column(name = "created_at", nullable = false, updatable = false)
