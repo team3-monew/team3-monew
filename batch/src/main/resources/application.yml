@@ -17,6 +17,19 @@ logging:
     root: info
     com.monew: info
 
+backup:
+  enabled: ${BACKUP_ENABLED:true}
+#  cron: ${ARTICLE_BACKUP_CRON:0 30 3 * * *}
+  cron: ${ARTICLE_BACKUP_CRON:0 50 18 * * *}
+  storage:
+    type: ${BACKUP_STORAGE_TYPE:local}
+    local:
+      root-path: ${BACKUP_LOCAL_ROOT_PATH:.monew/backups}
+    s3:
+      bucket: ${BACKUP_S3_BUCKET:}
+      prefix: ${BACKUP_S3_PREFIX:backups/articles}
+      region: ${AWS_REGION:ap-northeast-2}
+
 management:
   endpoints:
     web:

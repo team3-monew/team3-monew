@@ -1,6 +1,7 @@
 package com.monew.batch.article.repository;
 
 import com.monew.batch.article.entity.Article;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -22,4 +23,9 @@ public interface ArticleRepository extends JpaRepository<Article, UUID> {
    * API에서 가져온 여러 URL 중 DB에 이미 존재하는 기사를 한 번에 조회합니다.
    */
   List<Article> findAllBySourceUrlIn(Collection<String> sourceUrls);
+
+  List<Article> findAllByPublishDateGreaterThanEqualAndPublishDateLessThan(
+      LocalDateTime start,
+      LocalDateTime end
+  );
 }

@@ -38,6 +38,44 @@ public class ArticleBackup extends BaseCreatedEntity {
   @Column(nullable = false, length = 20)
   private ArticleBackupStatus status;
 
+  /**
+   * 새 백업 이력을 RUNNING 상태로 생성합니다.
+   */
+  public static ArticleBackup running(LocalDate backupDate, String s3Bucket, String s3ObjectKey) {
+    ArticleBackup articleBackup = new ArticleBackup();
+    articleBackup.backupDate = backupDate;
+    articleBackup.s3Bucket = s3Bucket;
+    articleBackup.s3ObjectKey = s3ObjectKey;
+    articleBackup.articleCount = 0L;
+    articleBackup.status = ArticleBackupStatus.RUNNING;
+    return articleBackup;
+  }
+
+  /**
+   * 기존 날짜의 백업을 재실행할 때 이력을 RUNNING 상태로 초기화합니다.
+   */
+  public void start(String s3Bucket, String s3ObjectKey) {
+    this.s3Bucket = s3Bucket;
+    this.s3ObjectKey = s3ObjectKey;
+    this.articleCount = 0L;
+    this.status = ArticleBackupStatus.RUNNING;
+  }
+
+  /**
+   * 업로드 성공 후 백업 기사 수와 SUCCESS 상태를 기록합니다.
+   */
+  public void succeed(long articleCount) {
+    this.articleCount = articleCount;
+    this.status = ArticleBackupStatus.SUCCESS;
+  }
+
+  /**
+   * 백업 처리 중 실패가 발생했음을 기록합니다.
+   */
+  public void fail() {
+    this.status = ArticleBackupStatus.FAILED;
+  }
+
   @PrePersist
   void prePersist() {
       if (id == null) {
