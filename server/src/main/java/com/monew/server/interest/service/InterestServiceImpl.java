@@ -43,6 +43,8 @@ public class InterestServiceImpl implements InterestService {
                 .map(keyword -> new InterestKeyword(savedInterest, keyword))
                 .toList();
 
+        interestKeywordRepository.saveAll(interestKeywords);
+
         return InterestDto.of(savedInterest, keywords, false);
     }
 

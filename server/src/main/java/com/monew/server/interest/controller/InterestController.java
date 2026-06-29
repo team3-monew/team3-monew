@@ -37,7 +37,7 @@ public class InterestController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{interestId")
+    @DeleteMapping("/{interestId}")
     public ResponseEntity<Void> delete(@PathVariable UUID interestId) {
         interestService.delete(interestId);
 
