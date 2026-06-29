@@ -56,4 +56,13 @@ public class UserController {
         userService.delete(userId, requesterId);
         return ResponseEntity.noContent().build();
     }
+
+    // 사용자 물리 삭제 - 본인만 (UI 미제공, 테스트로 검증)
+    @DeleteMapping("/{userId}/hard")
+    public ResponseEntity<Void> hardDelete(
+            @PathVariable UUID userId,
+            @LoginUser UUID requesterId) {
+        userService.hardDelete(userId, requesterId);
+        return ResponseEntity.noContent().build();
+    }
 }

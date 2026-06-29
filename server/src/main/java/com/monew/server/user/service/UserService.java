@@ -23,8 +23,7 @@ public class UserService {
 
     @Transactional
     public UserDto register(UserRegisterRequest request) {
-        // 이메일 정규화 — 대소문자/공백 우회 가입 방지
-        String email = request.email().trim().toLowerCase();
+        String email = request.email().trim();
 
         if (userRepository.existsByEmail(email)) {
             throw new BaseException(UserErrorCode.EMAIL_ALREADY_EXISTS);
@@ -42,7 +41,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserDto login(UserLoginRequest request) {
-        String email = request.email().trim().toLowerCase();
+        String email = request.email().trim();
 
         // 보안: 이메일 미존재/탈퇴/비번불일치 모두 동일한 예외로 처리 (이메일 존재 여부 유출 방지)
         User user = userRepository.findByEmail(email)
@@ -75,6 +74,16 @@ public class UserService {
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
         user.delete(); // 논리 삭제
+    }
+
+    @Transactional
+    public void hardDelete(UUID targetUserId, UUID requesterId) {
+        validateSelf(targetUserId, requesterId);
+
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        userRepository.delete(user); // 물리 삭제 (연관 데이터는 DB FK CASCADE)
     }
 
     // 본인 확인 — 요청자(헤더)와 대상(경로)이 일치해야 함
