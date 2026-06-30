@@ -76,7 +76,7 @@ public class CommentController {
       @Valid @RequestBody CommentCreateRequest request,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
-    UUID commentId = commentService.createComment(request.articleId(), userId, request.content());
+    UUID commentId = commentService.createComment(request, userId);
     return ResponseEntity.ok(commentId);
   }
 
@@ -87,7 +87,7 @@ public class CommentController {
       @RequestHeader("Monew-Request-User-ID") UUID userId,
       @Valid @RequestBody CommentUpdateRequest request
   ) {
-    Comment updatedComment = commentService.updateComment(commentId, userId, request.content());
+    Comment updatedComment = commentService.updateComment(commentId, userId, request);
     boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(commentId, userId);
     CommentResponse response = CommentResponse.of(updatedComment, likedByMe);
     return ResponseEntity.ok(response);
@@ -103,11 +103,5 @@ public class CommentController {
     return ResponseEntity.noContent().build();
   }
 
-  //댓글 삭제 API (물리 삭제)
-  @DeleteMapping("/comments/{commentId}/hard")
-  public ResponseEntity<Void> deleteCommentHard(
-      @PathVariable UUID commentId
-  ) {
-    return ResponseEntity.noContent().build();
-  }
+
 }
