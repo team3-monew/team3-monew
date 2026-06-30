@@ -103,5 +103,7 @@ public class CommentController {
     return ResponseEntity.noContent().build();
   }
 
+  //댓글 삭제(물리 삭제) -> 삭제
+  //향후 테스트나 운영상 필요할 경우 테스트 코드 내에서 Repository를 직접 호출하여 처리할 예정.
 
 }
