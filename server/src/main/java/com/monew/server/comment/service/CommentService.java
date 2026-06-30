@@ -58,7 +58,7 @@ public class CommentService {
 
   //댓글 수정(본인만 가능)
   @Transactional
-  public void updateComment(UUID commentId, UUID userId, String newContent) {
+  public Comment updateComment(UUID commentId, UUID userId, String newContent) {
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
 
@@ -66,6 +66,8 @@ public class CommentService {
       throw new BaseException(CommonErrorCode.FORBIDDEN);
     }
     comment.updateContent(newContent);
+
+    return comment;
   }
 
 

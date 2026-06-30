@@ -4,6 +4,7 @@ import com.monew.server.comment.dto.CommentRequest;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.entity.Comment;
+import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.service.CommentService;
 import com.monew.server.common.response.CursorPageResponse;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class CommentController {
 
   private final CommentService commentService;
+  private final CommentLikeRepository commentLikeRepository;
 
   //댓글 목록 조회 (★ 서비스 레이어 파라미터 타입 및 순서 완벽 일치!)
   @GetMapping("/comments")
@@ -79,13 +81,15 @@ public class CommentController {
 
   //댓글 내용 수정 API
   @PatchMapping("/comments/{commentId}")
-  public ResponseEntity<Void> updateComment(
+  public ResponseEntity<CommentResponse> updateComment(
       @PathVariable UUID commentId,
       @RequestHeader("Monew-Request-User-ID") UUID userId,
       @Valid @RequestBody CommentRequest request
   ) {
-    commentService.updateComment(commentId, userId, request.content());
-    return ResponseEntity.noContent().build();
+    Comment updatedComment = commentService.updateComment(commentId, userId, request.content());
+    boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(commentId, userId);
+    CommentResponse response = CommentResponse.of(updatedComment, likedByMe);
+    return ResponseEntity.ok(response);
   }
 
   //댓글 삭제 API (논리 삭제 - 명세서의 204 No Content 대응)

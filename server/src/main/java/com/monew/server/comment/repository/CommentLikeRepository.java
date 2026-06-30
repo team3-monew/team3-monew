@@ -12,4 +12,7 @@ public interface CommentLikeRepository extends JpaRepository<CommentLike, UUID> 
 
 //좋아요 취소
   void deleteByCommentIdAndUserId(UUID commentId, UUID userId);
+
+  // 좋아요 여부만 빠르게 확인 (Boolean 반환)
+  boolean existsByCommentIdAndUserId(UUID commentId, UUID userId);
 }
