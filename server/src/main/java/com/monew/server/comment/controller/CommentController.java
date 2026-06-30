@@ -1,21 +1,27 @@
 package com.monew.server.comment.controller;
 
 import com.monew.server.comment.dto.CommentCreateRequest;
-import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.dto.CommentResponse;
-import com.monew.server.comment.dto.CommentSliceResult;
+import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.service.CommentService;
 import com.monew.server.common.response.CursorPageResponse;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
@@ -25,7 +31,7 @@ public class CommentController {
   private final CommentService commentService;
   private final CommentLikeRepository commentLikeRepository;
 
-  //댓글 목록 조회 (★ 서비스 레이어 파라미터 타입 및 순서 완벽 일치!)
+  //댓글 목록 조회
   @GetMapping("/comments")
   public ResponseEntity<CursorPageResponse<CommentResponse>> getCommentsByArticle(
       @RequestParam UUID articleId,
@@ -36,37 +42,9 @@ public class CommentController {
       @RequestParam(defaultValue = "10") int limit,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
-
-    Long lastLikeCount = "likeCount".equalsIgnoreCase(orderBy) && cursor != null ? Long.parseLong(cursor) : null;
-    LocalDateTime lastCreatedAt = "createdAt".equalsIgnoreCase(orderBy) && cursor != null ? LocalDateTime.parse(cursor) : after;
-    UUID lastId = null;
-
-
-    CommentSliceResult result = commentService.getCommentsByArticleCursor(
-        articleId,
-        orderBy,
-        lastCreatedAt,
-        lastLikeCount,
-        lastId,
-        limit
+    CursorPageResponse<CommentResponse> response = commentService.getComments(
+        articleId, orderBy, cursor, after, limit, userId
     );
-
-
-    List<CommentResponse> commentResponses = new ArrayList<>();
-    for (Comment comment : result.content()) {
-      boolean likedByMe = true; // 대시보드 스펙용 스텁 값
-      commentResponses.add(CommentResponse.of(comment, likedByMe));
-    }
-
-    CursorPageResponse<CommentResponse> response = new CursorPageResponse<>(
-        commentResponses,
-        result.nextCursor(),
-        result.nextAfter(),
-        result.size(),
-        100,
-        result.hasNext()
-    );
-
     return ResponseEntity.ok(response);
   }
 

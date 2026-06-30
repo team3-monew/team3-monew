@@ -3,6 +3,7 @@ package com.monew.server.comment.service;
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.repository.ArticleRepository;
 import com.monew.server.comment.dto.CommentCreateRequest;
+import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.entity.Comment;
@@ -14,6 +15,7 @@ import com.monew.server.common.exception.CommonErrorCode;
 import com.monew.server.common.exception.article.ArticleErrorCode;
 import com.monew.server.common.exception.comment.CommentErrorCode;
 import com.monew.server.common.exception.user.UserErrorCode;
+import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -114,7 +116,7 @@ public class CommentService {
   }
 
 
-  //뉴스 기사 별 댓글 목록 조회
+  //뉴스 기사 별 댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
   public CommentSliceResult getCommentsByArticleCursor
       (UUID articleId, String sortBy, LocalDateTime lastCreatedAt, Long lastLikeCount, UUID lastId,int size) {
 
@@ -152,4 +154,34 @@ public class CommentService {
     return new CommentSliceResult(comments, nextCursor, nextAfter, hasNext, size);
   }
 
+  //댓글 목록 조회(비즈니스 게층 - 응답 조립)
+  public CursorPageResponse<CommentResponse> getComments(
+      UUID articleId, String orderBy, String cursor, LocalDateTime after, int limit, UUID userId
+  ) {
+    Long lastLikeCount =
+        "likeCount".equalsIgnoreCase(orderBy) && cursor != null ? Long.parseLong(cursor) : null;
+    LocalDateTime lastCreatedAt =
+        "createdAt".equalsIgnoreCase(orderBy) && cursor != null ? LocalDateTime.parse(cursor)
+            : after;
+    UUID lastId = null;
+
+    CommentSliceResult result = getCommentsByArticleCursor(articleId, orderBy, lastCreatedAt,
+        lastLikeCount, lastId, limit);
+    List<CommentResponse> commentResponses = result.content().stream()
+        .map(comment -> {
+          boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(comment.getId(), userId);
+          return CommentResponse.of(comment, likedByMe);
+        })
+        .toList();
+
+    return new CursorPageResponse<>(
+        commentResponses,
+        result.nextCursor(),
+        result.nextAfter(),
+        result.size(),
+        100,
+        result.hasNext()
+    );
+
+  }
 }
