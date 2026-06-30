@@ -1,6 +1,7 @@
-package com.monew.server.interest.entity;
+package com.monew.server.subscription.entity;
 
 import com.monew.server.common.entity.BaseCreatedEntity;
+import com.monew.server.interest.entity.Interest;
 import com.monew.server.user.entity.User;
 import jakarta.persistence.*;
 
