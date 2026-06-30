@@ -41,7 +41,7 @@ public class CommentService {
 
   //댓글 등록
   @Transactional
-  public UUID createComment(CommentCreateRequest request, UUID userId) {
+  public Comment createComment(CommentCreateRequest request, UUID userId) {
 
     Article article = articleRepository.findByIdAndDeletedAtIsNull(request.articleId())
         .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
@@ -55,8 +55,7 @@ public class CommentService {
         .content(request.content())
         .build();
 
-    commentRepository.save(comment);
-    return comment.getId();
+    return  commentRepository.save(comment);
   }
 
 
@@ -116,17 +115,17 @@ public class CommentService {
   }
 
 
-  //뉴스 기사 별 댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
+  //댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
   public CommentSliceResult getCommentsByArticleCursor
-      (UUID articleId, String sortBy, LocalDateTime lastCreatedAt, Long lastLikeCount, UUID lastId,int size) {
+      (UUID articleId, String sortBy, String direction, LocalDateTime lastCreatedAt, Long lastLikeCount, UUID lastId,int size) {
 
     Pageable pageable = PageRequest.of(0, size + 1);
-    List<Comment> comments;
 
+    List<Comment> comments;
     if ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy)) {
-      comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId, pageable);
+      comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId, direction, pageable);
     } else {
-      comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId, pageable);
+      comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId, direction, pageable);
     }
 
     //다음 페이지가 있는지 확인
@@ -154,19 +153,23 @@ public class CommentService {
     return new CommentSliceResult(comments, nextCursor, nextAfter, hasNext, size);
   }
 
+
+
   //댓글 목록 조회(비즈니스 게층 - 응답 조립)
   public CursorPageResponse<CommentResponse> getComments(
-      UUID articleId, String orderBy, String cursor, LocalDateTime after, int limit, UUID userId
+      UUID articleId, String orderBy, String direction, String cursor, LocalDateTime after, int limit, UUID userId
   ) {
+    UUID lastId = parseLastIdFromCursor(cursor);
     Long lastLikeCount =
-        "likeCount".equalsIgnoreCase(orderBy) && cursor != null ? Long.parseLong(cursor) : null;
+        "likeCount".equalsIgnoreCase(orderBy) && cursor != null ? parseLikeCountFromCursor(cursor) : null;
     LocalDateTime lastCreatedAt =
-        "createdAt".equalsIgnoreCase(orderBy) && cursor != null ? LocalDateTime.parse(cursor)
-            : after;
-    UUID lastId = null;
+        "createdAt".equalsIgnoreCase(orderBy) && cursor != null ? parseCreatedAtFromCursor(cursor) : after;
 
-    CommentSliceResult result = getCommentsByArticleCursor(articleId, orderBy, lastCreatedAt,
+    long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);
+
+    CommentSliceResult result = getCommentsByArticleCursor(articleId, orderBy, direction, lastCreatedAt,
         lastLikeCount, lastId, limit);
+
     List<CommentResponse> commentResponses = result.content().stream()
         .map(comment -> {
           boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(comment.getId(), userId);
@@ -179,9 +182,38 @@ public class CommentService {
         result.nextCursor(),
         result.nextAfter(),
         result.size(),
-        100,
+        (int)totalCount,
         result.hasNext()
     );
 
+  }
+
+  // 커서 파싱 메서드들
+  private UUID parseLastIdFromCursor(String cursor) {
+    if (cursor == null || !cursor.contains(":")) return null;
+    try {
+      String idPart = cursor.split(":")[1];
+      return UUID.fromString(idPart);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private Long parseLikeCountFromCursor(String cursor) {
+    if (cursor == null || !cursor.contains(":")) return null;
+    try {
+      return Long.parseLong(cursor.split(":")[0]);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private LocalDateTime parseCreatedAtFromCursor(String cursor) {
+    if (cursor == null || !cursor.contains(":")) return null;
+    try {
+      return LocalDateTime.parse(cursor.split(":")[0]);
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

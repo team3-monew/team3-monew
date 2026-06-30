@@ -43,19 +43,21 @@ public class CommentController {
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
     CursorPageResponse<CommentResponse> response = commentService.getComments(
-        articleId, orderBy, cursor, after, limit, userId
+        articleId, orderBy, direction, cursor, after, limit, userId
     );
     return ResponseEntity.ok(response);
   }
 
   //댓글 등록 API
   @PostMapping("/comments")
-  public ResponseEntity<UUID> createComment(
+  public ResponseEntity<CommentResponse> createComment(
       @Valid @RequestBody CommentCreateRequest request,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
-    UUID commentId = commentService.createComment(request, userId);
-    return ResponseEntity.ok(commentId);
+    Comment comment = commentService.createComment(request, userId);
+    boolean likedByMe = false;
+    CommentResponse response = CommentResponse.of(comment, likedByMe);
+    return ResponseEntity.ok(response);
   }
 
   //댓글 내용 수정 API

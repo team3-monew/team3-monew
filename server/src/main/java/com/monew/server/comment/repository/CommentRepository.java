@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
+ long countByArticleIdAndDeletedAtIsNull(UUID articleId);
+
  //날짜 순
  @Query("SELECT c FROM Comment c " +
      "WHERE c.article.id = :articleId " +
@@ -21,6 +23,7 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
      @Param("articleId") UUID articleId,
      @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
      @Param("lastId") UUID lastId,
+     String direction,
      Pageable pageable
  );
 
@@ -34,6 +37,7 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
       @Param("articleId") UUID articleId,
       @Param("lastLikeCount") Long lastLikeCount,
       @Param("lastId") UUID lastId, // 중복 방지용 ID 커서 추가
+      String direction,
       Pageable pageable
   );
 
