@@ -1,5 +1,6 @@
 package com.monew.server.comment.entity;
 
+import com.monew.server.common.entity.BaseCreatedEntity;
 import com.monew.server.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "comment_likes",
     uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "user_id"}))
-public class CommentLike {
+public class CommentLike extends BaseCreatedEntity {
 
   @Id
   private UUID id;
@@ -36,17 +37,13 @@ public class CommentLike {
   @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
   private Comment comment;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
 
   @PrePersist
   void prePersist() {
       if (id == null) {
           id = UUID.randomUUID();
       }
-      if (createdAt == null) {
-          createdAt = LocalDateTime.now();
-      }
+
   }
 
   @Builder

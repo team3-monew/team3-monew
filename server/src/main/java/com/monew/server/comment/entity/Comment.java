@@ -1,6 +1,7 @@
 package com.monew.server.comment.entity;
 
 import com.monew.server.article.entity.Article;
+import com.monew.server.common.entity.BaseTimeEntity;
 import com.monew.server.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "comments")
-public class Comment {
+public class Comment extends BaseTimeEntity {
 
   @Id
   private UUID id;
@@ -40,14 +41,8 @@ public class Comment {
   @Column(name = "like_count", nullable = false)
   private long likeCount;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
-
   @Column(name = "is_deleted", nullable = false)
   private boolean isDeleted;
-
-  @Column(name = "updated_at")
-  private LocalDateTime updatedAt;
 
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
@@ -57,9 +52,7 @@ public class Comment {
     if (id == null) {
       id = UUID.randomUUID();
     }
-    if (createdAt == null) {
-      createdAt = LocalDateTime.now();
-    }
+
     this.isDeleted = false;
     this.likeCount = 0;
   }
@@ -74,7 +67,6 @@ public class Comment {
   //댓글 수정
   public void updateContent(String newContent) {
     this.content = newContent;
-    this.updatedAt = LocalDateTime.now();
   }
 
   //논리 삭제
