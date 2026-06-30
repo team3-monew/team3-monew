@@ -45,6 +45,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
+    @Transactional
     public void unsubscribe(UUID userId, UUID interestId) {
         Interest interest = getInterest(interestId);
 

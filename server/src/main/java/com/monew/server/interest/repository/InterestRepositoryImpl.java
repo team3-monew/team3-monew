@@ -1,8 +1,5 @@
 package com.monew.server.interest.repository;
 
-import static com.monew.server.interest.entity.QInterest.interest;
-import static com.monew.server.interest.entity.QInterestKeyword.interestKeyword;
-
 import com.monew.server.interest.entity.Interest;
 import com.monew.server.interest.entity.QInterest;
 import com.monew.server.interest.entity.QInterestKeyword;
@@ -14,11 +11,13 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 
 @RequiredArgsConstructor
-public class InterestRepositoryImpl implements InterestRepositoryCustom{
+public class InterestRepositoryImpl implements InterestRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
@@ -80,28 +79,65 @@ public class InterestRepositoryImpl implements InterestRepositoryCustom{
             return null;
         }
 
+        // 수정 : cursor에 정렬 필드 값과 마지막 요소 id를 함께 담아 파싱
+        ParsedCursor parsedCursor = parseCursor(cursor);
+        String cursorValue = parsedCursor.value();
+        UUID cursorId = parsedCursor.id();
+
         boolean asc = direction.equals("ASC");
 
         if (orderBy.equals("name")) {
-            if (asc) {
-                return interest.name.gt(cursor)
-                        .or(interest.name.eq(cursor).and(interest.createdAt.gt(after)));
-            }
-            return interest.name.lt(cursor)
-                    .or(interest.name.eq(cursor).and(interest.createdAt.lt(after)));
+            return nameCursorCondition(cursorValue, after, cursorId, asc);
         }
 
-        long cursorSubscriberCount = Long.parseLong(cursor);
+        long cursorSubscriberCount = Long.parseLong(cursorValue);
+        return subscriberCountCursorCondition(cursorSubscriberCount, after, cursorId, asc);
+    }
 
+    private BooleanExpression nameCursorCondition(
+            String cursorName,
+            LocalDateTime after,
+            UUID cursorId,
+            boolean asc
+    ) {
+        if (asc) {
+            return interest.name.gt(cursorName)
+                    .or(interest.name.eq(cursorName)
+                            .and(interest.createdAt.gt(after)))
+                    .or(interest.name.eq(cursorName)
+                            .and(interest.createdAt.eq(after))
+                            .and(interest.id.gt(cursorId)));
+        }
+
+        return interest.name.lt(cursorName)
+                .or(interest.name.eq(cursorName)
+                        .and(interest.createdAt.lt(after)))
+                .or(interest.name.eq(cursorName)
+                        .and(interest.createdAt.eq(after))
+                        .and(interest.id.lt(cursorId)));
+    }
+
+    private BooleanExpression subscriberCountCursorCondition(
+            long cursorSubscriberCount,
+            LocalDateTime after,
+            UUID cursorId,
+            boolean asc
+    ) {
         if (asc) {
             return interest.subscriberCount.gt(cursorSubscriberCount)
                     .or(interest.subscriberCount.eq(cursorSubscriberCount)
-                            .and(interest.createdAt.gt(after)));
+                            .and(interest.createdAt.gt(after)))
+                    .or(interest.subscriberCount.eq(cursorSubscriberCount)
+                            .and(interest.createdAt.eq(after))
+                            .and(interest.id.gt(cursorId)));
         }
 
         return interest.subscriberCount.lt(cursorSubscriberCount)
                 .or(interest.subscriberCount.eq(cursorSubscriberCount)
-                        .and(interest.createdAt.lt(after)));
+                        .and(interest.createdAt.lt(after)))
+                .or(interest.subscriberCount.eq(cursorSubscriberCount)
+                        .and(interest.createdAt.eq(after))
+                        .and(interest.id.lt(cursorId)));
     }
 
     private OrderSpecifier<?>[] orderSpecifier(String orderBy, String direction) {
@@ -116,4 +152,16 @@ public class InterestRepositoryImpl implements InterestRepositoryCustom{
 
         return new OrderSpecifier<?>[] {primaryOrder, createdAtOrder, idOrder};
     }
+
+    // 추가 : nextCursor 형식인 "정렬값|id"를 파싱
+    private ParsedCursor parseCursor(String cursor) {
+        int delimiterIndex = cursor.lastIndexOf("|");
+        String value = cursor.substring(0, delimiterIndex);
+        UUID id = UUID.fromString(cursor.substring(delimiterIndex + 1));
+
+        return new ParsedCursor(value, id);
+    }
+
+    // PR 수정 : 커서 파싱 결과를 담기 위한 내부 record
+    private record ParsedCursor(String value, UUID id) {}
 }

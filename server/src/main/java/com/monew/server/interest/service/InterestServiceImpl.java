@@ -205,24 +205,53 @@ public class InterestServiceImpl implements InterestService {
             throw new BaseException(InterestErrorCode.INVALID_INTEREST_LIMIT);
         }
 
-        if ((cursor == null && after != null) || (cursor != null && after == null)) {
+        boolean hasCursor = cursor != null && !cursor.isBlank();
+
+        if ((!hasCursor && after != null) || (hasCursor && after == null)) {
             throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);
         }
 
-        if (cursor != null && orderBy.equals("subscriberCount")) {
-            try {
-                Long.parseLong(cursor);
-            } catch (NumberFormatException e) {
-                throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);
+        if (hasCursor) {
+            ParsedCursor parsedCursor = parseCursor(cursor);
+
+            if (orderBy.equals("subscriberCount")) {
+                validateSubscriberCountCursor(parsedCursor.value());
             }
         }
     }
 
-    private String getNextCursor(Interest interest, String orderBy) {
-        if (orderBy.equals("name")) {
-            return interest.getName();
+    // 추가 & 수정
+    private void validateSubscriberCountCursor(String cursorValue) {
+        try {
+            Long.parseLong(cursorValue);
+        } catch (NumberFormatException e) {
+            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);
         }
-        return String.valueOf(interest.getSubscriberCount());
     }
 
+    private String getNextCursor(Interest interest, String orderBy) {
+        String cursorValue = "name".equals(orderBy)
+                ? interest.getName()
+                : String.valueOf(interest.getSubscriberCount());
+
+        return cursorValue + "|" + interest.getId();
+    }
+
+    private ParsedCursor parseCursor(String cursor) {
+        int delimiterIndex = cursor.lastIndexOf("|");
+        if (delimiterIndex <= 0 || delimiterIndex == cursor.length() - 1) {
+            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);
+        }
+
+        String value = cursor.substring(0, delimiterIndex);
+        String idValue = cursor.substring(delimiterIndex + 1);
+
+        try {
+            return new ParsedCursor(value, UUID.fromString(idValue));
+        } catch (IllegalArgumentException e) {
+            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);
+        }
+    }
+
+    private record ParsedCursor(String value, UUID id) {}
 }
