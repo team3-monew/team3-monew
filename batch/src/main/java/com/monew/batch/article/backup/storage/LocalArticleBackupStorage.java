@@ -1,7 +1,8 @@
 package com.monew.batch.article.backup.storage;
 
 import com.monew.batch.article.backup.config.BackupProperties;
-import com.monew.batch.article.backup.exception.ArticleBackupException;
+import com.monew.batch.common.exception.article.ArticleBackupException;
+import com.monew.batch.common.exception.article.ArticleBackupErrorCode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,16 +26,27 @@ public class LocalArticleBackupStorage implements ArticleBackupStorage {
   public void upload(String key, byte[] data) {
     Path rootPath = backupProperties.storage().local().rootPath().normalize();
     Path targetPath = rootPath.resolve(key).normalize();
+
     if (!targetPath.startsWith(rootPath)) {
-      throw new ArticleBackupException("Invalid local backup key: " + key);
+      ArticleBackupException exception =
+          new ArticleBackupException(ArticleBackupErrorCode.INVALID_LOCAL_BACKUP_KEY);
+      exception.addDetail("key", key);
+
+      throw exception;
     }
 
     try {
+
       Files.createDirectories(targetPath.getParent());
       Files.write(targetPath, data);
       log.info("[article backup] 로컬 파일에 뉴스 기사 백업. path={}", targetPath);
+
     } catch (IOException ex) {
-      throw new ArticleBackupException("Failed to save article backup to local file", ex);
+      ArticleBackupException exception =
+          new ArticleBackupException(ArticleBackupErrorCode.LOCAL_BACKUP_SAVE_FAILED, ex);
+      exception.addDetail("path", targetPath);
+
+      throw exception;
     }
   }
 

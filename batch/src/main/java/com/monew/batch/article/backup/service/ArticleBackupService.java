@@ -4,12 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.monew.batch.article.backup.config.BackupProperties;
 import com.monew.batch.article.backup.dto.ArticleBackupDto;
-import com.monew.batch.article.backup.exception.ArticleBackupException;
+import com.monew.batch.common.exception.article.ArticleBackupException;
 import com.monew.batch.article.backup.repository.ArticleBackupRepository;
 import com.monew.batch.article.backup.storage.ArticleBackupStorage;
 import com.monew.batch.article.entity.Article;
 import com.monew.batch.article.entity.ArticleBackup;
 import com.monew.batch.article.repository.ArticleRepository;
+import com.monew.batch.common.exception.article.ArticleBackupErrorCode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,8 +22,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * 기사 백업의 실제 업무 흐름을 담당합니다.
- * 날짜 기준 기사 조회, DTO 변환, JSON 직렬화, 저장소 업로드, 백업 이력 상태 갱신을 처리합니다.
+ * 기사 백업의 실제 업무 흐름을 담당합니다. 날짜 기준 기사 조회, DTO 변환, JSON 직렬화, 저장소 업로드, 백업 이력 상태 갱신을 처리합니다.
  */
 @Slf4j
 @Service
@@ -36,7 +36,9 @@ public class ArticleBackupService {
   private final ObjectMapper objectMapper;
   private final PlatformTransactionManager transactionManager;
 
-  // 하루 동안 발행된 기사들을 JSON으로 만들어 설정된 저장소에 업로드합니다.
+  /**
+   * targetDate 하루 동안 발행된 기사들을 JSON 으로 만들어 설정된 저장소에 업로드합니다.
+   */
   public void backup(LocalDate targetDate) {
     String storageKey = storageKey(targetDate);
     ArticleBackup backupHistory = recordRunning(targetDate, storageKey);
@@ -44,6 +46,7 @@ public class ArticleBackupService {
     try {
       LocalDateTime start = targetDate.atStartOfDay();
       LocalDateTime end = targetDate.plusDays(1).atStartOfDay();
+
       // 전날 발행된 기사들 조회
       List<Article> articles =
           articleRepository.findAllByPublishDateGreaterThanEqualAndPublishDateLessThan(start, end);
@@ -75,7 +78,7 @@ public class ArticleBackupService {
     try {
       return objectMapper.writeValueAsBytes(payload);
     } catch (JsonProcessingException ex) {
-      throw new ArticleBackupException("Failed to serialize article backup JSON", ex);
+      throw new ArticleBackupException(ArticleBackupErrorCode.BACKUP_JSON_SERIALIZE_FAILED, ex);
     }
   }
 
@@ -97,7 +100,8 @@ public class ArticleBackupService {
   private void recordSuccess(java.util.UUID backupId, long articleCount) {
     newHistoryTransaction().executeWithoutResult(status -> {
       ArticleBackup backupHistory = articleBackupRepository.findById(backupId)
-          .orElseThrow(() -> new ArticleBackupException("Article backup history not found"));
+          .orElseThrow(() -> new ArticleBackupException(
+              ArticleBackupErrorCode.BACKUP_HISTORY_NOT_FOUND));
       backupHistory.succeed(articleCount);
       articleBackupRepository.saveAndFlush(backupHistory);
     });
@@ -107,15 +111,14 @@ public class ArticleBackupService {
   private void recordFailure(java.util.UUID backupId) {
     newHistoryTransaction().executeWithoutResult(status -> {
       ArticleBackup backupHistory = articleBackupRepository.findById(backupId)
-          .orElseThrow(() -> new ArticleBackupException("Article backup history not found"));
+          .orElseThrow(() -> new ArticleBackupException(
+              ArticleBackupErrorCode.BACKUP_HISTORY_NOT_FOUND));
       backupHistory.fail();
       articleBackupRepository.saveAndFlush(backupHistory);
     });
   }
 
-  /**
-   * Step 트랜잭션 롤백과 별개로 이력 저장을 커밋하기 위한 REQUIRES_NEW 트랜잭션 템플릿입니다.
-   */
+  // Step 트랜잭션 롤백과 별개로 이력 저장을 커밋하기 위한 REQUIRES_NEW 트랜잭션 템플릿입니다.
   private TransactionTemplate newHistoryTransaction() {
     TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
     transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

@@ -1,7 +1,8 @@
 package com.monew.batch.article.backup.storage;
 
 import com.monew.batch.article.backup.config.BackupProperties;
-import com.monew.batch.article.backup.exception.ArticleBackupException;
+import com.monew.batch.common.exception.article.ArticleBackupException;
+import com.monew.batch.common.exception.article.ArticleBackupErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -36,7 +37,7 @@ public class S3ArticleBackupStorage implements ArticleBackupStorage {
   public void upload(String key, byte[] data) {
     String bucket = backupProperties.storage().s3().bucket();
     if (bucket == null || bucket.isBlank()) {
-      throw new ArticleBackupException("backup.storage.s3.bucket is required");
+      throw new ArticleBackupException(ArticleBackupErrorCode.S3_BUCKET_REQUIRED);
     }
 
     try {
@@ -48,7 +49,11 @@ public class S3ArticleBackupStorage implements ArticleBackupStorage {
       s3Client.putObject(request, RequestBody.fromBytes(data));
       log.info("[article backup] S3에 뉴스 기사 백업. bucket={}, key={}", bucket, key);
     } catch (Exception ex) {
-      throw new ArticleBackupException("Failed to upload article backup to S3", ex);
+      ArticleBackupException exception =
+          new ArticleBackupException(ArticleBackupErrorCode.S3_BACKUP_UPLOAD_FAILED, ex);
+      exception.addDetail("bucket", bucket);
+      exception.addDetail("key", key);
+      throw exception;
     }
   }
 
