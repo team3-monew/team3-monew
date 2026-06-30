@@ -6,7 +6,7 @@ import java.util.UUID;
 public record NotificationResponse(
         UUID id,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt,
+        LocalDateTime confirmedAt,
         boolean confirmed,
         UUID userId,
         String content,

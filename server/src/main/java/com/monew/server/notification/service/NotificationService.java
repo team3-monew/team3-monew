@@ -23,11 +23,4 @@ public interface NotificationService {
             UUID commentId,
             String likerNickname
     );
-
-    void createInterestNewsNotification(
-            UUID receiverUserId,
-            UUID interestId,
-            UUID articleId,
-            String articleTitle
-    );
 }

@@ -122,29 +122,6 @@ public class NotificationServiceImpl implements NotificationService {
         );
     }
 
-    @Override
-    @Transactional
-    public void createInterestNewsNotification(
-            UUID receiverUserId,
-            UUID interestId,
-            UUID articleId,
-            String articleTitle
-    ) {
-        validateRequired("receiverUserId", receiverUserId);
-        validateRequired("interestId", interestId);
-
-        // articleId/articleTitle은 추후 알림 클릭 시 기사 상세 또는 뉴스 목록 라우팅 확장을 위해 전달받는다.
-        // 현재 프론트는 알림에서 상세 라우팅을 하지 않으므로, 건수/관심사별 집계 없이 단순 알림 문구만 제공한다.
-        String content = "구독한 관심사와 관련된 새 기사가 등록되었습니다.";
-
-        createNotification(
-                receiverUserId,
-                content,
-                NotificationResourceType.INTEREST,
-                interestId
-        );
-    }
-
     private void createNotification(
             UUID receiverUserId,
             String content,
