@@ -1,7 +1,7 @@
-package com.monew.server.article.entity;
+package com.monew.batch.article.entity;
 
-import com.monew.server.common.entity.BaseCreatedEntity;
-import com.monew.server.interest.entity.Interest;
+import com.monew.batch.common.entity.BaseCreatedEntity;
+import com.monew.batch.interest.entity.Interest;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,6 +12,9 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 기사와 관심사의 연결 관계를 저장하는 Entity입니다.
+ */
 @Getter
 @NoArgsConstructor
 @Entity
@@ -30,4 +33,13 @@ public class ArticleInterest extends BaseCreatedEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "interest_id")
   private Interest interest;
+
+  /**
+   * Article과 Interest를 받아 복합키까지 함께 구성합니다.
+   */
+  public ArticleInterest(Article article, Interest interest) {
+    this.article = article;
+    this.interest = interest;
+    this.id = new ArticleInterestId(article.getId(), interest.getId());
+  }
 }
