@@ -39,3 +39,4 @@ $RECYCLE.BIN/
 # 환경변수/시크릿
 .env
 *.local.yml
+server/src/main/generated/
