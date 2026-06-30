@@ -2,7 +2,9 @@ package com.monew.server.comment.service;
 
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.repository.ArticleRepository;
+import com.monew.server.comment.dto.CommentCreateRequest;
 import com.monew.server.comment.dto.CommentSliceResult;
+import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
@@ -37,9 +39,9 @@ public class CommentService {
 
   //댓글 등록
   @Transactional
-  public UUID createComment(UUID articleId, UUID userId, String content) {
+  public UUID createComment(CommentCreateRequest request, UUID userId) {
 
-    Article article = articleRepository.findByIdAndDeletedAtIsNull(articleId)
+    Article article = articleRepository.findByIdAndDeletedAtIsNull(request.articleId())
         .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
@@ -48,7 +50,7 @@ public class CommentService {
     Comment comment = Comment.builder()
         .article(article)
         .user(user)
-        .content(content)
+        .content(request.content())
         .build();
 
     commentRepository.save(comment);
@@ -58,14 +60,14 @@ public class CommentService {
 
   //댓글 수정(본인만 가능)
   @Transactional
-  public Comment updateComment(UUID commentId, UUID userId, String newContent) {
+  public Comment updateComment(UUID commentId, UUID userId, CommentUpdateRequest request) {
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
 
     if (!Objects.equals(comment.getUser().getId(), userId)) {
       throw new BaseException(CommonErrorCode.FORBIDDEN);
     }
-    comment.updateContent(newContent);
+    comment.updateContent(request.content());
 
     return comment;
   }

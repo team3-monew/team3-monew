@@ -1,6 +1,7 @@
 package com.monew.server.comment.controller;
 
-import com.monew.server.comment.dto.CommentRequest;
+import com.monew.server.comment.dto.CommentCreateRequest;
+import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.entity.Comment;
@@ -72,7 +73,7 @@ public class CommentController {
   //댓글 등록 API
   @PostMapping("/comments")
   public ResponseEntity<UUID> createComment(
-      @Valid @RequestBody CommentRequest request,
+      @Valid @RequestBody CommentCreateRequest request,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
     UUID commentId = commentService.createComment(request.articleId(), userId, request.content());
@@ -84,7 +85,7 @@ public class CommentController {
   public ResponseEntity<CommentResponse> updateComment(
       @PathVariable UUID commentId,
       @RequestHeader("Monew-Request-User-ID") UUID userId,
-      @Valid @RequestBody CommentRequest request
+      @Valid @RequestBody CommentUpdateRequest request
   ) {
     Comment updatedComment = commentService.updateComment(commentId, userId, request.content());
     boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(commentId, userId);
