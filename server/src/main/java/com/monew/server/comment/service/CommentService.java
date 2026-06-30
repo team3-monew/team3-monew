@@ -21,7 +21,6 @@ import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -89,30 +88,40 @@ public class CommentService {
 
 
   //댓글 좋아요, 좋아요 취소
+  // 좋아요 추가
   @Transactional
-  public void toggleCommentLike(UUID commentId, UUID userId) {
+  public void addLike(UUID commentId, UUID userId) {
+    if (commentLikeRepository.existsByCommentIdAndUserId(commentId, userId)) {
+      throw new BaseException(CommonErrorCode.INVALID_REQUEST); // 이미 좋아요 상태
+    }
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
-    Optional<CommentLike> existingLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId);
-
-    if (existingLike.isPresent()) {
-      // 이미 존재하면 -> 좋아요 취소
-      commentLikeRepository.delete(existingLike.get());
-      comment.decreaseLikeCount(); // 댓글 엔티티 카운트 -1
-    } else {
-      // 존재하지 않으면 -> 좋아요 누르기
-      CommentLike commentLike = CommentLike.builder()
-          .comment(comment)
-          .user(user)
-          .build();
-      commentLikeRepository.save(commentLike);
-      comment.increaseLikeCount(); // 댓글 엔티티 카운트 +1
-
-    }
+    CommentLike commentLike = CommentLike.builder().comment(comment).user(user).build();
+    commentLikeRepository.save(commentLike);
+    comment.increaseLikeCount();
   }
+
+  // 좋아요 취소
+  @Transactional
+  public void removeLike(UUID commentId, UUID userId) {
+    CommentLike like = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)
+        .orElseThrow(() -> new BaseException(CommonErrorCode.INVALID_REQUEST)); // 좋아요 하지 않은 상태
+
+    Comment comment = commentRepository.findById(commentId)
+        .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
+
+    commentLikeRepository.delete(like);
+    like.getComment().decreaseLikeCount();
+  }
+
+  public Comment getComment(UUID commentId) {
+    return commentRepository.findById(commentId)
+        .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
+  }
+
 
 
   //댓글 목록 조회(데이터 처리 계층 - 데이터 준비)

@@ -86,4 +86,25 @@ public class CommentController {
   //댓글 삭제(물리 삭제) -> 삭제
   //향후 테스트나 운영상 필요할 경우 테스트 코드 내에서 Repository를 직접 호출하여 처리할 예정.
 
+  // 좋아요, 좋아요 취소 API
+  // 좋아요 추가 (POST)
+  @PostMapping("/comments/{commentId}/comment-likes")
+  public ResponseEntity<CommentResponse> addLike(
+      @PathVariable UUID commentId,
+      @RequestHeader("Monew-Request-User-ID") UUID userId
+  ) {
+    commentService.addLike(commentId, userId);
+    Comment comment = commentService.getComment(commentId);
+    return ResponseEntity.ok(CommentResponse.of(comment, true));
+  }
+
+  // 좋아요 취소 (DELETE)
+  @DeleteMapping("/comments/{commentId}/comment-likes")
+  public ResponseEntity<Void> removeLike(
+      @PathVariable UUID commentId,
+      @RequestHeader("Monew-Request-User-ID") UUID userId
+  ) {
+    commentService.removeLike(commentId, userId);
+    return ResponseEntity.noContent().build();
+  }
 }
