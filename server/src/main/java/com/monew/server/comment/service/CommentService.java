@@ -1,7 +1,7 @@
 package com.monew.server.comment.service;
 
 import com.monew.server.article.entity.Article;
-import com.monew.server.article.repository.ArticleRepository;       // 기사 조회용 임시
+import com.monew.server.article.repository.ArticleRepository;
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
@@ -27,14 +27,14 @@ public class CommentService {
 
   private final CommentRepository commentRepository;
   private final CommentLikeRepository commentLikeRepository;
-  private final ArticleRepository articleRepository;          // 기사 조회용 임시
+  private final ArticleRepository articleRepository;
   private final UserRepository userRepository;
 
   //댓글 등록
   @Transactional
   public UUID createComment(UUID articleId, UUID userId, String content) {
 
-    Article article = articleRepository.findById(articleId)     // 기사 조회용 임시
+    Article article = articleRepository.findByIdAndDeletedAtIsNull(articleId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 기사입니다."));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
@@ -83,7 +83,7 @@ public class CommentService {
   //댓글 좋아요, 좋아요 취소
   @Transactional
   public void toggleCommentLike(UUID commentId, UUID userId) {
-    Comment comment = commentRepository.findById(commentId)         //기사 조회용 임시
+    Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));

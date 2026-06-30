@@ -1,8 +1,14 @@
 package com.monew.server.article.repository;
 
 import com.monew.server.article.entity.Article;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ArticleRepository extends JpaRepository<Article, UUID> {
 
