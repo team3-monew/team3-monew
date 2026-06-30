@@ -11,7 +11,6 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * Spring Batch Step 에서 실행되는 얇은 어댑터입니다.
  * JobParameter 의 targetDate 를 파싱한 뒤 ArticleBackupService 에 실제 백업 처리를 위임합니다.
  */
 @Slf4j
@@ -29,7 +28,7 @@ public class ArticleBackupTasklet implements Tasklet {
         .toString();
     LocalDate targetDate = LocalDate.parse(targetDateValue);
 
-    log.info("Article backup tasklet started. targetDate={}", targetDate);
+    log.info("[article backup] 기사 백업 tasklet 시작. 백업 날짜={}", targetDate);
     articleBackupService.backup(targetDate);
     return RepeatStatus.FINISHED;
   }

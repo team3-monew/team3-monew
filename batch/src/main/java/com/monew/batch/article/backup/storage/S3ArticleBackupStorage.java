@@ -46,7 +46,7 @@ public class S3ArticleBackupStorage implements ArticleBackupStorage {
           .contentType("application/json")
           .build();
       s3Client.putObject(request, RequestBody.fromBytes(data));
-      log.info("Article backup uploaded to S3. bucket={}, key={}", bucket, key);
+      log.info("[article backup] S3에 뉴스 기사 백업. bucket={}, key={}", bucket, key);
     } catch (Exception ex) {
       throw new ArticleBackupException("Failed to upload article backup to S3", ex);
     }

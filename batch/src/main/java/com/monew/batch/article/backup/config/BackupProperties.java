@@ -20,9 +20,6 @@ public record BackupProperties(
     }
   }
 
-  /**
-   * 백업 저장소 종류와 각 저장소별 세부 설정을 담습니다.
-   */
   public record Storage(
       String type,
       Local local,
@@ -42,9 +39,6 @@ public record BackupProperties(
     }
   }
 
-  /**
-   * 로컬 파일 시스템 백업 루트 경로 설정입니다.
-   */
   public record Local(
       Path rootPath
   ) {
@@ -56,9 +50,6 @@ public record BackupProperties(
     }
   }
 
-  /**
-   * S3 업로드에 필요한 버킷, prefix, 리전 설정입니다.
-   */
   public record S3(
       String bucket,
       String prefix,

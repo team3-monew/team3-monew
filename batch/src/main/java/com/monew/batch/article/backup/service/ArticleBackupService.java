@@ -47,7 +47,7 @@ public class ArticleBackupService {
       // 전날 발행된 기사들 조회
       List<Article> articles =
           articleRepository.findAllByPublishDateGreaterThanEqualAndPublishDateLessThan(start, end);
-      log.info("Article backup target articles found. targetDate={}, count={}",
+      log.info("[article backup]백업할 기사 조회 성공. 백업 날짜={}, 백업할 기사 수={}",
           targetDate, articles.size());
 
       List<ArticleBackupDto> payload = articles.stream()
@@ -59,19 +59,18 @@ public class ArticleBackupService {
       articleBackupStorage.upload(storageKey, json);
 
       recordSuccess(backupHistory.getId(), articles.size());
-      log.info("Article backup completed. targetDate={}, key={}, count={}",
+      log.info("[article backup] 뉴스 기사 백업 성공. 백업 날짜={}, 저장소 key={}, 백업한 기사 수={}",
           targetDate, storageKey, articles.size());
+
     } catch (Exception ex) {
       recordFailure(backupHistory.getId());
-      log.error("Article backup failed. targetDate={}, key={}, message={}",
+      log.error("[article backup] 뉴스 기사 백업 실패. 백업 날짜={}, 저장소 key={}, message={}",
           targetDate, storageKey, ex.getMessage(), ex);
+
       throw ex;
     }
   }
 
-  /**
-   * 백업 DTO 목록을 JSON byte array 로 변환합니다.
-   */
   private byte[] toJson(List<ArticleBackupDto> payload) {
     try {
       return objectMapper.writeValueAsBytes(payload);

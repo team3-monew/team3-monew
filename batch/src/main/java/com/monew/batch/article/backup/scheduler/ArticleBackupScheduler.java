@@ -34,7 +34,7 @@ public class ArticleBackupScheduler {
         .addLong("timestamp", System.currentTimeMillis())
         .toJobParameters();
 
-    log.info("Article backup job started. targetDate={}, parameters={}", targetDate, jobParameters);
+    log.info("[article backup] 기사 백업 job 시작. 백업 날짜={}, parameters={}", targetDate, jobParameters);
     jobLauncher.run(articleBackupJob, jobParameters);
   }
 }

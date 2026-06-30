@@ -32,7 +32,7 @@ public class LocalArticleBackupStorage implements ArticleBackupStorage {
     try {
       Files.createDirectories(targetPath.getParent());
       Files.write(targetPath, data);
-      log.info("Article backup saved to local file. path={}", targetPath);
+      log.info("[article backup] 로컬 파일에 뉴스 기사 백업. path={}", targetPath);
     } catch (IOException ex) {
       throw new ArticleBackupException("Failed to save article backup to local file", ex);
     }
