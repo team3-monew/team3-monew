@@ -7,6 +7,11 @@ import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.repository.CommentRepository;
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.CommonErrorCode;
+import com.monew.server.common.exception.article.ArticleErrorCode;
+import com.monew.server.common.exception.comment.CommentErrorCode;
+import com.monew.server.common.exception.user.UserErrorCode;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -35,9 +40,9 @@ public class CommentService {
   public UUID createComment(UUID articleId, UUID userId, String content) {
 
     Article article = articleRepository.findByIdAndDeletedAtIsNull(articleId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 기사입니다."));
+        .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+        .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
 
     Comment comment = Comment.builder()
@@ -55,12 +60,11 @@ public class CommentService {
   @Transactional
   public void updateComment(UUID commentId, UUID userId, String newContent) {
     Comment comment = commentRepository.findById(commentId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
+        .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
 
     if (!Objects.equals(comment.getUser().getId(), userId)) {
-      throw new IllegalStateException("본인이 작성한 댓글만 수정할 수 있습니다.");
+      throw new BaseException(CommonErrorCode.FORBIDDEN);
     }
-
     comment.updateContent(newContent);
   }
 
@@ -70,12 +74,11 @@ public class CommentService {
   @Transactional
   public void deleteComment(UUID commentId, UUID userId) {
     Comment comment = commentRepository.findById(commentId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
+        .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
 
     if (!Objects.equals(comment.getUser().getId(), userId)) {
-      throw new IllegalStateException("본인이 작성한 댓글만 삭제할 수 있습니다.");
+      throw new BaseException(CommonErrorCode.FORBIDDEN);
     }
-
     comment.delete();
   }
 
@@ -84,9 +87,9 @@ public class CommentService {
   @Transactional
   public void toggleCommentLike(UUID commentId, UUID userId) {
     Comment comment = commentRepository.findById(commentId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
+        .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+        .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
     Optional<CommentLike> existingLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId);
 
