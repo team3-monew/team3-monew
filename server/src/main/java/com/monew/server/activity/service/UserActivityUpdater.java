@@ -221,7 +221,7 @@ public class UserActivityUpdater {
     mongoTemplate.updateMulti(query, update, UserActivity.class);
   }
 
-  // 조회 기사에 저장된 조회 수를 변경합니다
+  // 조회 기사에 저장된 조회 수를 변경
   public void updateArticleViewCount(String articleId, long articleViewCount) {
     Query query = Query.query(
         Criteria.where("articleViews.articleId").is(articleId)
@@ -232,6 +232,20 @@ public class UserActivityUpdater {
 
     mongoTemplate.updateMulti(query, update, UserActivity.class);
   }
+
+  // 삭제된 기사를 모든 사용자의 최근 조회 기사 목록에서 제거
+  public void removeArticleViews(String articleId) {
+    Query query = Query.query(
+        Criteria.where("articleViews.articleId").is(articleId)
+    );
+
+    Update update = new Update()
+        .pull("articleViews", new Document("articleId", articleId));
+
+    mongoTemplate.updateMulti(query, update, UserActivity.class);
+  }
+
+
 
   // 공통 메소드
   private Query findUser(String userId) {
