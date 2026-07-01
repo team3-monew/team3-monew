@@ -69,6 +69,12 @@ public class CommentService {
   @Transactional
   public void deleteComment(UUID commentId, UUID userId) {
     Comment comment = getComment(commentId);
+
+    //이미 삭제된 경우 예외 처리
+    if (comment.getDeletedAt() != null) {
+      throw new BaseException(CommonErrorCode.INVALID_REQUEST);
+    }
+
     if (!Objects.equals(comment.getUser().getId(), userId))
       throw new BaseException(CommonErrorCode.FORBIDDEN);
 
@@ -108,21 +114,25 @@ public class CommentService {
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
   }
 
+  @Transactional
   public CommentResponse getCommentResponse(UUID commentId, UUID userId) {
     return CommentResponse.of(getComment(commentId),
         commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));
   }
 
+  @Transactional
   public CommentResponse createCommentResponse(CommentCreateRequest request, UUID userId) {
     return CommentResponse.of(createComment(request, userId), false);
   }
 
+  @Transactional
   public CommentResponse updateCommentResponse(UUID commentId, UUID userId,
       CommentUpdateRequest request) {
     return CommentResponse.of(updateComment(commentId, userId, request),
         commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));
   }
 
+  @Transactional
   public CommentResponse addLikeAndGetResponse(UUID commentId, UUID userId) {
     addLike(commentId, userId);
     return CommentResponse.of(getComment(commentId), true);
