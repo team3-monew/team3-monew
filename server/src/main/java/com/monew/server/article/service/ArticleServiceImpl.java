@@ -137,9 +137,6 @@ public class ArticleServiceImpl implements ArticleService {
         Article article = articleView.getArticle();
 
         long articleViewCount = article.getViewCount();
-        if (inserted == 1) {
-            articleViewCount++;
-        }
 
         eventPublisher.publishEvent(
             new ArticleViewedEvent(
