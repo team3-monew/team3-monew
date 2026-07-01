@@ -142,10 +142,12 @@ public class InterestServiceImpl implements InterestService {
     }
 
     private void validateSimilarInterestName(String name) {
-        List<String> existingNames = interestRepository.findAllNames();
+        String normalizedName = Interest.normalizeName(name);
 
-        for (String existingName : existingNames) {
-            double similarity = calculateSimilarity(name, existingName);
+        List<String> candidateNames = getSimilarNameCandidates(normalizedName);
+
+        for (String candidateName : candidateNames) {
+            double similarity = calculateSimilarity(normalizedName, Interest.normalizeName(candidateName));
 
             if (similarity >= SIMILARITY_THRESHOLD) {
                 throw new BaseException(InterestErrorCode.SIMILAR_INTEREST_EXISTS);
@@ -153,9 +155,20 @@ public class InterestServiceImpl implements InterestService {
         }
     }
 
+
+    // 성능 개선 : pg_trgm 기반 후보군만 조회
+    // - 단, 3글자 미만의 짧은 이름은 trigram 후보 검색이 불안정할 수 있음 -> 기존 방식으로 fallback
+    private List<String> getSimilarNameCandidates(String normalizedName) {
+        if (normalizedName.length() < 3) {
+            return interestRepository.findAllNames();
+        }
+
+        return interestRepository.findSimilarNameCandidates(normalizedName);
+    }
+
     private double calculateSimilarity(String source, String target) {
-        String normalizedSource = source.toLowerCase();
-        String normalizedTarget = target.toLowerCase();
+        String normalizedSource = Interest.normalizeName(source);
+        String normalizedTarget = Interest.normalizeName(target);
 
         int maxLength = Math.max(normalizedSource.length(), normalizedTarget.length());
 

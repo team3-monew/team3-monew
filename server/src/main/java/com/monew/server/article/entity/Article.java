@@ -1,5 +1,6 @@
 package com.monew.server.article.entity;
 
+import com.monew.server.article.dto.ArticleBackupDto;
 import com.monew.server.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -46,6 +47,40 @@ public class Article extends BaseTimeEntity {
 
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
+
+  private Article(
+      ArticleSource source,
+      String sourceUrl,
+      String title,
+      LocalDateTime publishDate,
+      String summary,
+      long commentCount,
+      long viewCount,
+      LocalDateTime deletedAt
+  ) {
+    this.id = UUID.randomUUID();
+    this.source = source;
+    this.sourceUrl = sourceUrl;
+    this.title = title;
+    this.publishDate = publishDate;
+    this.summary = summary;
+    this.commentCount = commentCount;
+    this.viewCount = viewCount;
+    this.deletedAt = deletedAt;
+  }
+
+  public static Article fromBackup(ArticleBackupDto dto) {
+    return new Article(
+        dto.source(),
+        dto.sourceUrl(),
+        dto.title(),
+        dto.publishDate(),
+        dto.summary(),
+        dto.commentCount(),
+        dto.viewCount(),
+        dto.deletedAt()
+    );
+  }
 
   public void increaseViewCount() {
     this.viewCount++;
