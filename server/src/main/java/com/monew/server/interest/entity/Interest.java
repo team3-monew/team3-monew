@@ -38,6 +38,7 @@ public class Interest extends BaseCreatedEntity {
         this.name = name;
         this.normalizedName = normalizeName(name);
         this.subscriberCount = 0L;
+        this.updatedAt = LocalDateTime.now();
     }
 
     // 성능 개선: 비교/검색용 이름 정규화
