@@ -107,10 +107,9 @@ public class CommentService {
   }
 
 
-
   //Controller 호출용
   public Comment getComment(UUID commentId) {
-    return commentRepository.findById(commentId)
+    return commentRepository.findByIdAndDeletedAtIsNull(commentId)
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
   }
 
@@ -139,21 +138,19 @@ public class CommentService {
   }
 
 
-
-
-// 댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
+  // 댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
   public CommentSliceResult getCommentsByArticleCursor(
       UUID articleId, String sortBy, String direction, LocalDateTime lastCreatedAt,
       Long lastLikeCount, UUID lastId, int size) {
 
     Pageable pageable = PageRequest.of(0, size + 1);
 
-    List<Comment> comments;
-    if ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy)) {
-      comments = commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId, direction, pageable);
-    } else {
-      comments = commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId, direction, pageable);
-    }
+    List<Comment> comments =
+        ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy))
+            ? commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId,
+            direction, pageable)
+            : commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId,
+                direction, pageable);
 
     boolean hasNext = comments.size() > size;
     if (hasNext) {
@@ -195,35 +192,24 @@ public class CommentService {
     long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);
 
     CommentSliceResult result = getCommentsByArticleCursor(articleId, orderBy, direction,
-        lastCreatedAt,
-        lastLikeCount, lastId, limit);
+        lastCreatedAt, lastLikeCount, lastId, limit);
 
-    List<CommentResponse> commentResponses = result.content().stream()
-        .map(comment -> {
-          boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(comment.getId(),
-              userId);
-          return CommentResponse.of(comment, likedByMe);
-        })
+    List<CommentResponse> responses = result.content().stream()
+        .map(c -> CommentResponse.of(c,
+            commentLikeRepository.existsByCommentIdAndUserId(c.getId(), userId)))
         .toList();
 
-    return new CursorPageResponse<>(
-        commentResponses,
-        result.nextCursor(),
-        result.nextAfter(),
-        result.size(),
-        (int) totalCount,
-        result.hasNext()
-    );
-
+    return new CursorPageResponse<>(responses, result.nextCursor(), result.nextAfter(),
+        result.size(), (int) totalCount, result.hasNext());
   }
+
 
   // 커서 파싱 메서드들
   private UUID parseLastIdFromCursor(String cursor) {
     if (cursor == null || !cursor.contains(":"))
       return null;
     try {
-      String idPart = cursor.split(":")[1];
-      return UUID.fromString(idPart);
+      return UUID.fromString(cursor.substring(cursor.lastIndexOf(":") + 1));
     } catch (Exception e) {
       return null;
     }
@@ -233,7 +219,7 @@ public class CommentService {
     if (cursor == null || !cursor.contains(":"))
       return null;
     try {
-      return Long.parseLong(cursor.split(":")[0]);
+      return Long.parseLong(cursor.substring(0, cursor.lastIndexOf(":")));
     } catch (Exception e) {
       return null;
     }
@@ -243,10 +229,10 @@ public class CommentService {
     if (cursor == null || !cursor.contains(":"))
       return null;
     try {
-      return LocalDateTime.parse(cursor.split(":")[0]);
+      return LocalDateTime.parse(cursor.substring(0, cursor.lastIndexOf(":")));
     } catch (Exception e) {
       return null;
     }
   }
-
 }
+
