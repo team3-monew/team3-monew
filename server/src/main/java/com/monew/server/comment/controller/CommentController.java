@@ -3,8 +3,6 @@ package com.monew.server.comment.controller;
 import com.monew.server.comment.dto.CommentCreateRequest;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentUpdateRequest;
-import com.monew.server.comment.entity.Comment;
-import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.service.CommentService;
 import com.monew.server.common.response.CursorPageResponse;
 import jakarta.validation.Valid;
@@ -29,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommentController {
 
   private final CommentService commentService;
-  private final CommentLikeRepository commentLikeRepository;
+
 
   //댓글 목록 조회
   @GetMapping("/comments")
@@ -42,11 +40,10 @@ public class CommentController {
       @RequestParam(defaultValue = "10") int limit,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
-    CursorPageResponse<CommentResponse> response = commentService.getComments(
-        articleId, orderBy, direction, cursor, after, limit, userId
-    );
-    return ResponseEntity.ok(response);
+    return ResponseEntity
+        .ok(commentService.getComments(articleId, orderBy, direction, cursor, after, limit, userId));
   }
+
 
   //댓글 등록 API
   @PostMapping("/comments")
@@ -54,11 +51,9 @@ public class CommentController {
       @Valid @RequestBody CommentCreateRequest request,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
-    Comment comment = commentService.createComment(request, userId);
-    boolean likedByMe = false;
-    CommentResponse response = CommentResponse.of(comment, likedByMe);
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(commentService.createCommentResponse(request, userId));
   }
+
 
   //댓글 내용 수정 API
   @PatchMapping("/comments/{commentId}")
@@ -67,13 +62,11 @@ public class CommentController {
       @RequestHeader("Monew-Request-User-ID") UUID userId,
       @Valid @RequestBody CommentUpdateRequest request
   ) {
-    Comment updatedComment = commentService.updateComment(commentId, userId, request);
-    boolean likedByMe = commentLikeRepository.existsByCommentIdAndUserId(commentId, userId);
-    CommentResponse response = CommentResponse.of(updatedComment, likedByMe);
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(commentService.updateCommentResponse(commentId, userId, request));
   }
 
-  //댓글 삭제 API (논리 삭제 - 명세서의 204 No Content 대응)
+
+  //댓글 삭제 API (논리 삭제)
   @DeleteMapping("/comments/{commentId}")
   public ResponseEntity<Void> deleteComment(
       @PathVariable UUID commentId,
@@ -83,8 +76,10 @@ public class CommentController {
     return ResponseEntity.noContent().build();
   }
 
-  //댓글 삭제(물리 삭제) -> 삭제
+
+  //댓글 삭제 API (물리 삭제) -> 삭제
   //향후 테스트나 운영상 필요할 경우 테스트 코드 내에서 Repository를 직접 호출하여 처리할 예정.
+
 
   // 좋아요, 좋아요 취소 API
   // 좋아요 추가 (POST)
@@ -93,9 +88,7 @@ public class CommentController {
       @PathVariable UUID commentId,
       @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
-    commentService.addLike(commentId, userId);
-    Comment comment = commentService.getComment(commentId);
-    return ResponseEntity.ok(CommentResponse.of(comment, true));
+    return ResponseEntity.ok(commentService.addLikeAndGetResponse(commentId, userId));
   }
 
   // 좋아요 취소 (DELETE)
