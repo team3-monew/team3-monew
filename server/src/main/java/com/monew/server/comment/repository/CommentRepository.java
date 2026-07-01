@@ -17,13 +17,18 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
  @Query("SELECT c FROM Comment c " +
      "WHERE c.article.id = :articleId " +
      "AND c.isDeleted = false " +
-     "AND (:lastCreatedAt IS NULL OR c.createdAt > :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id > :lastId)) " +
-     "ORDER BY c.createdAt ASC, c.id ASC")
+     "AND (:lastCreatedAt IS NULL OR " +
+     "    (:direction = 'ASC' AND (c.createdAt > :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id > :lastId))) OR " +
+     "    (:direction = 'DESC' AND (c.createdAt < :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id < :lastId)))) " +
+     "ORDER BY " +
+     "CASE WHEN :direction = 'ASC' THEN c.createdAt END ASC, " +
+     "CASE WHEN :direction = 'DESC' THEN c.createdAt END DESC, " +
+     "c.id ASC")
  List<Comment> findCommentsByArticleValueCursor(
      @Param("articleId") UUID articleId,
      @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
      @Param("lastId") UUID lastId,
-     String direction,
+     @Param("direction") String direction,
      Pageable pageable
  );
 
@@ -31,13 +36,18 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
   @Query("SELECT c FROM Comment c " +
       "WHERE c.article.id = :articleId " +
       "AND c.isDeleted = false " +
-      "AND (:lastLikeCount IS NULL OR c.likeCount < :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id < :lastId)) " +
-      "ORDER BY c.likeCount DESC, c.id DESC")
+      "AND (:lastLikeCount IS NULL OR " +
+      "    (:direction = 'ASC' AND (c.likeCount > :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id > :lastId))) OR " +
+      "    (:direction = 'DESC' AND (c.likeCount < :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id < :lastId)))) " +
+      "ORDER BY " +
+      "CASE WHEN :direction = 'ASC' THEN c.likeCount END ASC, " +
+      "CASE WHEN :direction = 'DESC' THEN c.likeCount END DESC, " +
+      "c.id ASC")
   List<Comment> findCommentsByArticleLikeCursor(
       @Param("articleId") UUID articleId,
       @Param("lastLikeCount") Long lastLikeCount,
       @Param("lastId") UUID lastId, // 중복 방지용 ID 커서 추가
-      String direction,
+      @Param("direction") String direction,
       Pageable pageable
   );
 

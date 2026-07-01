@@ -167,10 +167,11 @@ public class CommentService {
       Comment lastComment = comments.get(comments.size() - 1);
 
       // 정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
-      nextCursor = ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy))
+      String sortValue = ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy))
           ? String.valueOf(lastComment.getLikeCount())
           : lastComment.getCreatedAt().toString();
 
+      nextCursor = sortValue + ":" + lastComment.getId().toString();
       nextAfter = lastComment.getCreatedAt();
     }
 
