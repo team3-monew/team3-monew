@@ -1,6 +1,6 @@
 package com.monew.server.activity.event;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record CommentCreatedEvent(
@@ -11,6 +11,6 @@ public record CommentCreatedEvent(
     String userNickname,
     String content,
     long likeCount,
-    Instant createdAt
+    LocalDateTime createdAt
 ) {
 }

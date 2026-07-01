@@ -24,6 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+// event publisher 관련 import
+import org.springframework.context.ApplicationEventPublisher;
+
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -33,6 +36,10 @@ class UserServiceTest {
 
     @Mock
     PasswordEncoder passwordEncoder;
+
+    // event publisher 관련 mock
+    @Mock
+    ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     UserService userService;
