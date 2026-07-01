@@ -28,6 +28,27 @@ public interface ArticleRepository extends JpaRepository<Article, UUID> {
       """)
     int increaseViewCount(@Param("articleId") UUID articleId);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+      update Article a
+      set a.commentCount = a.commentCount + 1,
+          a.updatedAt = CURRENT_TIMESTAMP
+      where a.id = :articleId
+        and a.deletedAt is null
+      """)
+    int increaseCommentCount(@Param("articleId") UUID articleId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+      update Article a
+      set a.commentCount = a.commentCount - 1,
+          a.updatedAt = CURRENT_TIMESTAMP
+      where a.id = :articleId
+        and a.deletedAt is null
+        and a.commentCount > 0
+      """)
+    int decreaseCommentCount(@Param("articleId") UUID articleId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
       select a
