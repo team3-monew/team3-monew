@@ -14,6 +14,7 @@ import com.monew.server.article.dto.ArticleResponse;
 import com.monew.server.article.dto.ArticleSearchCondition;
 import com.monew.server.article.dto.ArticleViewResponse;
 import com.monew.server.article.entity.ArticleSource;
+import com.monew.server.article.service.ArticleRestoreService;
 import com.monew.server.article.service.ArticleService;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.support.ControllerTestSupport;
@@ -31,6 +32,11 @@ class ArticleControllerTest extends ControllerTestSupport {
     @MockitoBean
     ArticleService articleService;
 
+    // ArticleController 생성자 의존성 때문에 WebMvcTest 컨텍스트 로딩용 mock은 필요하다.
+    // 다만 기사 복구 기능 자체는 배치 담당 범위라 여기서는 테스트하지 않는다.
+    @MockitoBean
+    ArticleRestoreService articleRestoreService;
+
     @Test
     @DisplayName("기사 목록 조회 성공 - 검색 조건과 로그인 사용자 ID를 서비스로 전달한다")
     void findArticles_success() throws Exception {
@@ -40,7 +46,7 @@ class ArticleControllerTest extends ControllerTestSupport {
         ArticleResponse article = articleResponse(UUID.randomUUID(), false);
         CursorPageResponse<ArticleResponse> response = new CursorPageResponse<>(
                 List.of(article),
-                article.publishDate().toString(),
+                article.publishDate() + "|" + article.id(),
                 LocalDateTime.of(2026, 6, 30, 10, 1),
                 1,
                 1,

@@ -80,7 +80,7 @@ class ArticleServiceTest {
         assertThat(result.size()).isEqualTo(2);
         assertThat(result.totalElements()).isEqualTo(3L);
         assertThat(result.hasNext()).isTrue();
-        assertThat(result.nextCursor()).isEqualTo(second.publishDate().toString());
+        assertThat(result.nextCursor()).isEqualTo(second.publishDate() + "|" + second.id());
         assertThat(result.nextAfter()).isEqualTo(secondCreatedAt);
     }
 
@@ -224,7 +224,7 @@ class ArticleServiceTest {
         // given
         UUID userId = UUID.randomUUID();
         ArticleSearchCondition condition = condition(
-                "viewCount", "DESC", "not-number", LocalDateTime.of(2026, 6, 30, 10, 0), 10
+                "viewCount", "DESC", "not-number|" + UUID.randomUUID(), LocalDateTime.of(2026, 6, 30, 10, 0), 10
         );
 
         // when
@@ -241,7 +241,7 @@ class ArticleServiceTest {
         // given
         UUID userId = UUID.randomUUID();
         ArticleSearchCondition condition = condition(
-                "publishDate", "DESC", "2026/06/30", LocalDateTime.of(2026, 6, 30, 10, 0), 10
+                "publishDate", "DESC", "2026/06/30|" + UUID.randomUUID(), LocalDateTime.of(2026, 6, 30, 10, 0), 10
         );
 
         // when
