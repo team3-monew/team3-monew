@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE users (
     id UUID NOT NULL,
     email VARCHAR(320) NOT NULL,
@@ -19,6 +21,7 @@ WHERE deleted_at IS NOT NULL;
 CREATE TABLE interests (
     id UUID NOT NULL,
     name VARCHAR(50) NOT NULL,
+    normalized_name VARCHAR(50) NOT NULL,
     subscriber_count BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
@@ -34,6 +37,10 @@ ON interests (name, created_at, id);
 
 CREATE INDEX idx_interests_subscriber_count_created_at_id
 ON interests (subscriber_count, created_at, id);
+
+CREATE INDEX idx_interests_normalized_name_trgm
+ON interests
+USING gin (normalized_name gin_trgm_ops);
 
 
 CREATE TABLE interest_keywords (

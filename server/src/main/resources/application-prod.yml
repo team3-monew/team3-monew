@@ -29,3 +29,13 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+backup:
+  storage:
+    type: ${BACKUP_STORAGE_TYPE:s3}
+    local:
+      root-path: ${BACKUP_LOCAL_ROOT_PATH:.monew/backups}
+    s3:
+      bucket: ${BACKUP_S3_BUCKET}
+      prefix: ${BACKUP_S3_PREFIX:backups/articles}
+      region: ${AWS_REGION:ap-northeast-2}
