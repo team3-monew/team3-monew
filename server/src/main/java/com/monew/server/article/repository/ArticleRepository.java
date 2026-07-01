@@ -2,7 +2,9 @@ package com.monew.server.article.repository;
 
 import com.monew.server.article.entity.Article;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -34,4 +36,7 @@ public interface ArticleRepository extends JpaRepository<Article, UUID> {
         and a.deletedAt is null
       """)
     Optional<Article> findActiveByIdForUpdate(@Param("articleId") UUID articleId);
+
+    @Query("select a.sourceUrl from Article a where a.sourceUrl in :sourceUrls")
+    Set<String> findExistingSourceUrls(@Param("sourceUrls") Collection<String> sourceUrls);
 }
