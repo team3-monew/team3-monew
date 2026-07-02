@@ -1,6 +1,6 @@
 package com.monew.server.activity.event;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record ArticleViewedEvent(
@@ -10,10 +10,10 @@ public record ArticleViewedEvent(
     String source,
     String sourceUrl,
     String articleTitle,
-    Instant articlePublishedDate,
+    LocalDateTime articlePublishedDate,
     String articleSummary,
     long articleCommentCount,
     long articleViewCount,
-    Instant createdAt
+    LocalDateTime createdAt
 ) {
 }

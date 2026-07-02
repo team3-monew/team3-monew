@@ -1,6 +1,6 @@
 package com.monew.server.activity.event;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,6 +11,6 @@ public record SubscriptionCreatedEvent(
     String interestName,
     List<String> interestKeywords,
     long interestSubscriberCount,
-    Instant createdAt
+    LocalDateTime createdAt
 ) {
 }

@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,12 +43,10 @@ public class ArticleRestoreServiceImpl implements ArticleRestoreService {
 
   @Override
   @Transactional
-  public List<ArticleRestoreResultDto> restore(Instant from, Instant to) {
+  public List<ArticleRestoreResultDto> restore(LocalDateTime from, LocalDateTime to) {
     validateDateRange(from, to);
 
-    LocalDateTime fromDateTime = LocalDateTime.ofInstant(from, ZoneOffset.UTC);
-    LocalDateTime toDateTime = LocalDateTime.ofInstant(to, ZoneOffset.UTC);
-    List<LocalDate> restoreDates = restoreDates(fromDateTime, toDateTime);  // 복구 날짜 리스트 추출
+    List<LocalDate> restoreDates = restoreDates(from, to);  // 복구 날짜 리스트 추출
     log.info("[article restore] 복구 날짜 리스트={}", restoreDates);
 
     // 복구 기사 후보 추출
@@ -83,7 +80,7 @@ public class ArticleRestoreServiceImpl implements ArticleRestoreService {
     ));
   }
 
-  private void validateDateRange(Instant from, Instant to) {
+  private void validateDateRange(LocalDateTime from, LocalDateTime to) {
     if (from == null) {
       throwInvalidRequest("from", null);
     }

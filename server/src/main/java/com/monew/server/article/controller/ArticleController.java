@@ -9,7 +9,6 @@ import com.monew.server.article.service.ArticleRestoreService;
 import com.monew.server.article.service.ArticleService;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.common.security.LoginUser;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -114,10 +113,10 @@ public class ArticleController {
   public List<ArticleRestoreResultDto> restore(
       @RequestParam
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-      Instant from,
+      LocalDateTime from,
       @RequestParam
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-      Instant to
+      LocalDateTime to
   ) {
     return articleRestoreService.restore(from, to);
   }

@@ -1,6 +1,6 @@
 package com.monew.server.activity.document;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -27,7 +27,7 @@ public class UserActivity {
 
     private String nickname;
 
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     private List<SubscriptionActivity> subscriptions = new ArrayList<>();
 
@@ -41,7 +41,7 @@ public class UserActivity {
         String id,
         String email,
         String nickname,
-        Instant createdAt
+        LocalDateTime createdAt
     ) {
         this.id = id;
         this.email = email;
@@ -57,7 +57,7 @@ public class UserActivity {
         String userId,
         String email,
         String nickname,
-        Instant createdAt
+        LocalDateTime createdAt
     ) {
         return new UserActivity(
             userId,
@@ -78,7 +78,7 @@ public class UserActivity {
         private String interestName;
         private List<String> interestKeywords;
         private Long interestSubscriberCount;
-        private Instant createdAt;
+        private LocalDateTime createdAt;
     }
 
 //  최근 작성한 댓글 정보입니다. 최대 10건을 유지합니다.
@@ -94,7 +94,7 @@ public class UserActivity {
         private String userNickname;
         private String content;
         private Long likeCount;
-        private Instant createdAt;
+        private LocalDateTime createdAt;
     }
 
 //  최근 좋아요를 누른 댓글 정보입니다. 최대 10건을 유지합니다.
@@ -104,7 +104,7 @@ public class UserActivity {
     public static class CommentLikeActivity {
 
         private String id;
-        private Instant createdAt;
+        private LocalDateTime createdAt;
         private String commentId;
         private String articleId;
         private String articleTitle;
@@ -112,7 +112,7 @@ public class UserActivity {
         private String commentUserNickname;
         private String commentContent;
         private Long commentLikeCount;
-        private Instant commentCreatedAt;
+        private LocalDateTime commentCreatedAt;
     }
 
 //     * 최근 조회한 기사 정보입니다. 최대 10건을 유지합니다.
@@ -123,12 +123,12 @@ public class UserActivity {
 
         private String id;
         private String viewedBy;
-        private Instant createdAt;
+        private LocalDateTime createdAt;
         private String articleId;
         private String source;
         private String sourceUrl;
         private String articleTitle;
-        private Instant articlePublishedDate;
+        private LocalDateTime articlePublishedDate;
         private String articleSummary;
         private Long articleCommentCount;
         private Long articleViewCount;
