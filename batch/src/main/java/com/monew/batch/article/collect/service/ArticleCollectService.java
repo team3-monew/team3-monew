@@ -15,8 +15,10 @@ import com.monew.batch.article.entity.Article;
 import com.monew.batch.article.entity.ArticleInterest;
 import com.monew.batch.article.entity.ArticleInterestId;
 import com.monew.batch.article.entity.ArticleSource;
+import com.monew.batch.article.event.InterestMatchedArticleEvent;
 import com.monew.batch.article.repository.ArticleInterestRepository;
 import com.monew.batch.article.repository.ArticleRepository;
+import com.monew.batch.common.event.BatchEventPublisher;
 import com.monew.batch.interest.entity.Interest;
 import com.monew.batch.interest.entity.InterestKeyword;
 import com.monew.batch.interest.repository.InterestKeywordRepository;
@@ -53,6 +55,8 @@ public class ArticleCollectService {
   private final ArticleRepository articleRepository;
   private final ArticleInterestRepository articleInterestRepository;
   private final ArticleCollectStagingRepository stagingRepository;
+
+  private final BatchEventPublisher batchEventPublisher;
 
   // Naver 뉴스 검색 API로 기사 수집
   @Transactional
@@ -285,6 +289,10 @@ public class ArticleCollectService {
     int savedCount = 0;
     Set<ArticleInterestId> seenIds = new LinkedHashSet<>();
 
+    // 우리주석 시작
+    List<InterestMatchedArticleEvent.InterestMatchData> matchedInterests = new ArrayList<>();
+    // 우리주석 끝
+
     for (Article article : articles) {
       for (Interest interest : matchInterests(article.getTitle(), article.getSummary(),
           interestKeywords)) {
@@ -292,9 +300,23 @@ public class ArticleCollectService {
         if (seenIds.add(id) && !articleInterestRepository.existsById(id)) {
           articleInterestRepository.save(new ArticleInterest(article, interest));
           savedCount++;
+
+          // 우리주석 시작
+          matchedInterests.add(new InterestMatchedArticleEvent.InterestMatchData(
+                  interest.getId(),
+                  interest.getName()
+          ));
+          // 우리주석 끝
         }
       }
     }
+
+    // 우리주석 시작
+    if (!matchedInterests.isEmpty()) {
+      batchEventPublisher.publish(new InterestMatchedArticleEvent(matchedInterests));
+    }
+    // 우리주석 끝
+
     return savedCount;
   }
 

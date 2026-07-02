@@ -260,7 +260,7 @@ CREATE TABLE notifications (
 );
 
 CREATE INDEX idx_notifications_user_confirmed_created_at_id
-ON notifications (user_id, confirmed, created_at DESC, id);
+    ON notifications (user_id, confirmed, created_at DESC, id DESC);
 
 CREATE INDEX idx_notifications_confirmed_confirmed_at
 ON notifications (confirmed, confirmed_at);

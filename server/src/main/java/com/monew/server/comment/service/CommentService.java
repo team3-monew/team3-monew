@@ -3,6 +3,7 @@ package com.monew.server.comment.service;
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.repository.ArticleRepository;
 import com.monew.server.comment.dto.CommentCreateRequest;
+import com.monew.server.comment.dto.CommentLikeResponse;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentSliceResult;
 import com.monew.server.comment.dto.CommentUpdateRequest;
@@ -16,6 +17,7 @@ import com.monew.server.common.exception.article.ArticleErrorCode;
 import com.monew.server.common.exception.comment.CommentErrorCode;
 import com.monew.server.common.exception.user.UserErrorCode;
 import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.notification.service.NotificationService; // 추가된 import
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -37,17 +39,19 @@ public class CommentService {
   private final CommentLikeRepository commentLikeRepository;
   private final ArticleRepository articleRepository;
   private final UserRepository userRepository;
+  private final NotificationService notificationService; // 알림 서비스 주입
 
-  //댓글 등록 // 간단히 그냥 카운트 처리 하는거라 제쪽 레포에서 호출하는거 추가한 구조입니다
+  //댓글 등록 // 간단히 그냥 카운트 처리 하는거라 제작 레포에서 호출하는거 추가한 구조입니다
   @Transactional
   public Comment createComment(CommentCreateRequest request, UUID userId) {
-    Article article = articleRepository.findByIdAndDeletedAtIsNull(request.articleId())
-        .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
+    Article article = articleRepository.findActiveByIdForUpdate(request.articleId())
+            .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
     Comment comment = Comment.builder().article(article)
             .user(user).content(request.content()).build();
+
     Comment savedComment = commentRepository.save(comment);
     articleRepository.increaseCommentCount(article.getId());
     return savedComment;
@@ -80,15 +84,18 @@ public class CommentService {
     if (!Objects.equals(comment.getUser().getId(), userId))
       throw new BaseException(CommonErrorCode.FORBIDDEN);
 
+    Article article = articleRepository.findActiveByIdForUpdate(comment.getArticle().getId())
+            .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
+
     comment.delete();
-    articleRepository.decreaseCommentCount(comment.getArticle().getId());
+    articleRepository.decreaseCommentCount(article.getId());
   }
 
 
   //댓글 좋아요, 좋아요 취소
   // 좋아요 추가
   @Transactional
-  public void addLike(UUID commentId, UUID userId) {
+  public CommentLike addLike(UUID commentId, UUID userId) {
     if (commentLikeRepository.existsByCommentIdAndUserId(commentId, userId)) {
       throw new BaseException(CommonErrorCode.INVALID_REQUEST); // 이미 좋아요 상태
     }
@@ -96,8 +103,18 @@ public class CommentService {
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
-    commentLikeRepository.save(CommentLike.builder().comment(comment).user(user).build());
+    CommentLike commentLike = commentLikeRepository.save(CommentLike.builder().comment(comment).user(user).build());
     comment.increaseLikeCount();
+
+    // 좋아요 알림: 본인 여부 판단은 NotificationService가 수행
+    notificationService.createCommentLikeNotification(
+            comment.getUser().getId(), // receiverUserId
+            userId,                    // likerUserId
+            comment.getId(),           // commentId
+            user.getNickname()         // likerNickname
+    );
+
+    return commentLike;
   }
 
   // 좋아요 취소
@@ -116,7 +133,6 @@ public class CommentService {
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
   }
 
-  @Transactional
   public CommentResponse getCommentResponse(UUID commentId, UUID userId) {
     return CommentResponse.of(getComment(commentId),
         commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));
@@ -134,10 +150,11 @@ public class CommentService {
         commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));
   }
 
+  //메서드 명만 수정했습니다 명세에 맞게
   @Transactional
-  public CommentResponse addLikeAndGetResponse(UUID commentId, UUID userId) {
-    addLike(commentId, userId);
-    return CommentResponse.of(getComment(commentId), true);
+  public CommentLikeResponse addLikeAndGetResponse(UUID commentId, UUID userId) {
+    CommentLike commentLike = addLike(commentId, userId);
+    return CommentLikeResponse.of(commentLike, commentLike.getComment());
   }
 
 

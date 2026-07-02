@@ -86,6 +86,16 @@ public class Article extends BaseTimeEntity {
     this.viewCount++;
   }
 
+  public void increaseCommentCount() {
+    this.commentCount++;
+  }
+
+  public void decreaseCommentCount() {
+    if (this.commentCount > 0) {
+      this.commentCount--;
+    }
+  }
+
   public void softDelete() {
     this.deletedAt = LocalDateTime.now();
   }
