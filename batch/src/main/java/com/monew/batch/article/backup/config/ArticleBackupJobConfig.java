@@ -1,6 +1,7 @@
 package com.monew.batch.article.backup.config;
 
 import com.monew.batch.article.backup.tasklet.ArticleBackupTasklet;
+import com.monew.batch.monitoring.BatchJobMetricsListener;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -21,8 +22,10 @@ public class ArticleBackupJobConfig {
   private final ArticleBackupTasklet articleBackupTasklet;
 
   @Bean
-  public Job articleBackupJob(JobRepository jobRepository, Step articleBackupStep) {
+  public Job articleBackupJob(JobRepository jobRepository, Step articleBackupStep,
+      BatchJobMetricsListener batchJobMetricsListener) {
     return new JobBuilder("articleBackupJob", jobRepository)
+        .listener(batchJobMetricsListener)  // Job 종료 시 공통 실행/성공/실패/소요시간 메트릭을 기록합니다.
         .start(articleBackupStep)
         .build();
   }

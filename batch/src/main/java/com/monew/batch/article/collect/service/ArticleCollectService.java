@@ -7,6 +7,7 @@ import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
 import com.monew.batch.article.collect.collector.dto.RssCollectResultDto;
 import com.monew.batch.article.collect.dto.ArticleCollectStagingCleanupResultDto;
 import com.monew.batch.article.collect.dto.ArticleCollectStepResultDto;
+import com.monew.batch.article.collect.dto.ArticleSourceCollectResultDto;
 import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultDto;
 import com.monew.batch.article.collect.entity.ArticleCollectStaging;
 import com.monew.batch.article.collect.repository.ArticleCollectStagingRepository;
@@ -160,7 +161,8 @@ public class ArticleCollectService {
         saveResult.savedCount(),
         saveResult.duplicateSkippedCount(),
         saveResult.invalidSkippedCount(),
-        linkedCount
+        linkedCount,
+        saveResult.sourceResults()
     );
     log.info("Article save and interest link step finished. result={}", result);
     return result;
@@ -266,18 +268,39 @@ public class ArticleCollectService {
         .collect(Collectors.toMap(Article::getSourceUrl, Function.identity()));
 
     int existingCount = articlesByUrl.size();
+    // 최종 persist Step 결과를 source tag로도 볼 수 있게 출처별 처리 건수를 함께 집계합니다.
+    Map<ArticleSource, SourceSaveCounts> sourceCounts = new LinkedHashMap<>();
+    for (CollectedArticleDto article : collectedArticleDtos) {
+      SourceSaveCounts counts = sourceCounts.computeIfAbsent(article.source(),
+          ignored -> new SourceSaveCounts());
+      counts.incrementStaged();
+      if (article.sourceUrl() == null || article.sourceUrl().isBlank()) {
+        counts.incrementInvalidSkipped();
+      }
+    }
+
     int savedCount = 0;
     for (Map.Entry<String, CollectedArticleDto> entry : collectedByUrl.entrySet()) {
       if (!articlesByUrl.containsKey(entry.getKey())) {
         articlesByUrl.put(entry.getKey(), articleRepository.save(Article.from(entry.getValue())));
         savedCount++;
+        sourceCounts.computeIfAbsent(entry.getValue().source(), ignored -> new SourceSaveCounts())
+            .incrementSaved();
+      } else {
+        sourceCounts.computeIfAbsent(entry.getValue().source(), ignored -> new SourceSaveCounts())
+            .incrementDuplicateSkipped();
       }
     }
 
     int duplicateSkippedCount =
         collectedArticleDtos.size() - invalidSkippedCount - collectedByUrl.size()
             + existingCount;
-    return new SaveResult(articlesByUrl, savedCount, duplicateSkippedCount, invalidSkippedCount);
+    // ArticleCollectMetrics가 바로 기록할 수 있도록 source tag 이름까지 변환한 DTO로 만듭니다.
+    List<ArticleSourceCollectResultDto> sourceResults = sourceCounts.entrySet().stream()
+        .map(entry -> entry.getValue().toDto(sourceMetricName(entry.getKey())))
+        .toList();
+    return new SaveResult(articlesByUrl, savedCount, duplicateSkippedCount, invalidSkippedCount,
+        sourceResults);
   }
 
   private int saveArticleInterests(Iterable<Article> articles,
@@ -351,7 +374,53 @@ public class ArticleCollectService {
       Map<String, Article> articlesByUrl,
       int savedCount,
       int duplicateSkippedCount,
-      int invalidSkippedCount
+      int invalidSkippedCount,
+      List<ArticleSourceCollectResultDto> sourceResults
   ) {
+  }
+
+  // Actuator 조회 시 RSS 계열 출처임을 tag 값만 보고도 알 수 있게 변환합니다.
+  private String sourceMetricName(ArticleSource source) {
+    return switch (source) {
+      case NAVER -> "NAVER";
+      case HANKYUNG -> "RSS_HANKYUNG";
+      case CHOSUN -> "RSS_CHOSUN";
+      case YEONHAP -> "RSS_YEONHAP";
+    };
+  }
+
+  // persist Step의 source별 마지막 처리 건수를 담기 위한 내부 집계 객체입니다.
+  private static class SourceSaveCounts {
+
+    private int stagedCount;
+    private int savedCount;
+    private int duplicateSkippedCount;
+    private int invalidSkippedCount;
+
+    private void incrementStaged() {
+      stagedCount++;
+    }
+
+    private void incrementSaved() {
+      savedCount++;
+    }
+
+    private void incrementDuplicateSkipped() {
+      duplicateSkippedCount++;
+    }
+
+    private void incrementInvalidSkipped() {
+      invalidSkippedCount++;
+    }
+
+    private ArticleSourceCollectResultDto toDto(String source) {
+      return new ArticleSourceCollectResultDto(
+          source,
+          stagedCount,
+          savedCount,
+          duplicateSkippedCount,
+          invalidSkippedCount
+      );
+    }
   }
 }
