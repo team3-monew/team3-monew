@@ -1,6 +1,7 @@
 package com.monew.server.comment.controller;
 
 import com.monew.server.comment.dto.CommentCreateRequest;
+import com.monew.server.comment.dto.CommentLikeResponse;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.service.CommentService;
@@ -82,11 +83,11 @@ public class CommentController {
 
 
   // 좋아요, 좋아요 취소 API
-  // 좋아요 추가 (POST)
+  // 좋아요 추가 (POST) // 스웨거 명세에 맞게 이름만 바꿨습니다
   @PostMapping("/comments/{commentId}/comment-likes")
-  public ResponseEntity<CommentResponse> addLike(
-      @PathVariable UUID commentId,
-      @RequestHeader("Monew-Request-User-ID") UUID userId
+  public ResponseEntity<CommentLikeResponse> addLike(
+          @PathVariable UUID commentId,
+          @RequestHeader("Monew-Request-User-ID") UUID userId
   ) {
     return ResponseEntity.ok(commentService.addLikeAndGetResponse(commentId, userId));
   }
