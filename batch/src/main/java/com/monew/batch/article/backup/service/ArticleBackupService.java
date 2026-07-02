@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.monew.batch.article.backup.config.BackupProperties;
 import com.monew.batch.article.backup.dto.ArticleBackupDto;
+import com.monew.batch.article.backup.dto.ArticleBackupResultDto;
 import com.monew.batch.common.exception.article.ArticleBackupException;
 import com.monew.batch.article.backup.repository.ArticleBackupRepository;
 import com.monew.batch.article.backup.storage.ArticleBackupStorage;
@@ -39,7 +40,7 @@ public class ArticleBackupService {
   /**
    * targetDate 하루 동안 발행된 기사들을 JSON 으로 만들어 설정된 저장소에 업로드합니다.
    */
-  public void backup(LocalDate targetDate) {
+  public ArticleBackupResultDto backup(LocalDate targetDate) {
     String storageKey = storageKey(targetDate);
     ArticleBackup backupHistory = recordRunning(targetDate, storageKey);
 
@@ -64,6 +65,7 @@ public class ArticleBackupService {
       recordSuccess(backupHistory.getId(), articles.size());
       log.info("[article backup] 뉴스 기사 백업 성공. 백업 날짜={}, 저장소 key={}, 백업한 기사 수={}",
           targetDate, storageKey, articles.size());
+      return new ArticleBackupResultDto(articles.size(), articles.size(), 0L, 1L, json.length);
 
     } catch (Exception ex) {
       recordFailure(backupHistory.getId());

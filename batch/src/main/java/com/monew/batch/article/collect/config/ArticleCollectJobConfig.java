@@ -6,6 +6,8 @@ import com.monew.batch.article.collect.dto.ArticleCollectStepResultDto;
 import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultDto;
 import com.monew.batch.article.collect.service.ArticleCollectService;
 import com.monew.batch.article.entity.ArticleSource;
+import com.monew.batch.monitoring.ArticleCollectMetrics;
+import com.monew.batch.monitoring.BatchJobMetricsListener;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +49,7 @@ public class ArticleCollectJobConfig {
       new ExitStatus("COMPLETED_WITH_EXTERNAL_API_FAILURE");
 
   private final ArticleCollectService articleCollectService;
+  private final ArticleCollectMetrics articleCollectMetrics;
 
   /**
    * 매 시간 실행될 기사 수집 Batch Job입니다.
@@ -60,8 +63,11 @@ public class ArticleCollectJobConfig {
       Step chosunRssCollectStep,
       Step yeonhapRssCollectStep,
       Step articlePersistStep,
-      Step articleCollectStagingCleanupStep) {
+      Step articleCollectStagingCleanupStep,
+      BatchJobMetricsListener batchJobMetricsListener) {
     return new JobBuilder("articleCollectJob", jobRepository)
+        // Job 종료 시 공통 실행/성공/실패/소요시간 메트릭을 기록합니다.
+        .listener(batchJobMetricsListener)
         .start(naverCollectStep)
         .next(hankyungRssCollectStep)
         .next(chosunRssCollectStep)
@@ -111,6 +117,8 @@ public class ArticleCollectJobConfig {
         .tasklet((contribution, chunkContext) -> {
           ArticleSaveAndInterestLinkStepResultDto result =
               articleCollectService.saveStagedArticlesAndLinkInterests(jobExecutionId(chunkContext));
+          // staging 데이터를 실제 articles에 반영한 뒤 최종 처리 건수 메트릭을 갱신합니다.
+          articleCollectMetrics.recordPersistResult(result);
 
           ExecutionContext context = jobContext(chunkContext);
           context.putInt(SAVED_COUNT, result.savedCount());
@@ -167,6 +175,10 @@ public class ArticleCollectJobConfig {
           try {
             ArticleCollectStepResultDto result = collectAction.apply(chunkContext);
             recordCollectResult(jobContext(chunkContext), result);
+
+            // 각 수집 Step이 끝날 때 source별 staging 결과를 먼저 기록합니다.
+            articleCollectMetrics.recordSourceCollectResult(result);
+
             if (result.failureCount() > 0) {
               contribution.setExitStatus(COMPLETED_WITH_EXTERNAL_API_FAILURE);
             }

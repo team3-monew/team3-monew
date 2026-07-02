@@ -1,5 +1,6 @@
 package com.monew.batch.user;
 
+import com.monew.batch.monitoring.BatchJobMetricsListener;
 import com.monew.batch.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -33,8 +34,11 @@ public class UserCleanupBatchConfig {
     private long retentionDays;
 
     @Bean
-    public Job userCleanupJob(JobRepository jobRepository, Step userCleanupStep) {
+    public Job userCleanupJob(JobRepository jobRepository, Step userCleanupStep,
+        BatchJobMetricsListener batchJobMetricsListener) {
         return new JobBuilder(JOB_NAME, jobRepository)
+                // Job 종료 시 공통 실행/성공/실패/소요시간 메트릭을 기록합니다.
+                .listener(batchJobMetricsListener)
                 .start(userCleanupStep)
                 .build();
     }
