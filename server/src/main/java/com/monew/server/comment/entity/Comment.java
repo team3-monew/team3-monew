@@ -72,15 +72,10 @@ public class Comment extends BaseTimeEntity {
     this.deletedAt = LocalDateTime.now();
   }
 
-  //좋아요 증가
-  public void increaseLikeCount() {
-    this.likeCount += 1;
-  }
 
-  //좋아요 취소(감소)
-  public void decreaseLikeCount() {
-    if (this.likeCount > 0) {
-      this.likeCount -= 1;
-    }
-  }
+  // [변경]
+  // increaseLikeCount() / decreaseLikeCount() 제거
+  // → likeCount 증감은 CommentRepository의 원자적 UPDATE 쿼리로 대체 (동시성 안전)
+}
+
 }

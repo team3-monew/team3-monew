@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -59,4 +60,17 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     //활동 내역 조회용(특정 유저가 작성한 최신 댓글 최대 10개)
     List<Comment> findTop10ByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(UUID userId);
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
+
+
+    // [변경]
+    // 좋아요 수 원자적 증감 쿼리 추가
+    // clearAutomatically=true: 벌크 UPDATE는 영속성 컨텍스트를 거치지 않고 DB에 직접 나가므로,
+    // 캐시된 Comment 엔티티가 stale해지는 걸 막기 위해 컨텍스트를 비운다.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Comment c set c.likeCount = c.likeCount + 1 where c.id = :commentId")
+    int increaseLikeCount(@Param("commentId") UUID commentId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Comment c set c.likeCount = c.likeCount - 1 where c.id = :commentId and c.likeCount > 0")
+    int decreaseLikeCount(@Param("commentId") UUID commentId);
 }

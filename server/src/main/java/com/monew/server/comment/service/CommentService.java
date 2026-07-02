@@ -6,6 +6,8 @@ import com.monew.server.comment.dto.CommentCreateRequest;
 import com.monew.server.comment.dto.CommentLikeResponse;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentSliceResult;
+import com.monew.server.comment.dto.CommentSortBy;
+import com.monew.server.comment.dto.CommentSortDirection;
 import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
@@ -34,6 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommentService {
+
+  //[변경]
+  // limit 상한 상수 추가 — 커서 페이지네이션에 과도한 값이 들어오는 것 방지
+  private static final int MAX_LIMIT = 50;
 
   private final CommentRepository commentRepository;
   private final CommentLikeRepository commentLikeRepository;
@@ -71,7 +77,14 @@ public class CommentService {
   }
 
 
-  //댓글 삭제(논리 삭제) // 여기도 마찬가지로 -1 카운트 처리하는거 추가만 했습니다
+  //댓글 삭제(논리 삭제)
+
+  // [변경]
+  // findActiveByIdForUpdate 사전 조회 제거
+  // 이유: 요구사항 문서상 "관련된 정보가 유지되도록 논리 삭제를 기본 원칙으로 하세요"라고 명시되어 있어,
+  // 기사가 논리 삭제된 뒤에도 댓글은 독립적으로 존재/조작 가능해야 함.
+  // decreaseCommentCount 쿼리 자체가 이미 deletedAt IS NULL 조건을 갖고 있어
+  // 기사가 삭제된 상태에서 호출돼도 예외 없이 안전하게 0 row 처리됨.
   @Transactional
   public void deleteComment(UUID commentId, UUID userId) {
     Comment comment = getComment(commentId);
@@ -84,46 +97,54 @@ public class CommentService {
     if (!Objects.equals(comment.getUser().getId(), userId))
       throw new BaseException(CommonErrorCode.FORBIDDEN);
 
-    Article article = articleRepository.findActiveByIdForUpdate(comment.getArticle().getId())
-            .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
-
     comment.delete();
-    articleRepository.decreaseCommentCount(article.getId());
+    articleRepository.decreaseCommentCount(comment.getArticle().getId());
   }
 
 
   //댓글 좋아요, 좋아요 취소
   // 좋아요 추가
+  // [변경]
+  // existsBy 체크 후 save → insertIgnore 기반 원자적 처리로 재작성 (TOCTOU 방지)
   @Transactional
   public CommentLike addLike(UUID commentId, UUID userId) {
-    if (commentLikeRepository.existsByCommentIdAndUserId(commentId, userId)) {
-      throw new BaseException(CommonErrorCode.INVALID_REQUEST); // 이미 좋아요 상태
-    }
     Comment comment = getComment(commentId);
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
-    CommentLike commentLike = commentLikeRepository.save(CommentLike.builder().comment(comment).user(user).build());
-    comment.increaseLikeCount();
+    UUID likeId = UUID.randomUUID();
+    int inserted = commentLikeRepository.insertIgnore(likeId, commentId, userId);
+    if (inserted == 0) {
+      // 영향받은 row가 0건 = UNIQUE(comment_id, user_id) 충돌 = 이미 좋아요 상태
+      throw new BaseException(CommonErrorCode.INVALID_REQUEST);
+    }
 
-    // 좋아요 알림: 본인 여부 판단은 NotificationService가 수행
+    // [변경]
+    // comment.increaseLikeCount() → 원자적 UPDATE 쿼리 호출
+    commentRepository.increaseLikeCount(commentId);
+
     notificationService.createCommentLikeNotification(
-            comment.getUser().getId(), // receiverUserId
-            userId,                    // likerUserId
-            comment.getId(),           // commentId
-            user.getNickname()         // likerNickname
+        comment.getUser().getId(),
+        userId,
+        comment.getId(),
+        user.getNickname()
     );
 
-    return commentLike;
+    // insertIgnore는 native insert라 영속성 컨텍스트에 엔티티가 없으므로 재조회
+    return commentLikeRepository.findByCommentIdAndUserId(commentId, userId)
+        .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
   }
 
+
   // 좋아요 취소
+  // [변경]
+  // like.getComment().decreaseLikeCount() → 원자적 UPDATE 쿼리 호출
   @Transactional
   public void removeLike(UUID commentId, UUID userId) {
     CommentLike like = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)
-        .orElseThrow(() -> new BaseException(CommonErrorCode.INVALID_REQUEST)); // 좋아요 하지 않은 상태
-    like.getComment().decreaseLikeCount();
+        .orElseThrow(() -> new BaseException(CommonErrorCode.INVALID_REQUEST));
     commentLikeRepository.delete(like);
+    commentRepository.decreaseLikeCount(commentId);
   }
 
 
@@ -150,12 +171,16 @@ public class CommentService {
         commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));
   }
 
-  //메서드 명만 수정했습니다 명세에 맞게
+  // [변경]
+  // increaseLikeCount가 clearAutomatically=true라 영속성 컨텍스트가 비워짐
+  // → commentLike.getComment()는 stale한 likeCount를 들고 있을 수 있어 재조회 필요
   @Transactional
   public CommentLikeResponse addLikeAndGetResponse(UUID commentId, UUID userId) {
     CommentLike commentLike = addLike(commentId, userId);
-    return CommentLikeResponse.of(commentLike, commentLike.getComment());
+    Comment refreshed = getComment(commentId);
+    return CommentLikeResponse.of(commentLike, refreshed);
   }
+
 
 
   // 댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
@@ -196,23 +221,39 @@ public class CommentService {
   }
 
 
-  //댓글 목록 조회(비즈니스 게층 - 응답 조립)
+  //댓글 목록 조회(비즈니스 계층 - 응답 조립)
+  // [변경] orderBy/direction을 Enum으로 검증 + limit 상한 적용
   public CursorPageResponse<CommentResponse> getComments(
       UUID articleId, String orderBy, String direction, String cursor, LocalDateTime after,
       int limit, UUID userId
   ) {
+    // [변경]
+    // 잘못된 정렬 파라미터는 여기서 즉시 400으로 차단 (fail-fast)
+    // CommentErrorCode를 건드릴 수 없어, 이미 쓰이고 있는 CommonErrorCode.INVALID_REQUEST로 통일
+    CommentSortBy sortBy;
+    CommentSortDirection sortDirection;
+    try {
+      sortBy = CommentSortBy.from(orderBy);
+      sortDirection = CommentSortDirection.from(direction);
+    } catch (IllegalArgumentException e) {
+      throw new BaseException(CommonErrorCode.INVALID_REQUEST);
+    }
+
+    // [변경] 클라이언트가 큰 값을 보내도 서버가 상한을 강제
+    int safeLimit = Math.min(limit, MAX_LIMIT);
+
     UUID lastId = parseLastIdFromCursor(cursor);
     Long lastLikeCount =
-        "likeCount".equalsIgnoreCase(orderBy) && cursor != null ? parseLikeCountFromCursor(cursor)
+        sortBy == CommentSortBy.LIKE_COUNT && cursor != null ? parseLikeCountFromCursor(cursor)
             : null;
     LocalDateTime lastCreatedAt =
-        "createdAt".equalsIgnoreCase(orderBy) && cursor != null ? parseCreatedAtFromCursor(cursor)
+        sortBy == CommentSortBy.CREATED_AT && cursor != null ? parseCreatedAtFromCursor(cursor)
             : after;
 
     long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);
 
-    CommentSliceResult result = getCommentsByArticleCursor(articleId, orderBy, direction,
-        lastCreatedAt, lastLikeCount, lastId, limit);
+    CommentSliceResult result = getCommentsByArticleCursor(articleId, sortBy.name(), sortDirection.name(),
+        lastCreatedAt, lastLikeCount, lastId, safeLimit);
 
     List<CommentResponse> responses = result.content().stream()
         .map(c -> CommentResponse.of(c,
