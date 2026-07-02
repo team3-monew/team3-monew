@@ -16,15 +16,15 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
  //날짜 순
  @Query("SELECT c FROM Comment c " +
-     "WHERE c.article.id = :articleId " +
-     "AND c.isDeleted = false " +
-     "AND (:lastCreatedAt IS NULL OR " +
-     "    (:direction = 'ASC' AND (c.createdAt > :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id > :lastId))) OR " +
-     "    (:direction = 'DESC' AND (c.createdAt < :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id < :lastId)))) " +
-     "ORDER BY CASE WHEN :direction = 'ASC' THEN c.createdAt END ASC, " +
-     "         CASE WHEN :direction = 'DESC' THEN c.createdAt END DESC, " +
-     "         CASE WHEN :direction = 'ASC' THEN c.id END ASC, " +
-     "         CASE WHEN :direction = 'DESC' THEN c.id END DESC")
+         "WHERE c.article.id = :articleId " +
+         "AND c.deletedAt IS NULL " +
+         "AND (:lastCreatedAt IS NULL OR " +
+         "    (:direction = 'ASC' AND (c.createdAt > :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id > :lastId))) OR " +
+         "    (:direction = 'DESC' AND (c.createdAt < :lastCreatedAt OR (c.createdAt = :lastCreatedAt AND c.id < :lastId)))) " +
+         "ORDER BY CASE WHEN :direction = 'ASC' THEN c.createdAt END ASC, " +
+         "         CASE WHEN :direction = 'DESC' THEN c.createdAt END DESC, " +
+         "         CASE WHEN :direction = 'ASC' THEN c.id END ASC, " +
+         "         CASE WHEN :direction = 'DESC' THEN c.id END DESC")
  List<Comment> findCommentsByArticleValueCursor(
      @Param("articleId") UUID articleId,
      @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
@@ -35,15 +35,15 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
   //좋아요 순
   @Query("SELECT c FROM Comment c " +
-      "WHERE c.article.id = :articleId " +
-      "AND c.isDeleted = false " +
-      "AND (:lastLikeCount IS NULL OR " +
-      "    (:direction = 'ASC' AND (c.likeCount > :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id > :lastId))) OR " +
-      "    (:direction = 'DESC' AND (c.likeCount < :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id < :lastId)))) " +
-      "ORDER BY CASE WHEN :direction = 'ASC' THEN c.likeCount END ASC, " +
-      "         CASE WHEN :direction = 'DESC' THEN c.likeCount END DESC, " +
-      "         CASE WHEN :direction = 'ASC' THEN c.id END ASC, " +
-      "         CASE WHEN :direction = 'DESC' THEN c.id END DESC")
+         "WHERE c.article.id = :articleId " +
+         "AND c.deletedAt IS NULL " +
+         "AND (:lastLikeCount IS NULL OR " +
+         "    (:direction = 'ASC' AND (c.likeCount > :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id > :lastId))) OR " +
+         "    (:direction = 'DESC' AND (c.likeCount < :lastLikeCount OR (c.likeCount = :lastLikeCount AND c.id < :lastId)))) " +
+         "ORDER BY CASE WHEN :direction = 'ASC' THEN c.likeCount END ASC, " +
+         "         CASE WHEN :direction = 'DESC' THEN c.likeCount END DESC, " +
+         "         CASE WHEN :direction = 'ASC' THEN c.id END ASC, " +
+         "         CASE WHEN :direction = 'DESC' THEN c.id END DESC")
   List<Comment> findCommentsByArticleLikeCursor(
       @Param("articleId") UUID articleId,
       @Param("lastLikeCount") Long lastLikeCount,

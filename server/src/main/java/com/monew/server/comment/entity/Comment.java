@@ -41,9 +41,6 @@ public class Comment extends BaseTimeEntity {
   @Column(name = "like_count", nullable = false)
   private long likeCount;
 
-  @Column(name = "is_deleted", nullable = false)
-  private boolean isDeleted;
-
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
@@ -53,7 +50,6 @@ public class Comment extends BaseTimeEntity {
       id = UUID.randomUUID();
     }
 
-    this.isDeleted = false;
     this.likeCount = 0;
   }
 
@@ -71,7 +67,6 @@ public class Comment extends BaseTimeEntity {
 
   //논리 삭제
   public void delete() {
-    this.isDeleted = true;
     this.deletedAt = LocalDateTime.now();
   }
 
