@@ -20,6 +20,7 @@ public interface NotificationService {
 
     void createCommentLikeNotification(
             UUID receiverUserId,
+            UUID likerUserId,
             UUID commentId,
             String likerNickname
     );

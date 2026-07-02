@@ -97,7 +97,6 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void confirmAll(UUID userId) {
         validateUserExists(userId);
-
         notificationRepository.confirmAllByUserId(userId, LocalDateTime.now());
     }
 
@@ -105,12 +104,19 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void createCommentLikeNotification(
             UUID receiverUserId,
+            UUID likerUserId,
             UUID commentId,
             String likerNickname
     ) {
         validateRequired("receiverUserId", receiverUserId);
+        validateRequired("likerUserId", likerUserId);
         validateRequired("commentId", commentId);
         validateText("likerNickname", likerNickname);
+
+        // 본인이 본인 댓글에 좋아요를 누른 경우 알림 생성 생략
+        if (receiverUserId.equals(likerUserId)) {
+            return;
+        }
 
         String content = likerNickname + "님이 나의 댓글을 좋아합니다.";
 
