@@ -78,4 +78,3 @@ public class Comment extends BaseTimeEntity {
   // → likeCount 증감은 CommentRepository의 원자적 UPDATE 쿼리로 대체 (동시성 안전)
 }
 
-}

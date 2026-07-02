@@ -47,21 +47,26 @@ public class CommentService {
   private final UserRepository userRepository;
   private final NotificationService notificationService; // 알림 서비스 주입
 
-  //댓글 등록 // 간단히 그냥 카운트 처리 하는거라 제작 레포에서 호출하는거 추가한 구조입니다
+  //댓글 등록
+
+  // [변경]
+  // findActiveByIdForUpdate(비관적 락) → findByIdAndDeletedAtIsNull(락 없는 조회)
+  // increaseCommentCount 자체가 원자적 UPDATE라 별도 락이 불필요함.
+  // 미리 락을 걸어두면 트랜잭션이 끝날 때까지(댓글 INSERT까지) row가 잠겨서,
+  // 인기 기사에 댓글이 몰릴 때 불필요한 대기가 생김
   @Transactional
   public Comment createComment(CommentCreateRequest request, UUID userId) {
-    Article article = articleRepository.findActiveByIdForUpdate(request.articleId())
-            .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
+    Article article = articleRepository.findByIdAndDeletedAtIsNull(request.articleId())
+        .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
     Comment comment = Comment.builder().article(article)
-            .user(user).content(request.content()).build();
+        .user(user).content(request.content()).build();
 
     Comment savedComment = commentRepository.save(comment);
     articleRepository.increaseCommentCount(article.getId());
     return savedComment;
-
   }
 
 
