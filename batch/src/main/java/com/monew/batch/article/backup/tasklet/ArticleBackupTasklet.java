@@ -31,7 +31,7 @@ public class ArticleBackupTasklet implements Tasklet {
         .toString();
     LocalDate targetDate = LocalDate.parse(targetDateValue);
 
-    log.info("[article backup] [article backup] 기사 백업 tasklet 시작. 백업 날짜={}\"={}", targetDate);
+    log.info("[article backup] 기사 백업 tasklet 시작. 백업 날짜={}", targetDate);
     try {
       ArticleBackupResultDto result = articleBackupService.backup(targetDate);
 
