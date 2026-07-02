@@ -26,6 +26,8 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
 
+    private static final String CURSOR_DELIMITER_REGEX = "\\|";
+
     private final JPAQueryFactory queryFactory;
 
     @Override
@@ -143,23 +145,29 @@ public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
         ArticleSortType sortType = ArticleSortType.from(condition.orderBy());
         boolean asc = isAsc(condition.direction());
 
+        ParsedArticleCursor parsedCursor = parseArticleCursor(condition.cursor());
+        UUID lastArticleId = UUID.fromString(parsedCursor.articleId());
+
         return switch (sortType) {
             case COMMENT_COUNT -> numberCursorCondition(
                     article.commentCount,
-                    Long.parseLong(condition.cursor()),
+                    Long.parseLong(parsedCursor.sortValue()),
                     condition.after(),
+                    lastArticleId,
                     asc
             );
             case VIEW_COUNT -> numberCursorCondition(
                     article.viewCount,
-                    Long.parseLong(condition.cursor()),
+                    Long.parseLong(parsedCursor.sortValue()),
                     condition.after(),
+                    lastArticleId,
                     asc
             );
             case PUBLISH_DATE -> dateTimeCursorCondition(
                     article.publishDate,
-                    LocalDateTime.parse(condition.cursor()),
+                    LocalDateTime.parse(parsedCursor.sortValue()),
                     condition.after(),
+                    lastArticleId,
                     asc
             );
         };
@@ -169,38 +177,52 @@ public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
             NumberPath<Long> path,
             Long cursor,
             LocalDateTime after,
+            UUID lastArticleId,
             boolean asc
     ) {
-        if (after == null) {
+        if (after == null || lastArticleId == null) {
             return asc ? path.gt(cursor) : path.lt(cursor);
         }
 
         if (asc) {
             return path.gt(cursor)
-                    .or(path.eq(cursor).and(article.createdAt.gt(after)));
+                    .or(path.eq(cursor).and(article.createdAt.gt(after)))
+                    .or(path.eq(cursor)
+                            .and(article.createdAt.eq(after))
+                            .and(article.id.gt(lastArticleId)));
         }
 
         return path.lt(cursor)
-                .or(path.eq(cursor).and(article.createdAt.lt(after)));
+                .or(path.eq(cursor).and(article.createdAt.lt(after)))
+                .or(path.eq(cursor)
+                        .and(article.createdAt.eq(after))
+                        .and(article.id.lt(lastArticleId)));
     }
 
     private BooleanExpression dateTimeCursorCondition(
             DateTimePath<LocalDateTime> path,
             LocalDateTime cursor,
             LocalDateTime after,
+            UUID lastArticleId,
             boolean asc
     ) {
-        if (after == null) {
+        if (after == null || lastArticleId == null) {
             return asc ? path.gt(cursor) : path.lt(cursor);
         }
 
         if (asc) {
             return path.gt(cursor)
-                    .or(path.eq(cursor).and(article.createdAt.gt(after)));
+                    .or(path.eq(cursor).and(article.createdAt.gt(after)))
+                    .or(path.eq(cursor)
+                            .and(article.createdAt.eq(after))
+                            .and(article.id.gt(lastArticleId)));
         }
 
         return path.lt(cursor)
-                .or(path.eq(cursor).and(article.createdAt.lt(after)));
+                .or(path.eq(cursor).and(article.createdAt.lt(after)))
+                .or(path.eq(cursor)
+                        .and(article.createdAt.eq(after))
+                        .and(article.id.lt(lastArticleId)));
     }
 
     private OrderSpecifier<?>[] orderSpecifiers(ArticleSearchCondition condition) {
@@ -226,7 +248,23 @@ public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
         };
     }
 
+    private ParsedArticleCursor parseArticleCursor(String cursor) {
+        String[] parts = cursor.split(CURSOR_DELIMITER_REGEX, 2);
+
+        if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+            throw new IllegalArgumentException("Invalid cursor format");
+        }
+
+        return new ParsedArticleCursor(parts[0], parts[1]);
+    }
+
     private boolean isAsc(String direction) {
         return "ASC".equalsIgnoreCase(direction);
+    }
+
+    private record ParsedArticleCursor(
+            String sortValue,
+            String articleId
+    ) {
     }
 }

@@ -67,6 +67,8 @@ public class Comment extends BaseTimeEntity {
 
   //논리 삭제
   public void delete() {
+    // comments 테이블에는 is_deleted 컬럼 없이 deleted_at만 있으므로
+    // 삭제 여부는 deletedAt에 값이 있는지로 판단한다.
     this.deletedAt = LocalDateTime.now();
   }
 

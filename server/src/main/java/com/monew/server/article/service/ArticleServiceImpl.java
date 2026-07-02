@@ -38,6 +38,7 @@ import org.springframework.context.ApplicationEventPublisher;
 public class ArticleServiceImpl implements ArticleService {
 
     private static final int MAX_LIMIT = 50;
+    private static final String CURSOR_DELIMITER = "|";
 
     private final ArticleRepository articleRepository;
     private final ArticleViewRepository articleViewRepository;
@@ -263,11 +264,15 @@ public class ArticleServiceImpl implements ArticleService {
         }
 
         try {
+            ParsedArticleCursor parsedCursor = parseArticleCursor(cursor);
+
             switch (ArticleSortType.from(condition.orderBy())) {
-                case COMMENT_COUNT, VIEW_COUNT -> Long.parseLong(cursor);
-                case PUBLISH_DATE -> LocalDateTime.parse(cursor);
+                case COMMENT_COUNT, VIEW_COUNT -> Long.parseLong(parsedCursor.sortValue());
+                case PUBLISH_DATE -> LocalDateTime.parse(parsedCursor.sortValue());
             }
-        } catch (NumberFormatException | DateTimeParseException e) {
+
+            UUID.fromString(parsedCursor.articleId());
+        } catch (IllegalArgumentException | DateTimeParseException e) {
             ArticleException exception =
                     new ArticleException(ArticleErrorCode.INVALID_ARTICLE_CURSOR, e);
             exception.addDetail("cursor", cursor);
@@ -277,11 +282,29 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     private String resolveNextCursor(ArticleResponse article, String orderBy) {
-        return switch (ArticleSortType.from(orderBy)) {
+        String sortValue = switch (ArticleSortType.from(orderBy)) {
             case COMMENT_COUNT -> String.valueOf(article.commentCount());
             case VIEW_COUNT -> String.valueOf(article.viewCount());
             case PUBLISH_DATE -> article.publishDate().toString();
         };
+
+        return sortValue + CURSOR_DELIMITER + article.id();
+    }
+
+    private ParsedArticleCursor parseArticleCursor(String cursor) {
+        String[] parts = cursor.split("\\|", 2);
+
+        if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+            throw new IllegalArgumentException("Invalid cursor format");
+        }
+
+        return new ParsedArticleCursor(parts[0], parts[1]);
+    }
+
+    private record ParsedArticleCursor(
+            String sortValue,
+            String articleId
+    ) {
     }
 
     private void validateActiveArticleExists(UUID articleId) {

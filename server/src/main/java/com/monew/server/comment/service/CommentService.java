@@ -41,7 +41,7 @@ public class CommentService {
   private final UserRepository userRepository;
   private final NotificationService notificationService; // 알림 서비스 주입
 
-  //댓글 등록
+  //댓글 등록 // 간단히 그냥 카운트 처리 하는거라 제작 레포에서 호출하는거 추가한 구조입니다
   @Transactional
   public Comment createComment(CommentCreateRequest request, UUID userId) {
     Article article = articleRepository.findActiveByIdForUpdate(request.articleId())
@@ -51,8 +51,10 @@ public class CommentService {
 
     Comment comment = Comment.builder().article(article)
             .user(user).content(request.content()).build();
-    article.increaseCommentCount();
-    return commentRepository.save(comment);
+
+    Comment savedComment = commentRepository.save(comment);
+    articleRepository.increaseCommentCount(article.getId());
+    return savedComment;
 
   }
 
@@ -69,7 +71,7 @@ public class CommentService {
   }
 
 
-  //댓글 삭제(논리 삭제)
+  //댓글 삭제(논리 삭제) // 여기도 마찬가지로 -1 카운트 처리하는거 추가만 했습니다
   @Transactional
   public void deleteComment(UUID commentId, UUID userId) {
     Comment comment = getComment(commentId);
@@ -86,7 +88,7 @@ public class CommentService {
             .orElseThrow(() -> new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));
 
     comment.delete();
-    article.decreaseCommentCount();
+    articleRepository.decreaseCommentCount(article.getId());
   }
 
 
