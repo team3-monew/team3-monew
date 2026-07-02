@@ -69,7 +69,7 @@ class ArticleQueryRepositoryImplTest {
     }
 
     @Test
-    @DisplayName("관심사 조건 생성 성공 - interestId가 있으면 EXISTS 조건을 생성한다")
+    @DisplayName("관심사 조건 생성 성공 - interestId가 있으면 exists 조건을 생성한다")
     void interestEq_success_validInterestId() {
         // Given
         ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
@@ -108,7 +108,7 @@ class ArticleQueryRepositoryImplTest {
     }
 
     @Test
-    @DisplayName("출처 조건 생성 성공 - sourceIn이 있으면 IN 조건을 생성한다")
+    @DisplayName("출처 조건 생성 성공 - sourceIn이 있으면 in 조건을 생성한다")
     void sourceIn_success_validSources() {
         // Given
         ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
@@ -138,10 +138,13 @@ class ArticleQueryRepositoryImplTest {
     void publishDateGoe_success_validPublishDateFrom() {
         // Given
         ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
-        LocalDateTime publishDateFrom = LocalDateTime.of(2026, 7, 1, 0, 0);
 
         // When
-        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "publishDateGoe", publishDateFrom);
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(
+                repository,
+                "publishDateGoe",
+                LocalDateTime.of(2026, 7, 1, 0, 0)
+        );
 
         // Then
         assertThat(result).isNotNull();
@@ -165,10 +168,13 @@ class ArticleQueryRepositoryImplTest {
     void publishDateLoe_success_validPublishDateTo() {
         // Given
         ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
-        LocalDateTime publishDateTo = LocalDateTime.of(2026, 7, 1, 23, 59);
 
         // When
-        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "publishDateLoe", publishDateTo);
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(
+                repository,
+                "publishDateLoe",
+                LocalDateTime.of(2026, 7, 31, 23, 59)
+        );
 
         // Then
         assertThat(result).isNotNull();
@@ -223,6 +229,26 @@ class ArticleQueryRepositoryImplTest {
     }
 
     @Test
+    @DisplayName("커서 조건 생성 성공 - 발행일 오름차순 cursor와 after가 있으면 조건을 생성한다")
+    void cursorCondition_success_publishDateAscWithAfter() {
+        // Given
+        ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
+        UUID articleId = UUID.randomUUID();
+        ArticleSearchCondition condition = condition(
+                "publishDate",
+                "ASC",
+                "2026-07-01T10:00:00|" + articleId,
+                LocalDateTime.of(2026, 7, 1, 10, 5)
+        );
+
+        // When
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", condition);
+
+        // Then
+        assertThat(result).isNotNull();
+    }
+
+    @Test
     @DisplayName("커서 조건 생성 성공 - 발행일 오름차순 cursor만 있으면 조건을 생성한다")
     void cursorCondition_success_publishDateAscWithoutAfter() {
         // Given
@@ -231,6 +257,26 @@ class ArticleQueryRepositoryImplTest {
         ArticleSearchCondition condition = condition(
                 "publishDate",
                 "ASC",
+                "2026-07-01T10:00:00|" + articleId,
+                null
+        );
+
+        // When
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", condition);
+
+        // Then
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("커서 조건 생성 성공 - 발행일 내림차순 cursor만 있으면 조건을 생성한다")
+    void cursorCondition_success_publishDateDescWithoutAfter() {
+        // Given
+        ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
+        UUID articleId = UUID.randomUUID();
+        ArticleSearchCondition condition = condition(
+                "publishDate",
+                "DESC",
                 "2026-07-01T10:00:00|" + articleId,
                 null
         );
@@ -252,6 +298,46 @@ class ArticleQueryRepositoryImplTest {
                 "commentCount",
                 "ASC",
                 "5|" + articleId,
+                LocalDateTime.of(2026, 7, 1, 10, 5)
+        );
+
+        // When
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", condition);
+
+        // Then
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("커서 조건 생성 성공 - 댓글 수 내림차순 cursor와 after가 있으면 조건을 생성한다")
+    void cursorCondition_success_commentCountDescWithAfter() {
+        // Given
+        ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
+        UUID articleId = UUID.randomUUID();
+        ArticleSearchCondition condition = condition(
+                "commentCount",
+                "DESC",
+                "5|" + articleId,
+                LocalDateTime.of(2026, 7, 1, 10, 5)
+        );
+
+        // When
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", condition);
+
+        // Then
+        assertThat(result).isNotNull();
+    }
+
+    @Test
+    @DisplayName("커서 조건 생성 성공 - 조회 수 오름차순 cursor와 after가 있으면 조건을 생성한다")
+    void cursorCondition_success_viewCountAscWithAfter() {
+        // Given
+        ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
+        UUID articleId = UUID.randomUUID();
+        ArticleSearchCondition condition = condition(
+                "viewCount",
+                "ASC",
+                "10|" + articleId,
                 LocalDateTime.of(2026, 7, 1, 10, 5)
         );
 
@@ -371,6 +457,19 @@ class ArticleQueryRepositoryImplTest {
 
         // When
         Boolean result = ReflectionTestUtils.invokeMethod(repository, "isAsc", "ASC");
+
+        // Then
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    @DisplayName("정렬 방향 판별 성공 - asc 소문자도 오름차순으로 판단한다")
+    void isAsc_success_lowercaseAsc() {
+        // Given
+        ArticleQueryRepositoryImpl repository = new ArticleQueryRepositoryImpl(null);
+
+        // When
+        Boolean result = ReflectionTestUtils.invokeMethod(repository, "isAsc", "asc");
 
         // Then
         assertThat(result).isTrue();

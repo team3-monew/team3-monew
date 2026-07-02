@@ -15,55 +15,83 @@ import org.springframework.test.util.ReflectionTestUtils;
 class NotificationQueryRepositoryImplTest {
 
     @Test
-    @DisplayName("커서 조건 생성 성공 - cursor와 after가 없으면 조건을 생성하지 않는다")
+    @DisplayName("커서 조건 생성 성공 - cursor와 after가 모두 없으면 조건을 생성하지 않는다")
     void cursorCondition_success_nullCursorAndAfter() {
-        // given
+        // Given
         NotificationQueryRepositoryImpl repository = new NotificationQueryRepositoryImpl(null);
 
-        // when
+        // When
         BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", null, null);
 
-        // then
+        // Then
+        assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("커서 조건 생성 성공 - cursor만 없으면 조건을 생성하지 않는다")
+    void cursorCondition_success_nullCursor() {
+        // Given
+        NotificationQueryRepositoryImpl repository = new NotificationQueryRepositoryImpl(null);
+        LocalDateTime after = LocalDateTime.of(2026, 7, 1, 10, 0);
+
+        // When
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", null, after);
+
+        // Then
+        assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("커서 조건 생성 성공 - after만 없으면 조건을 생성하지 않는다")
+    void cursorCondition_success_nullAfter() {
+        // Given
+        NotificationQueryRepositoryImpl repository = new NotificationQueryRepositoryImpl(null);
+        String cursor = UUID.randomUUID().toString();
+
+        // When
+        BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", cursor, null);
+
+        // Then
         assertThat(result).isNull();
     }
 
     @Test
     @DisplayName("커서 조건 생성 성공 - cursor와 after가 있으면 조건을 생성한다")
     void cursorCondition_success_validCursorAndAfter() {
-        // given
+        // Given
         NotificationQueryRepositoryImpl repository = new NotificationQueryRepositoryImpl(null);
         String cursor = UUID.randomUUID().toString();
         LocalDateTime after = LocalDateTime.of(2026, 7, 1, 10, 0);
 
-        // when
+        // When
         BooleanExpression result = ReflectionTestUtils.invokeMethod(repository, "cursorCondition", cursor, after);
 
-        // then
+        // Then
         assertThat(result).isNotNull();
     }
 
     @Test
     @DisplayName("커서 파싱 성공 - UUID 문자열이면 UUID로 변환한다")
     void parseCursor_success_validUuid() {
-        // given
+        // Given
         NotificationQueryRepositoryImpl repository = new NotificationQueryRepositoryImpl(null);
         UUID cursorId = UUID.randomUUID();
 
-        // when
+        // When
         UUID result = ReflectionTestUtils.invokeMethod(repository, "parseCursor", cursorId.toString());
 
-        // then
+        // Then
         assertThat(result).isEqualTo(cursorId);
     }
 
     @Test
     @DisplayName("커서 파싱 실패 - UUID 문자열이 아니면 커서 예외가 발생한다")
     void parseCursor_fail_invalidUuid() {
-        // given
+        // Given
         NotificationQueryRepositoryImpl repository = new NotificationQueryRepositoryImpl(null);
 
-        // when
-        // then
+        // When
+        // Then
         assertThatThrownBy(() -> ReflectionTestUtils.invokeMethod(repository, "parseCursor", "invalid-cursor"))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
