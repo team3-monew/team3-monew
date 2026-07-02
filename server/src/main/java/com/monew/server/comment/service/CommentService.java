@@ -1,5 +1,8 @@
 package com.monew.server.comment.service;
 
+import static com.monew.server.comment.dto.CommentSortBy.CREATED_AT;
+import static com.monew.server.comment.dto.CommentSortBy.LIKE_COUNT;
+
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.repository.ArticleRepository;
 import com.monew.server.comment.dto.CommentCreateRequest;
@@ -189,18 +192,22 @@ public class CommentService {
 
 
   // 댓글 목록 조회(데이터 처리 계층 - 데이터 준비)
+
+  // [변경]
+  // sortBy를 String이 아닌 CommentSortBy Enum으로 받음
+  // → 문자열 표기(LIKE/likeCount/LIKE_COUNT) 불일치로 인한 분기 누락 위험 자체를 제거
   public CommentSliceResult getCommentsByArticleCursor(
-      UUID articleId, String sortBy, String direction, LocalDateTime lastCreatedAt,
+      UUID articleId, CommentSortBy sortBy, String direction, LocalDateTime lastCreatedAt,
       Long lastLikeCount, UUID lastId, int size) {
 
     Pageable pageable = PageRequest.of(0, size + 1);
 
-    List<Comment> comments =
-        ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy))
-            ? commentRepository.findCommentsByArticleLikeCursor(articleId, lastLikeCount, lastId,
-            direction, pageable)
-            : commentRepository.findCommentsByArticleValueCursor(articleId, lastCreatedAt, lastId,
-                direction, pageable);
+    List<Comment> comments = switch (sortBy) {
+      case LIKE_COUNT -> commentRepository.findCommentsByArticleLikeCursor(
+          articleId, lastLikeCount, lastId, direction, pageable);
+      case CREATED_AT -> commentRepository.findCommentsByArticleValueCursor(
+          articleId, lastCreatedAt, lastId, direction, pageable);
+    };
 
     boolean hasNext = comments.size() > size;
     if (hasNext) {
@@ -214,7 +221,7 @@ public class CommentService {
       Comment lastComment = comments.get(comments.size() - 1);
 
       // 정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
-      String sortValue = ("LIKE".equalsIgnoreCase(sortBy) || "likeCount".equalsIgnoreCase(sortBy))
+      String sortValue = sortBy == CommentSortBy.LIKE_COUNT
           ? String.valueOf(lastComment.getLikeCount())
           : lastComment.getCreatedAt().toString();
 
@@ -258,7 +265,7 @@ public class CommentService {
 
     long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);
 
-    CommentSliceResult result = getCommentsByArticleCursor(articleId, sortBy.name(), sortDirection.name(),
+    CommentSliceResult result = getCommentsByArticleCursor(articleId, sortBy, sortDirection.name(),
         lastCreatedAt, lastLikeCount, lastId, safeLimit);
 
     List<CommentResponse> responses = result.content().stream()
