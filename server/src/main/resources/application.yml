@@ -8,12 +8,15 @@ spring:
 logging:
   level:
     root: info
+  pattern:
+    # [requestId][clientIp] 를 모든 로그에 출력 (요청 밖이면 빈 값)
+    console: "%d{HH:mm:ss.SSS} [%X{requestId:-}] [%X{clientIp:-}] %-5level %logger{36} - %msg%n"
 
 management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics, loggers, prometheus
+        include: health, info, metrics, loggers
 
   endpoint:
     health:

@@ -39,3 +39,10 @@ $RECYCLE.BIN/
 # 환경변수/시크릿
 .env
 *.local.yml
+
+server/src/main/generated/
+
+
+# 개발/테스트 로컬 백업 저장소
+.monew
+
