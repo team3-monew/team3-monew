@@ -25,6 +25,12 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+// event publisher 관련 import
+import com.monew.server.activity.event.ArticleDeletedEvent;
+import com.monew.server.activity.event.ArticleViewCountUpdatedEvent;
+import com.monew.server.activity.event.ArticleViewedEvent;
+import org.springframework.context.ApplicationEventPublisher;
+
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +43,9 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleViewRepository articleViewRepository;
     private final ArticleQueryRepository articleQueryRepository;
     private final UserRepository userRepository;
+
+    // event publisher 관련 필드 추가
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public CursorPageResponse<ArticleResponse> findArticles(
@@ -124,6 +133,35 @@ public class ArticleServiceImpl implements ArticleService {
                     exception.addDetail("userId", user.getId());
                     return exception;
                 });
+        // event publisher 삽입
+        Article article = articleView.getArticle();
+
+        long articleViewCount = article.getViewCount();
+
+        eventPublisher.publishEvent(
+            new ArticleViewedEvent(
+                user.getId(),
+                articleView.getId(),
+                article.getId(),
+                article.getSource().name(),
+                article.getSourceUrl(),
+                article.getTitle(),
+                article.getPublishDate(),
+                article.getSummary(),
+                article.getCommentCount(),
+                articleViewCount,
+                articleView.getCreatedAt()
+            )
+        );
+
+        if (inserted == 1) {
+            eventPublisher.publishEvent(
+                new ArticleViewCountUpdatedEvent(
+                    article.getId(),
+                    articleViewCount
+                )
+            );
+        }
 
         return ArticleViewResponse.from(articleView);
     }
@@ -133,6 +171,11 @@ public class ArticleServiceImpl implements ArticleService {
     public void softDelete(UUID articleId) {
         Article article = findActiveArticleForUpdate(articleId);
         article.softDelete();
+        
+        // event publisher 삽입
+        eventPublisher.publishEvent(
+            new ArticleDeletedEvent(article.getId())
+        );
     }
 
     @Override

@@ -1,14 +1,14 @@
 package com.monew.server.activity.dto;
 
 import com.monew.server.activity.document.UserActivity;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record UserActivityResponse(
     String id,
     String email,
     String nickname,
-    Instant createdAt,
+    LocalDateTime createdAt,
     List<UserActivity.SubscriptionActivity> subscriptions,
     List<UserActivity.CommentActivity> comments,
     List<UserActivity.CommentLikeActivity> commentLikes,
