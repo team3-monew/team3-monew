@@ -39,7 +39,33 @@ subprojects {
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
 
+    // ── 테스트 커버리지 (Jacoco) ──
+    apply plugin: 'jacoco'
+
+    jacoco {
+        toolVersion = '0.8.12'
+    }
+
     test {
         useJUnitPlatform()
+        finalizedBy jacocoTestReport   // 테스트 실행 후 커버리지 리포트 자동 생성
+    }
+
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true    // PR 코멘트(madrapps) 연동용
+            csv.required = true    // 배지 생성(jacoco-badge-generator) 연동용
+            html.required = true   // 사람이 보는 리포트 (build/reports/jacoco/test/html/index.html)
+        }
+        // 커버리지 집계 제외: QueryDSL 생성 클래스(Q*), 메인 애플리케이션 클래스
+        classDirectories.setFrom(
+            files(classDirectories.files.collect { dir ->
+                fileTree(dir: dir, exclude: [
+                    '**/Q*.class',
+                    '**/*Application*'
+                ])
+            })
+        )
     }
 }
