@@ -13,6 +13,11 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+// event publisher 관련 import
+import com.monew.server.activity.event.UserCreatedEvent;
+import com.monew.server.activity.event.UserDeletedEvent;
+import com.monew.server.activity.event.UserNicknameUpdatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +25,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    // event publisher용 필드 추가
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public UserDto register(UserRegisterRequest request) {
@@ -35,6 +43,16 @@ public class UserService {
                 passwordEncoder.encode(request.password())
         );
         userRepository.save(user);
+
+        // event publisher 삽입
+        eventPublisher.publishEvent(
+            new UserCreatedEvent(
+                user.getId(),
+                user.getEmail(),
+                user.getNickname(),
+                user.getCreatedAt()
+            )
+        );
 
         return UserDto.from(user);
     }
@@ -63,6 +81,15 @@ public class UserService {
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
         user.updateNickname(request.nickname());
+
+        // event publisher 삽입
+        eventPublisher.publishEvent(
+            new UserNicknameUpdatedEvent(
+                user.getId(),
+                user.getNickname()
+            )
+        );
+
         return UserDto.from(user);
     }
 
@@ -74,6 +101,11 @@ public class UserService {
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
         user.delete(); // 논리 삭제
+
+        // event publisher 삽입
+        eventPublisher.publishEvent(
+            new UserDeletedEvent(user.getId())
+        );
     }
 
     @Transactional
