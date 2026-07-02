@@ -1,5 +1,8 @@
 # MoNew
 
+![Coverage](.github/badges/jacoco.svg)
+![Branches](.github/badges/branches.svg)
+
 여러 뉴스 API를 통합해 맞춤형 뉴스를 제공하고, 의견을 나눌 수 있는 소셜 기능을 갖춘 서비스.
 MongoDB + PostgreSQL 백업/복구 시스템.
 

@@ -1,10 +1,15 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+
+# OIDC로 AWS 임시 자격증명을 받기 위해 id-token 쓰기 권한 필요
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   build-server:
@@ -34,3 +39,59 @@ jobs:
         run: chmod +x gradlew
       - name: Build & test batch
         run: ./gradlew :batch:build
+
+  # main 브랜치 push 일 때만 실제 배포 (CI 통과 후)
+  deploy:
+    needs: [build-server, build-batch]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ap-northeast-2
+      ECR_REGISTRY: 833822972447.dkr.ecr.ap-northeast-2.amazonaws.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::833822972447:role/monew-gha-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build jars
+        run: |
+          chmod +x gradlew
+          ./gradlew :server:bootJar :batch:bootJar -x test
+
+      - name: Build & push server image
+        run: |
+          docker build -t $ECR_REGISTRY/monew-server:latest -t $ECR_REGISTRY/monew-server:${{ github.sha }} server/
+          docker push $ECR_REGISTRY/monew-server:latest
+          docker push $ECR_REGISTRY/monew-server:${{ github.sha }}
+
+      - name: Build & push batch image
+        run: |
+          docker build -t $ECR_REGISTRY/monew-batch:latest -t $ECR_REGISTRY/monew-batch:${{ github.sha }} batch/
+          docker push $ECR_REGISTRY/monew-batch:latest
+          docker push $ECR_REGISTRY/monew-batch:${{ github.sha }}
+
+      - name: Deploy server service (rolling)
+        run: |
+          aws ecs update-service \
+            --cluster monew-cluster \
+            --service monew-server-svc \
+            --force-new-deployment
+
+      - name: Wait for server service stable
+        run: |
+          aws ecs wait services-stable \
+            --cluster monew-cluster \
+            --services monew-server-svc
