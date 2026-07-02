@@ -239,7 +239,8 @@ public class CommentService {
       throw new BaseException(CommonErrorCode.INVALID_REQUEST);
     }
 
-    // [변경] 클라이언트가 큰 값을 보내도 서버가 상한을 강제
+    // [변경]
+    // 클라이언트가 큰 값을 보내도 서버가 상한을 강제
     int safeLimit = Math.min(limit, MAX_LIMIT);
 
     UUID lastId = parseLastIdFromCursor(cursor);

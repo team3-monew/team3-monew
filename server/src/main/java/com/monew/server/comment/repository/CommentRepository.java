@@ -16,9 +16,8 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     long countByArticleIdAndDeletedAtIsNull(UUID articleId);
 
     //날짜 순
-    // comments 테이블에는 is_deleted 컬럼이 없고 deleted_at만 있으므로
-    // 삭제되지 않은 댓글은 deletedAt이 null인 조건으로 조회하는 방향으로 수정했습니다
     @Query("SELECT c FROM Comment c " +
+            "JOIN FETCH c.user " +          //[변경] N+1 방지
             "WHERE c.article.id = :articleId " +
             "AND c.deletedAt IS NULL " +
             "AND (:lastCreatedAt IS NULL OR (" +
@@ -37,9 +36,8 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     );
 
     //좋아요 순
-    // comments 테이블에는 is_deleted 컬럼이 없고 deleted_at만 있으므로
-    // 삭제되지 않은 댓글은 deletedAt이 null인 조건으로 조회하는 방향으로 수정했습니다
     @Query("SELECT c FROM Comment c " +
+            "JOIN FETCH c.user " +              //[변경] N+1 방지
             "WHERE c.article.id = :articleId " +
             "AND c.deletedAt IS NULL " +
             "AND (:lastLikeCount IS NULL OR (" +
