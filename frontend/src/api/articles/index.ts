@@ -47,11 +47,13 @@ export async function getArticleSource(): Promise<T.ArticleSource[]> {
 /* 뉴스 복구 */
 export async function restoreArticles(
   params: T.RestoreArticlesParams,
+  requestUserId: UserId,
 ): Promise<T.RestoreArticlesResponse> {
   const { data } = await http.get<T.RestoreArticlesResponse>(
     "/articles/restore",
     {
       params,
+      headers: { "Monew-Request-User-ID": requestUserId },
     },
   );
   return data;
