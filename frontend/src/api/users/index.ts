@@ -18,8 +18,11 @@ export async function login(body: T.LoginBody): Promise<T.User> {
 export async function updateUser(
   userId: UserId,
   body: T.UpdateUserBody,
+  requestUserId: UserId,
 ): Promise<T.User> {
-  const { data } = await http.patch<T.User>(`/users/${userId}`, body);
+  const { data } = await http.patch<T.User>(`/users/${userId}`, body, {
+    headers: { "Monew-Request-User-ID": requestUserId },
+  });
   return data;
 }
 
