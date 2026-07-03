@@ -22,14 +22,17 @@ import com.monew.server.notification.service.NotificationService;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -260,6 +263,103 @@ class CommentServiceTest {
         .build();
     ReflectionTestUtils.setField(commentLike, "id", id);
     return commentLike;
+  }
+
+
+  @Test
+  @DisplayName("댓글 목록 조회 성공 - limit이 최대값(50)을 초과하면 50으로 캡핑된다")
+  void getComments_success_limitCappedAtMax() {
+    // given
+    UUID articleId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    int requestedLimit = 1000; // 상한을 훨씬 초과하는 값
+
+    given(commentRepository.countByArticleIdAndDeletedAtIsNull(articleId))
+        .willReturn(0L);
+    given(commentRepository.findCommentsByArticleValueCursor(
+        any(), any(), any(), any(), any()))
+        .willReturn(List.of());
+
+    ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+    // when
+    commentService.getComments(articleId, "createdAt", "DESC",
+                  null, null, requestedLimit, userId);
+
+    // then
+    // Repository에 실제로 전달된 Pageable의 페이지 크기가 요청값(1000)이 아니라
+    // 상한(50)으로 캡핑되었는지 확인. size+1을 넘기는 구조이므로 51이어야 정상.
+    then(commentRepository).should().findCommentsByArticleValueCursor(
+        any(), any(), any(), any(), pageableCaptor.capture());
+
+    assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(51); // MAX_LIMIT(50) + 1
+  }
+
+  @Test
+  @DisplayName("댓글 목록 조회 성공 - limit이 최대값 이하이면 그대로 사용된다")
+  void getComments_success_limitWithinMax() {
+    // given
+    UUID articleId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    int requestedLimit = 10;
+
+    given(commentRepository.countByArticleIdAndDeletedAtIsNull(articleId))
+        .willReturn(0L);
+    given(commentRepository.findCommentsByArticleValueCursor(
+        any(), any(), any(), any(), any()))
+        .willReturn(List.of());
+
+    ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+    // when
+    commentService.getComments(articleId, "createdAt", "DESC",
+                  null, null, requestedLimit, userId);
+
+    // then
+    then(commentRepository).should().findCommentsByArticleValueCursor(
+        any(), any(), any(), any(), pageableCaptor.capture());
+
+    assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(11); // 10 + 1
+  }
+
+
+  @Test
+  @DisplayName("댓글 목록 조회 실패 - 지원하지 않는 정렬 기준이면 잘못된 요청 예외가 발생한다")
+  void getComments_fail_invalidOrderBy() {
+    // given
+    UUID articleId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    // when & then
+    //orderBy에서 "asdf"는 더미값
+    assertThatThrownBy(() ->
+        commentService.getComments(articleId, "asdf", "DESC",
+                      null, null, 10, userId))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(CommonErrorCode.INVALID_REQUEST);
+
+    // 파라미터 검증에서 막혔으므로, DB 조회 자체가 시도되면 안 된다
+    then(commentRepository).should(never()).countByArticleIdAndDeletedAtIsNull(any());
+  }
+
+  @Test
+  @DisplayName("댓글 목록 조회 실패 - 지원하지 않는 정렬 방향이면 잘못된 요청 예외가 발생한다")
+  void getComments_fail_invalidDirection() {
+    // given
+    UUID articleId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+
+    // when & then
+    //direction에서 "UP"은 더미값. ASC 아니면 DESC로 존재해야 함
+    assertThatThrownBy(() ->
+        commentService.getComments(articleId, "createdAt", "UP",
+                      null, null, 10, userId))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(CommonErrorCode.INVALID_REQUEST);
+
+    then(commentRepository).should(never()).countByArticleIdAndDeletedAtIsNull(any());
   }
 
 }
