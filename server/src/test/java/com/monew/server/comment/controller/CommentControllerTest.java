@@ -1,6 +1,7 @@
 package com.monew.server.comment.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -17,6 +18,8 @@ import com.monew.server.comment.dto.CommentLikeResponse;
 import com.monew.server.comment.dto.CommentResponse;
 import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.service.CommentService;
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.CommonErrorCode;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.support.ControllerTestSupport;
 import java.time.LocalDateTime;
@@ -205,8 +208,8 @@ class CommentControllerTest extends ControllerTestSupport {
 
 
   @Test
-  @DisplayName("댓글 목록 조회 성공 - 유효한 요청이면 200과 커서 페이지 응답을 반환한다")
-  void getCommentsByArticle_success() throws Exception {
+  @DisplayName("댓글 목록 조회 성공 - orderBy를 생략하면 기본값(createdAt)이 적용된다")
+  void getCommentsByArticle_success_defaultOrderBy() throws Exception {
     // given
     UUID userId = UUID.randomUUID();
     UUID articleId = UUID.randomUUID();
@@ -218,13 +221,49 @@ class CommentControllerTest extends ControllerTestSupport {
         .willReturn(response);
 
     // when & then
+    // orderBy 파라미터를 생략 — @RequestParam(defaultValue = "createdAt")이 적용되어야 함
     mockMvc.perform(get("/api/comments")
             .header("Monew-Request-User-ID", userId.toString())
             .param("articleId", articleId.toString())
+            .param("direction", "DESC")
+            .param("limit", "10"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("댓글 목록 조회 실패 - 지원하지 않는 정렬 기준이면 400을 응답한다")
+  void getCommentsByArticle_fail_invalidOrderBy() throws Exception {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID articleId = UUID.randomUUID();
+
+    given(commentService.getComments(
+        eq(articleId), eq("asdf"), any(), any(), any(), anyInt(), eq(userId)))
+        .willThrow(new BaseException(CommonErrorCode.INVALID_REQUEST));
+
+    // when & then
+    mockMvc.perform(get("/api/comments")
+            .header("Monew-Request-User-ID", userId.toString())
+            .param("articleId", articleId.toString())
+            .param("orderBy", "asdf")
+            .param("direction", "DESC")
+            .param("limit", "10"))
+        .andExpect(status().isBadRequest());
+  }
+
+
+  @Test
+  @DisplayName("댓글 목록 조회 실패 - articleId가 없으면 400을 응답한다")
+  void getCommentsByArticle_fail_missingArticleId() throws Exception {
+    // given
+    UUID userId = UUID.randomUUID();
+
+    // when & then
+    mockMvc.perform(get("/api/comments")
+            .header("Monew-Request-User-ID", userId.toString())
             .param("orderBy", "createdAt")
             .param("direction", "DESC")
             .param("limit", "10"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.hasNext").value(false));
+        .andExpect(status().isBadRequest());
   }
 }
