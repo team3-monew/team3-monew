@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/sb/monew/api/:path*",
+      "destination": "http://sprint-project-1196140422.ap-northeast-2.elb.amazonaws.com/sb/monew/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
