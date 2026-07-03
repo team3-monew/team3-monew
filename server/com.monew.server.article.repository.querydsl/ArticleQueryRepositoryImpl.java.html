@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleQueryRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.article.repository.querydsl</a> &gt; <span class="el_source">ArticleQueryRepositoryImpl.java</span></div><h1>ArticleQueryRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.article.repository.querydsl;
+
+import static com.monew.server.article.entity.QArticle.article;
+import static com.monew.server.article.entity.QArticleInterest.articleInterest;
+import static com.monew.server.article.entity.QArticleView.articleView;
+
+import com.monew.server.article.dto.ArticleListQueryResult;
+import com.monew.server.article.dto.ArticleResponse;
+import com.monew.server.article.dto.ArticleSearchCondition;
+import com.monew.server.article.entity.ArticleSource;
+import com.monew.server.article.type.ArticleSortType;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.DateTimePath;
+import com.querydsl.core.types.dsl.NumberPath;
+import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
+@Repository
+@RequiredArgsConstructor
+public class ArticleQueryRepositoryImpl implements ArticleQueryRepository {
+
+    private static final String CURSOR_DELIMITER_REGEX = &quot;\\|&quot;;
+
+    private final JPAQueryFactory queryFactory;
+
+    @Override
+    public List&lt;ArticleListQueryResult&gt; findArticles(
+            ArticleSearchCondition condition,
+            UUID userId
+    ) {
+<span class="nc" id="L38">        return queryFactory</span>
+<span class="nc" id="L39">                .select(Projections.constructor(</span>
+                        ArticleListQueryResult.class,
+<span class="nc" id="L41">                        Projections.constructor(</span>
+                                ArticleResponse.class,
+                                article.id,
+                                article.source,
+                                article.sourceUrl,
+                                article.title,
+                                article.publishDate,
+                                article.summary,
+                                article.commentCount,
+                                article.viewCount,
+<span class="nc" id="L51">                                articleView.id.isNotNull()</span>
+                        ),
+                        article.createdAt
+                ))
+<span class="nc" id="L55">                .from(article)</span>
+<span class="nc" id="L56">                .leftJoin(articleView).on(</span>
+<span class="nc" id="L57">                        articleView.article.id.eq(article.id),</span>
+<span class="nc" id="L58">                        articleView.user.id.eq(userId)</span>
+                )
+<span class="nc" id="L60">                .where(</span>
+<span class="nc" id="L61">                        article.deletedAt.isNull(),</span>
+<span class="nc" id="L62">                        keywordContains(condition.keyword()),</span>
+<span class="nc" id="L63">                        interestEq(condition.interestId()),</span>
+<span class="nc" id="L64">                        sourceIn(condition.sourceIn()),</span>
+<span class="nc" id="L65">                        publishDateGoe(condition.publishDateFrom()),</span>
+<span class="nc" id="L66">                        publishDateLoe(condition.publishDateTo()),</span>
+<span class="nc" id="L67">                        cursorCondition(condition)</span>
+                )
+<span class="nc" id="L69">                .orderBy(orderSpecifiers(condition))</span>
+<span class="nc" id="L70">                .limit(condition.limit() + 1L)</span>
+<span class="nc" id="L71">                .fetch();</span>
+    }
+
+    @Override
+    public long countArticles(ArticleSearchCondition condition) {
+<span class="nc" id="L76">        Long count = queryFactory</span>
+<span class="nc" id="L77">                .select(article.count())</span>
+<span class="nc" id="L78">                .from(article)</span>
+<span class="nc" id="L79">                .where(</span>
+<span class="nc" id="L80">                        article.deletedAt.isNull(),</span>
+<span class="nc" id="L81">                        keywordContains(condition.keyword()),</span>
+<span class="nc" id="L82">                        interestEq(condition.interestId()),</span>
+<span class="nc" id="L83">                        sourceIn(condition.sourceIn()),</span>
+<span class="nc" id="L84">                        publishDateGoe(condition.publishDateFrom()),</span>
+<span class="nc" id="L85">                        publishDateLoe(condition.publishDateTo())</span>
+                )
+<span class="nc" id="L87">                .fetchOne();</span>
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        return count == null ? 0L : count;</span>
+    }
+
+    private BooleanExpression keywordContains(String keyword) {
+<span class="fc bfc" id="L93" title="All 4 branches covered.">        if (keyword == null || keyword.isBlank()) {</span>
+<span class="fc" id="L94">            return null;</span>
+        }
+
+<span class="fc" id="L97">        return article.title.containsIgnoreCase(keyword)</span>
+<span class="fc" id="L98">                .or(article.summary.containsIgnoreCase(keyword));</span>
+    }
+
+    private BooleanExpression interestEq(UUID interestId) {
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (interestId == null) {</span>
+<span class="fc" id="L103">            return null;</span>
+        }
+
+<span class="fc" id="L106">        return JPAExpressions</span>
+<span class="fc" id="L107">                .selectOne()</span>
+<span class="fc" id="L108">                .from(articleInterest)</span>
+<span class="fc" id="L109">                .where(</span>
+<span class="fc" id="L110">                        articleInterest.article.id.eq(article.id),</span>
+<span class="fc" id="L111">                        articleInterest.interest.id.eq(interestId)</span>
+                )
+<span class="fc" id="L113">                .exists();</span>
+    }
+
+    private BooleanExpression sourceIn(List&lt;ArticleSource&gt; sources) {
+<span class="fc bfc" id="L117" title="All 4 branches covered.">        if (sources == null || sources.isEmpty()) {</span>
+<span class="fc" id="L118">            return null;</span>
+        }
+
+<span class="fc" id="L121">        return article.source.in(sources);</span>
+    }
+
+    private BooleanExpression publishDateGoe(LocalDateTime publishDateFrom) {
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        if (publishDateFrom == null) {</span>
+<span class="fc" id="L126">            return null;</span>
+        }
+
+<span class="fc" id="L129">        return article.publishDate.goe(publishDateFrom);</span>
+    }
+
+    private BooleanExpression publishDateLoe(LocalDateTime publishDateTo) {
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        if (publishDateTo == null) {</span>
+<span class="fc" id="L134">            return null;</span>
+        }
+
+<span class="fc" id="L137">        return article.publishDate.loe(publishDateTo);</span>
+    }
+
+    private BooleanExpression cursorCondition(ArticleSearchCondition condition) {
+<span class="fc bfc" id="L141" title="All 4 branches covered.">        if (condition.cursor() == null || condition.cursor().isBlank()) {</span>
+<span class="fc" id="L142">            return null;</span>
+        }
+
+<span class="fc" id="L145">        ArticleSortType sortType = ArticleSortType.from(condition.orderBy());</span>
+<span class="fc" id="L146">        boolean asc = isAsc(condition.direction());</span>
+
+<span class="fc" id="L148">        ParsedArticleCursor parsedCursor = parseArticleCursor(condition.cursor());</span>
+<span class="fc" id="L149">        UUID lastArticleId = UUID.fromString(parsedCursor.articleId());</span>
+
+<span class="fc bfc" id="L151" title="All 3 branches covered.">        return switch (sortType) {</span>
+<span class="fc" id="L152">            case COMMENT_COUNT -&gt; numberCursorCondition(</span>
+                    article.commentCount,
+<span class="fc" id="L154">                    Long.parseLong(parsedCursor.sortValue()),</span>
+<span class="fc" id="L155">                    condition.after(),</span>
+                    lastArticleId,
+                    asc
+            );
+<span class="fc" id="L159">            case VIEW_COUNT -&gt; numberCursorCondition(</span>
+                    article.viewCount,
+<span class="fc" id="L161">                    Long.parseLong(parsedCursor.sortValue()),</span>
+<span class="fc" id="L162">                    condition.after(),</span>
+                    lastArticleId,
+                    asc
+            );
+<span class="fc" id="L166">            case PUBLISH_DATE -&gt; dateTimeCursorCondition(</span>
+                    article.publishDate,
+<span class="fc" id="L168">                    LocalDateTime.parse(parsedCursor.sortValue()),</span>
+<span class="fc" id="L169">                    condition.after(),</span>
+                    lastArticleId,
+                    asc
+            );
+        };
+    }
+
+    private BooleanExpression numberCursorCondition(
+            NumberPath&lt;Long&gt; path,
+            Long cursor,
+            LocalDateTime after,
+            UUID lastArticleId,
+            boolean asc
+    ) {
+<span class="pc bpc" id="L183" title="2 of 4 branches missed.">        if (after == null || lastArticleId == null) {</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">            return asc ? path.gt(cursor) : path.lt(cursor);</span>
+        }
+
+<span class="fc bfc" id="L187" title="All 2 branches covered.">        if (asc) {</span>
+<span class="fc" id="L188">            return path.gt(cursor)</span>
+<span class="fc" id="L189">                    .or(path.eq(cursor).and(article.createdAt.gt(after)))</span>
+<span class="fc" id="L190">                    .or(path.eq(cursor)</span>
+<span class="fc" id="L191">                            .and(article.createdAt.eq(after))</span>
+<span class="fc" id="L192">                            .and(article.id.gt(lastArticleId)));</span>
+        }
+
+<span class="fc" id="L195">        return path.lt(cursor)</span>
+<span class="fc" id="L196">                .or(path.eq(cursor).and(article.createdAt.lt(after)))</span>
+<span class="fc" id="L197">                .or(path.eq(cursor)</span>
+<span class="fc" id="L198">                        .and(article.createdAt.eq(after))</span>
+<span class="fc" id="L199">                        .and(article.id.lt(lastArticleId)));</span>
+    }
+
+    private BooleanExpression dateTimeCursorCondition(
+            DateTimePath&lt;LocalDateTime&gt; path,
+            LocalDateTime cursor,
+            LocalDateTime after,
+            UUID lastArticleId,
+            boolean asc
+    ) {
+<span class="pc bpc" id="L209" title="1 of 4 branches missed.">        if (after == null || lastArticleId == null) {</span>
+<span class="fc bfc" id="L210" title="All 2 branches covered.">            return asc ? path.gt(cursor) : path.lt(cursor);</span>
+        }
+
+<span class="fc bfc" id="L213" title="All 2 branches covered.">        if (asc) {</span>
+<span class="fc" id="L214">            return path.gt(cursor)</span>
+<span class="fc" id="L215">                    .or(path.eq(cursor).and(article.createdAt.gt(after)))</span>
+<span class="fc" id="L216">                    .or(path.eq(cursor)</span>
+<span class="fc" id="L217">                            .and(article.createdAt.eq(after))</span>
+<span class="fc" id="L218">                            .and(article.id.gt(lastArticleId)));</span>
+        }
+
+<span class="fc" id="L221">        return path.lt(cursor)</span>
+<span class="fc" id="L222">                .or(path.eq(cursor).and(article.createdAt.lt(after)))</span>
+<span class="fc" id="L223">                .or(path.eq(cursor)</span>
+<span class="fc" id="L224">                        .and(article.createdAt.eq(after))</span>
+<span class="fc" id="L225">                        .and(article.id.lt(lastArticleId)));</span>
+    }
+
+    private OrderSpecifier&lt;?&gt;[] orderSpecifiers(ArticleSearchCondition condition) {
+<span class="fc" id="L229">        ArticleSortType sortType = ArticleSortType.from(condition.orderBy());</span>
+<span class="fc" id="L230">        boolean asc = isAsc(condition.direction());</span>
+
+<span class="fc bfc" id="L232" title="All 3 branches covered.">        return switch (sortType) {</span>
+<span class="fc" id="L233">            case COMMENT_COUNT -&gt; new OrderSpecifier&lt;?&gt;[]{</span>
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">                    asc ? article.commentCount.asc() : article.commentCount.desc(),</span>
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">                    asc ? article.createdAt.asc() : article.createdAt.desc(),</span>
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">                    asc ? article.id.asc() : article.id.desc()</span>
+            };
+<span class="fc" id="L238">            case VIEW_COUNT -&gt; new OrderSpecifier&lt;?&gt;[]{</span>
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">                    asc ? article.viewCount.asc() : article.viewCount.desc(),</span>
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">                    asc ? article.createdAt.asc() : article.createdAt.desc(),</span>
+<span class="pc bpc" id="L241" title="1 of 2 branches missed.">                    asc ? article.id.asc() : article.id.desc()</span>
+            };
+<span class="fc" id="L243">            case PUBLISH_DATE -&gt; new OrderSpecifier&lt;?&gt;[]{</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">                    asc ? article.publishDate.asc() : article.publishDate.desc(),</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">                    asc ? article.createdAt.asc() : article.createdAt.desc(),</span>
+<span class="pc bpc" id="L246" title="1 of 2 branches missed.">                    asc ? article.id.asc() : article.id.desc()</span>
+            };
+        };
+    }
+
+    private ParsedArticleCursor parseArticleCursor(String cursor) {
+<span class="fc" id="L252">        String[] parts = cursor.split(CURSOR_DELIMITER_REGEX, 2);</span>
+
+<span class="fc bfc" id="L254" title="All 6 branches covered.">        if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {</span>
+<span class="fc" id="L255">            throw new IllegalArgumentException(&quot;Invalid cursor format&quot;);</span>
+        }
+
+<span class="fc" id="L258">        return new ParsedArticleCursor(parts[0], parts[1]);</span>
+    }
+
+    private boolean isAsc(String direction) {
+<span class="fc" id="L262">        return &quot;ASC&quot;.equalsIgnoreCase(direction);</span>
+    }
+
+<span class="fc" id="L265">    private record ParsedArticleCursor(</span>
+            String sortValue,
+            String articleId
+    ) {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

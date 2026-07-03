@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.common.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.monew.server.common.exception;
+
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+<span class="fc" id="L18">@Slf4j</span>
+@RestControllerAdvice
+<span class="fc" id="L20">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(BaseException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleBaseException(BaseException e) {
+<span class="fc" id="L24">        log.warn(&quot;Business exception. code={}, message={}, details={}&quot;,</span>
+<span class="fc" id="L25">                e.getErrorCode().name(), e.getMessage(), e.getDetails());</span>
+
+<span class="fc" id="L27">        ErrorResponse response = new ErrorResponse(</span>
+                e,
+<span class="fc" id="L29">                e.getErrorCode().getStatus().value()</span>
+        );
+
+<span class="fc" id="L32">        return ResponseEntity</span>
+<span class="fc" id="L33">                .status(e.getErrorCode().getStatus())</span>
+<span class="fc" id="L34">                .body(response);</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleValidation(MethodArgumentNotValidException e) {
+<span class="fc" id="L39">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="fc" id="L41">        e.getBindingResult().getAllErrors().forEach(error -&gt; {</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">            if (error instanceof FieldError fieldError) {</span>
+<span class="fc" id="L43">                details.put(fieldError.getField(), fieldError.getDefaultMessage());</span>
+            } else {
+<span class="nc" id="L45">                details.put(error.getObjectName(), error.getDefaultMessage());</span>
+            }
+<span class="fc" id="L47">        });</span>
+
+<span class="fc" id="L49">        ErrorResponse response = new ErrorResponse(</span>
+<span class="fc" id="L50">                Instant.now(),</span>
+                &quot;VALIDATION_ERROR&quot;,
+                &quot;요청 데이터 유효성 검사에 실패하였습니다.&quot;,
+                details,
+<span class="fc" id="L54">                e.getClass().getSimpleName(),</span>
+                400
+        );
+
+<span class="fc" id="L58">        return ResponseEntity.badRequest().body(response);</span>
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleConstraintViolation(ConstraintViolationException e) {
+<span class="nc" id="L63">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="nc" id="L65">        e.getConstraintViolations().forEach(violation -&gt; {</span>
+<span class="nc" id="L66">            String path = violation.getPropertyPath().toString();</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">            String field = path.contains(&quot;.&quot;)</span>
+<span class="nc" id="L68">                    ? path.substring(path.lastIndexOf('.') + 1)</span>
+<span class="nc" id="L69">                    : path;</span>
+
+<span class="nc" id="L71">            details.put(field, violation.getMessage());</span>
+<span class="nc" id="L72">        });</span>
+
+<span class="nc" id="L74">        ErrorResponse response = new ErrorResponse(</span>
+<span class="nc" id="L75">                Instant.now(),</span>
+                &quot;VALIDATION_ERROR&quot;,
+                &quot;요청 데이터 유효성 검사에 실패하였습니다.&quot;,
+                details,
+<span class="nc" id="L79">                e.getClass().getSimpleName(),</span>
+                400
+        );
+
+<span class="nc" id="L83">        return ResponseEntity.badRequest().body(response);</span>
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleMissingRequestParameter(MissingServletRequestParameterException e) {
+<span class="nc" id="L88">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L89">        details.put(&quot;parameter&quot;, e.getParameterName());</span>
+<span class="nc" id="L90">        details.put(&quot;parameterType&quot;, e.getParameterType());</span>
+
+<span class="nc" id="L92">        ErrorResponse response = new ErrorResponse(</span>
+<span class="nc" id="L93">                Instant.now(),</span>
+                &quot;INVALID_REQUEST&quot;,
+                &quot;잘못된 요청입니다.&quot;,
+                details,
+<span class="nc" id="L97">                e.getClass().getSimpleName(),</span>
+                400
+        );
+
+<span class="nc" id="L101">        return ResponseEntity.badRequest().body(response);</span>
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleMissingRequestHeader(MissingRequestHeaderException e) {
+<span class="nc" id="L106">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L107">        details.put(&quot;header&quot;, e.getHeaderName());</span>
+
+<span class="nc" id="L109">        ErrorResponse response = new ErrorResponse(</span>
+<span class="nc" id="L110">                Instant.now(),</span>
+                &quot;INVALID_REQUEST&quot;,
+                &quot;잘못된 요청입니다.&quot;,
+                details,
+<span class="nc" id="L114">                e.getClass().getSimpleName(),</span>
+                400
+        );
+
+<span class="nc" id="L118">        return ResponseEntity.badRequest().body(response);</span>
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+<span class="fc" id="L123">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L124">        details.put(&quot;parameter&quot;, e.getName());</span>
+<span class="fc" id="L125">        details.put(&quot;value&quot;, e.getValue());</span>
+
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">        if (e.getRequiredType() != null) {</span>
+<span class="fc" id="L128">            details.put(&quot;requiredType&quot;, e.getRequiredType().getSimpleName());</span>
+        }
+
+<span class="fc" id="L131">        ErrorResponse response = new ErrorResponse(</span>
+<span class="fc" id="L132">                Instant.now(),</span>
+                &quot;INVALID_REQUEST&quot;,
+                &quot;잘못된 요청입니다.&quot;,
+                details,
+<span class="fc" id="L136">                e.getClass().getSimpleName(),</span>
+                400
+        );
+
+<span class="fc" id="L140">        return ResponseEntity.badRequest().body(response);</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleException(Exception e) {
+<span class="nc" id="L145">        log.error(&quot;Unexpected server exception&quot;, e);</span>
+
+<span class="nc" id="L147">        ErrorResponse response = new ErrorResponse(</span>
+<span class="nc" id="L148">                Instant.now(),</span>
+                &quot;INTERNAL_SERVER_ERROR&quot;,
+                &quot;서버 내부 오류가 발생했습니다.&quot;,
+                new LinkedHashMap&lt;&gt;(),
+<span class="nc" id="L152">                e.getClass().getSimpleName(),</span>
+                500
+        );
+
+<span class="nc" id="L156">        return ResponseEntity.internalServerError().body(response);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

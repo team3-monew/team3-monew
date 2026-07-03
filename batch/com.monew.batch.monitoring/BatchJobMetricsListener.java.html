@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BatchJobMetricsListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.monitoring</a> &gt; <span class="el_source">BatchJobMetricsListener.java</span></div><h1>BatchJobMetricsListener.java</h1><pre class="source lang-java linenums">package com.monew.batch.monitoring;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.stereotype.Component;
+
+/**
+ * Spring Batch Job 종료 시 실행 결과를 메트릭으로 기록하는 공통 리스너입니다.
+ * Job 이름, 성공/실패 여부, 실행 시간을 BatchJobMetrics에 전달합니다.
+ */
+@Component
+@RequiredArgsConstructor
+public class BatchJobMetricsListener implements JobExecutionListener {
+
+  private final BatchJobMetrics batchJobMetrics;
+
+  /**
+   * Spring Batch가 Job 종료 후 호출하는 hook입니다.
+   * 각 JobConfig에 listener로 연결하면 성공/실패/소요시간이 공통 메트릭으로 기록됩니다.
+   */
+  @Override
+  public void afterJob(JobExecution jobExecution) {
+<span class="nc" id="L28">    String jobName = jobExecution.getJobInstance().getJobName();</span>
+<span class="nc" id="L29">    Duration duration = duration(jobExecution);</span>
+
+<span class="nc bnc" id="L31" title="All 2 branches missed.">    if (jobExecution.getStatus() == BatchStatus.COMPLETED) {</span>
+<span class="nc" id="L32">      batchJobMetrics.recordSuccess(jobName, duration);</span>
+<span class="nc" id="L33">      return;</span>
+    }
+
+<span class="nc" id="L36">    batchJobMetrics.recordFailure(jobName, duration);</span>
+<span class="nc" id="L37">  }</span>
+
+  private Duration duration(JobExecution jobExecution) {
+<span class="nc" id="L40">    LocalDateTime startTime = jobExecution.getStartTime();</span>
+<span class="nc" id="L41">    LocalDateTime endTime = jobExecution.getEndTime();</span>
+<span class="nc bnc" id="L42" title="All 4 branches missed.">    if (startTime == null || endTime == null) {</span>
+<span class="nc" id="L43">      return Duration.ZERO;</span>
+    }
+
+<span class="nc" id="L46">    ZoneId zoneId = ZoneId.systemDefault();</span>
+<span class="nc" id="L47">    return Duration.between(startTime.atZone(zoneId).toInstant(), endTime.atZone(zoneId).toInstant());</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleBackupJobConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.backup.config</a> &gt; <span class="el_source">ArticleBackupJobConfig.java</span></div><h1>ArticleBackupJobConfig.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.backup.config;
+
+import com.monew.batch.article.backup.tasklet.ArticleBackupTasklet;
+import com.monew.batch.monitoring.BatchJobMetricsListener;
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+
+/**
+ * 기사 백업용 Spring Batch Job 과 Step 을 등록합니다.
+ */
+@Configuration
+@RequiredArgsConstructor
+public class ArticleBackupJobConfig {
+
+  private final ArticleBackupTasklet articleBackupTasklet;
+
+  @Bean
+  public Job articleBackupJob(JobRepository jobRepository, Step articleBackupStep,
+      BatchJobMetricsListener batchJobMetricsListener) {
+<span class="nc" id="L27">    return new JobBuilder(&quot;articleBackupJob&quot;, jobRepository)</span>
+<span class="nc" id="L28">        .listener(batchJobMetricsListener)  // Job 종료 시 공통 실행/성공/실패/소요시간 메트릭을 기록합니다.</span>
+<span class="nc" id="L29">        .start(articleBackupStep)</span>
+<span class="nc" id="L30">        .build();</span>
+  }
+
+  @Bean
+  public Step articleBackupStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L36">    return new StepBuilder(&quot;articleBackupStep&quot;, jobRepository)</span>
+<span class="nc" id="L37">        .tasklet(articleBackupTasklet, transactionManager)</span>
+<span class="nc" id="L38">        .build();</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

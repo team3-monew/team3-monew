@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleBackupScheduler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.backup.scheduler</a> &gt; <span class="el_source">ArticleBackupScheduler.java</span></div><h1>ArticleBackupScheduler.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.backup.scheduler;
+
+import java.time.LocalDate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+/**
+ * 매일 정해진 시각에 기사 백업 Job 을 실행하는 스케줄러입니다.
+ */
+<span class="nc" id="L18">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+@ConditionalOnProperty(name = &quot;backup.enabled&quot;, havingValue = &quot;true&quot;, matchIfMissing = true)
+public class ArticleBackupScheduler {
+
+  private final JobLauncher jobLauncher;
+
+  @Qualifier(&quot;articleBackupJob&quot;)
+  private final Job articleBackupJob;
+
+  @Scheduled(cron = &quot;${backup.cron:0 30 3 * * *}&quot;)
+  public void backupDaily() throws Exception {
+<span class="nc" id="L31">    LocalDate targetDate = LocalDate.now().minusDays(1);</span>
+<span class="nc" id="L32">    JobParameters jobParameters = new JobParametersBuilder()</span>
+<span class="nc" id="L33">        .addString(&quot;targetDate&quot;, targetDate.toString())</span>
+<span class="nc" id="L34">        .addLong(&quot;timestamp&quot;, System.currentTimeMillis())</span>
+<span class="nc" id="L35">        .toJobParameters();</span>
+
+<span class="nc" id="L37">    log.info(&quot;[article backup] 기사 백업 job 시작. 백업 날짜={}, parameters={}&quot;, targetDate, jobParameters);</span>
+<span class="nc" id="L38">    jobLauncher.run(articleBackupJob, jobParameters);</span>
+<span class="nc" id="L39">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.notification.service</a> &gt; <span class="el_source">NotificationServiceImpl.java</span></div><h1>NotificationServiceImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.notification.service;
+
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.notification.NotificationErrorCode;
+import com.monew.server.common.exception.notification.NotificationException;
+import com.monew.server.common.exception.user.UserErrorCode;
+import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.notification.dto.NotificationResponse;
+import com.monew.server.notification.entity.Notification;
+import com.monew.server.notification.entity.NotificationResourceType;
+import com.monew.server.notification.repository.NotificationRepository;
+import com.monew.server.notification.repository.querydsl.NotificationQueryRepository;
+import com.monew.server.user.entity.User;
+import com.monew.server.user.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class NotificationServiceImpl implements NotificationService {
+
+    private final NotificationRepository notificationRepository;
+    private final NotificationQueryRepository notificationQueryRepository;
+    private final UserRepository userRepository;
+
+    @Override
+    public CursorPageResponse&lt;NotificationResponse&gt; findUnreadNotifications(
+            UUID userId,
+            String cursor,
+            LocalDateTime after,
+            int limit
+    ) {
+<span class="fc" id="L38">        validateUserExists(userId);</span>
+<span class="fc" id="L39">        validateLimit(limit);</span>
+<span class="fc" id="L40">        validateCursorPair(cursor, after);</span>
+
+<span class="fc" id="L42">        List&lt;NotificationResponse&gt; queriedNotifications =</span>
+<span class="fc" id="L43">                notificationQueryRepository.findUnreadNotifications(</span>
+                        userId,
+                        cursor,
+                        after,
+                        limit
+                );
+
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        boolean hasNext = queriedNotifications.size() &gt; limit;</span>
+
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        List&lt;NotificationResponse&gt; content = hasNext</span>
+<span class="fc" id="L53">                ? queriedNotifications.subList(0, limit)</span>
+<span class="fc" id="L54">                : queriedNotifications;</span>
+
+<span class="fc" id="L56">        String nextCursor = null;</span>
+<span class="fc" id="L57">        LocalDateTime nextAfter = null;</span>
+
+<span class="pc bpc" id="L59" title="1 of 4 branches missed.">        if (hasNext &amp;&amp; !content.isEmpty()) {</span>
+<span class="fc" id="L60">            NotificationResponse lastNotification = content.get(content.size() - 1);</span>
+<span class="fc" id="L61">            nextCursor = lastNotification.id().toString();</span>
+<span class="fc" id="L62">            nextAfter = lastNotification.createdAt();</span>
+        }
+
+<span class="fc" id="L65">        long totalElements = notificationQueryRepository.countUnreadNotifications(userId);</span>
+
+<span class="fc" id="L67">        return new CursorPageResponse&lt;&gt;(</span>
+                content,
+                nextCursor,
+                nextAfter,
+<span class="fc" id="L71">                content.size(),</span>
+                totalElements,
+                hasNext
+        );
+    }
+
+    @Override
+    @Transactional
+    public void confirm(UUID userId, UUID notificationId) {
+<span class="fc" id="L80">        validateUserExists(userId);</span>
+<span class="fc" id="L81">        validateRequired(&quot;notificationId&quot;, notificationId);</span>
+
+<span class="fc" id="L83">        Notification notification = notificationRepository</span>
+<span class="fc" id="L84">                .findByIdAndUserId(notificationId, userId)</span>
+<span class="fc" id="L85">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L86">                    NotificationException exception =</span>
+                            new NotificationException(NotificationErrorCode.NOTIFICATION_NOT_FOUND);
+<span class="fc" id="L88">                    exception.addDetail(&quot;notificationId&quot;, notificationId);</span>
+<span class="fc" id="L89">                    exception.addDetail(&quot;userId&quot;, userId);</span>
+<span class="fc" id="L90">                    return exception;</span>
+                });
+
+<span class="fc" id="L93">        notification.confirm();</span>
+<span class="fc" id="L94">    }</span>
+
+    @Override
+    @Transactional
+    public void confirmAll(UUID userId) {
+<span class="fc" id="L99">        validateUserExists(userId);</span>
+<span class="fc" id="L100">        notificationRepository.confirmAllByUserId(userId, LocalDateTime.now());</span>
+<span class="fc" id="L101">    }</span>
+
+    @Override
+    @Transactional
+    public void createCommentLikeNotification(
+            UUID receiverUserId,
+            UUID likerUserId,
+            UUID commentId,
+            String likerNickname
+    ) {
+<span class="fc" id="L111">        validateRequired(&quot;receiverUserId&quot;, receiverUserId);</span>
+<span class="fc" id="L112">        validateRequired(&quot;likerUserId&quot;, likerUserId);</span>
+<span class="fc" id="L113">        validateRequired(&quot;commentId&quot;, commentId);</span>
+<span class="fc" id="L114">        validateText(&quot;likerNickname&quot;, likerNickname);</span>
+
+        // 본인이 본인 댓글에 좋아요를 누른 경우 알림 생성 생략
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        if (receiverUserId.equals(likerUserId)) {</span>
+<span class="fc" id="L118">            return;</span>
+        }
+
+<span class="fc" id="L121">        String content = likerNickname + &quot;님이 나의 댓글을 좋아합니다.&quot;;</span>
+
+<span class="fc" id="L123">        createNotification(</span>
+                receiverUserId,
+                content,
+                NotificationResourceType.COMMENT,
+                commentId
+        );
+<span class="fc" id="L129">    }</span>
+
+    private void createNotification(
+            UUID receiverUserId,
+            String content,
+            NotificationResourceType resourceType,
+            UUID resourceId
+    ) {
+<span class="fc" id="L137">        validateRequired(&quot;receiverUserId&quot;, receiverUserId);</span>
+<span class="fc" id="L138">        validateText(&quot;content&quot;, content);</span>
+<span class="fc" id="L139">        validateRequired(&quot;resourceType&quot;, resourceType);</span>
+<span class="fc" id="L140">        validateRequired(&quot;resourceId&quot;, resourceId);</span>
+
+<span class="fc" id="L142">        User receiver = userRepository.findById(receiverUserId)</span>
+<span class="fc" id="L143">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L144">                    BaseException exception = new BaseException(UserErrorCode.USER_NOT_FOUND);</span>
+<span class="fc" id="L145">                    exception.addDetail(&quot;receiverUserId&quot;, receiverUserId);</span>
+<span class="fc" id="L146">                    return exception;</span>
+                });
+
+<span class="fc" id="L149">        Notification notification = Notification.builder()</span>
+<span class="fc" id="L150">                .user(receiver)</span>
+<span class="fc" id="L151">                .content(content)</span>
+<span class="fc" id="L152">                .resourceType(resourceType)</span>
+<span class="fc" id="L153">                .resourceId(resourceId)</span>
+<span class="fc" id="L154">                .build();</span>
+
+<span class="fc" id="L156">        notificationRepository.save(notification);</span>
+<span class="fc" id="L157">    }</span>
+
+    private void validateUserExists(UUID userId) {
+<span class="fc" id="L160">        validateRequired(&quot;userId&quot;, userId);</span>
+
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        if (!userRepository.existsById(userId)) {</span>
+<span class="fc" id="L163">            BaseException exception = new BaseException(UserErrorCode.USER_NOT_FOUND);</span>
+<span class="fc" id="L164">            exception.addDetail(&quot;userId&quot;, userId);</span>
+<span class="fc" id="L165">            throw exception;</span>
+        }
+<span class="fc" id="L167">    }</span>
+
+    private void validateLimit(int limit) {
+<span class="fc bfc" id="L170" title="All 2 branches covered.">        if (limit &lt;= 0) {</span>
+<span class="fc" id="L171">            NotificationException exception =</span>
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+<span class="fc" id="L173">            exception.addDetail(&quot;limit&quot;, limit);</span>
+<span class="fc" id="L174">            throw exception;</span>
+        }
+<span class="fc" id="L176">    }</span>
+
+    private void validateCursorPair(String cursor, LocalDateTime after) {
+<span class="pc bpc" id="L179" title="1 of 4 branches missed.">        boolean hasCursor = cursor != null &amp;&amp; !cursor.isBlank();</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">        boolean hasAfter = after != null;</span>
+
+<span class="fc bfc" id="L182" title="All 2 branches covered.">        if (hasCursor != hasAfter) {</span>
+<span class="fc" id="L183">            NotificationException exception =</span>
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR);
+<span class="fc" id="L185">            exception.addDetail(&quot;cursor&quot;, cursor);</span>
+<span class="fc" id="L186">            exception.addDetail(&quot;after&quot;, after);</span>
+<span class="fc" id="L187">            throw exception;</span>
+        }
+<span class="fc" id="L189">    }</span>
+
+    private void validateRequired(String fieldName, Object value) {
+<span class="fc bfc" id="L192" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L193">            NotificationException exception =</span>
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+<span class="fc" id="L195">            exception.addDetail(fieldName, null);</span>
+<span class="fc" id="L196">            throw exception;</span>
+        }
+<span class="fc" id="L198">    }</span>
+
+    private void validateText(String fieldName, String value) {
+<span class="pc bpc" id="L201" title="1 of 4 branches missed.">        if (value == null || value.isBlank()) {</span>
+<span class="fc" id="L202">            NotificationException exception =</span>
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+<span class="fc" id="L204">            exception.addDetail(fieldName, value);</span>
+<span class="fc" id="L205">            throw exception;</span>
+        }
+<span class="fc" id="L207">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

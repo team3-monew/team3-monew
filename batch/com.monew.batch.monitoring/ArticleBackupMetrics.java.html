@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleBackupMetrics.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.monitoring</a> &gt; <span class="el_source">ArticleBackupMetrics.java</span></div><h1>ArticleBackupMetrics.java</h1><pre class="source lang-java linenums">package com.monew.batch.monitoring;
+
+import com.monew.batch.article.backup.dto.ArticleBackupResultDto;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class ArticleBackupMetrics {
+
+  private final MeterRegistry meterRegistry;
+  private final Map&lt;String, AtomicLong&gt; gauges = new ConcurrentHashMap&lt;&gt;();
+
+  /**
+   * 기사 백업 Job의 마지막 실행 결과를 Gauge로 기록합니다.
+   * failure.count는 실패한 기사 수를 정확히 알 수 있는 경우에만 결과 DTO 값으로 기록합니다.
+   */
+  public void recordResult(ArticleBackupResultDto result) {
+<span class="nc" id="L23">    set(&quot;monew.batch.article.backup.last.target.count&quot;, result.targetCount());</span>
+<span class="nc" id="L24">    set(&quot;monew.batch.article.backup.last.success.count&quot;, result.successCount());</span>
+<span class="nc" id="L25">    set(&quot;monew.batch.article.backup.last.failure.count&quot;, result.failureCount());</span>
+<span class="nc" id="L26">    set(&quot;monew.batch.article.backup.last.file.count&quot;, result.fileCount());</span>
+<span class="nc" id="L27">    set(&quot;monew.batch.article.backup.last.file.size.bytes&quot;, result.fileSizeBytes());</span>
+<span class="nc" id="L28">    set(&quot;monew.batch.article.backup.last.failed&quot;, 0L);</span>
+<span class="nc" id="L29">  }</span>
+
+  /**
+   * 백업 실행 자체가 실패했음을 표시합니다.
+   * 예외 시점에는 실패 기사 수를 모르기 때문에 failure.count는 갱신하지 않습니다.
+   * 1L = 실패 / 0L = 성공
+   */
+  public void recordFailure() {
+<span class="nc" id="L37">    set(&quot;monew.batch.article.backup.last.failed&quot;, 1L);</span>
+<span class="nc" id="L38">  }</span>
+
+  private void set(String metricName, long value) {
+<span class="nc" id="L41">    gauges.computeIfAbsent(metricName, key -&gt; {</span>
+<span class="nc" id="L42">      AtomicLong gaugeValue = new AtomicLong();</span>
+<span class="nc" id="L43">      meterRegistry.gauge(key, gaugeValue);</span>
+<span class="nc" id="L44">      return gaugeValue;</span>
+<span class="nc" id="L45">    }).set(value);</span>
+<span class="nc" id="L46">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleSaveAndInterestLinkStepResultDto.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.collect.dto</a> &gt; <span class="el_source">ArticleSaveAndInterestLinkStepResultDto.java</span></div><h1>ArticleSaveAndInterestLinkStepResultDto.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.collect.dto;
+
+import java.util.List;
+
+/**
+ * staging 데이터를 articles에 저장하고, 저장된 기사와 관심사를 연결한 결과입니다.
+ * 두 작업은 데이터 정합성이 이어져 있으므로 하나의 Step에서 함께 처리합니다.
+ */
+<span class="nc" id="L9">public record ArticleSaveAndInterestLinkStepResultDto(</span>
+    int stagedCount,    // staging 테이블에 있던 전체 수집 기사 수
+    int savedCount,   // articles 테이블에 새로 저장된 기사 수
+    int duplicateSkippedCount,    // articles 테이블에 존재해서 저장하지 않은 중복 기사 수
+    int invalidSkippedCount,    // 저장할 수 없는 비정상 기사
+    int articleInterestLinkedCount,    // Article과 Interest가 연결된 개수
+    List&lt;ArticleSourceCollectResultDto&gt; sourceResults   // 위 결과 source 별로 나눈 목록들
+) {
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BatchJobMetrics.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.monitoring</a> &gt; <span class="el_source">BatchJobMetrics.java</span></div><h1>BatchJobMetrics.java</h1><pre class="source lang-java linenums">package com.monew.batch.monitoring;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class BatchJobMetrics {
+
+  private static final String JOB_TAG = &quot;job&quot;;
+
+  private final MeterRegistry meterRegistry;  // 메트릭 등록 및 값 기록에 사용하는 Micrometer 객체
+  private final Map&lt;String, AtomicLong&gt; lastSuccessTimes = new ConcurrentHashMap&lt;&gt;();
+
+  /**
+   * Job이 성공으로 끝났을 때 공통 메트릭을 갱신합니다.
+   * Counter/Timer는 누적되고, 마지막 성공 시각 Gauge는 최신 값으로 덮어씁니다.
+   */
+  public void recordSuccess(String jobName, Duration duration) {
+<span class="nc" id="L30">    String normalizedJobName = BatchJobNames.normalize(jobName);</span>
+<span class="nc" id="L31">    recordRun(normalizedJobName, duration);</span>
+
+<span class="nc" id="L33">    meterRegistry.counter(&quot;monew.batch.job.success.total&quot;, JOB_TAG, normalizedJobName).increment();</span>
+<span class="nc" id="L34">    lastSuccessTime(normalizedJobName).set(Instant.now().getEpochSecond());</span>
+<span class="nc" id="L35">  }</span>
+
+  /**
+   * Job이 실패로 끝났을 때 공통 메트릭을 갱신합니다.
+   * 실패도 전체 실행 횟수와 실행 시간에는 포함됩니다.
+   */
+  public void recordFailure(String jobName, Duration duration) {
+<span class="nc" id="L42">    String normalizedJobName = BatchJobNames.normalize(jobName);</span>
+<span class="nc" id="L43">    recordRun(normalizedJobName, duration);</span>
+
+<span class="nc" id="L45">    meterRegistry.counter(&quot;monew.batch.job.failure.total&quot;, JOB_TAG, normalizedJobName).increment();</span>
+<span class="nc" id="L46">  }</span>
+
+  // 모든 Job에 공통으로 필요한 실행 횟수와 실행 시간을 기록합니다.
+  private void recordRun(String jobName, Duration duration) {
+    // 배치 Job 실행 횟수 1 증가
+<span class="nc" id="L51">    meterRegistry.counter(&quot;monew.batch.job.run.total&quot;, JOB_TAG, jobName).increment();</span>
+<span class="nc" id="L52">    Timer.builder(&quot;monew.batch.job.duration&quot;)</span>
+<span class="nc" id="L53">        .tag(JOB_TAG, jobName)</span>
+<span class="nc" id="L54">        .register(meterRegistry)</span>
+<span class="nc" id="L55">        .record(Math.max(duration.toMillis(), 0L), TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L56">  }</span>
+
+  // Gauge는 참조 객체가 유지되어야 값이 노출되므로 AtomicLong을 Map에 보관합니다.
+  private AtomicLong lastSuccessTime(String jobName) {
+<span class="nc" id="L60">    return lastSuccessTimes.computeIfAbsent(jobName, key -&gt; {</span>
+<span class="nc" id="L61">      AtomicLong value = new AtomicLong(0L);</span>
+<span class="nc" id="L62">      meterRegistry.gauge(&quot;monew.batch.job.last_success_time&quot;, Tags.job(key), value);</span>
+<span class="nc" id="L63">      return value;</span>
+    });
+  }
+
+  private static final class Tags {
+
+    private Tags() {
+    }
+
+    private static Iterable&lt;Tag&gt; job(String jobName) {
+<span class="nc" id="L73">      return List.of(Tag.of(JOB_TAG, jobName));</span>
+    }
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

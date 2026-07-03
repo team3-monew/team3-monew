@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationQueryRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.notification.repository.querydsl</a> &gt; <span class="el_source">NotificationQueryRepositoryImpl.java</span></div><h1>NotificationQueryRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.notification.repository.querydsl;
+
+import static com.monew.server.notification.entity.QNotification.notification;
+
+import com.monew.server.common.exception.notification.NotificationErrorCode;
+import com.monew.server.common.exception.notification.NotificationException;
+import com.monew.server.notification.dto.NotificationResponse;
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
+@Repository
+@RequiredArgsConstructor
+public class NotificationQueryRepositoryImpl implements NotificationQueryRepository {
+
+    private final JPAQueryFactory queryFactory;
+
+    @Override
+    public List&lt;NotificationResponse&gt; findUnreadNotifications(
+            UUID userId,
+            String cursor,
+            LocalDateTime after,
+            int limit
+    ) {
+<span class="nc" id="L30">        return queryFactory</span>
+<span class="nc" id="L31">                .select(Projections.constructor(</span>
+                        NotificationResponse.class,
+                        notification.id,
+                        notification.createdAt,
+                        notification.confirmedAt,
+                        notification.confirmed,
+                        notification.user.id,
+                        notification.content,
+<span class="nc" id="L39">                        notification.resourceType.stringValue().lower(),</span>
+                        notification.resourceId
+                ))
+<span class="nc" id="L42">                .from(notification)</span>
+<span class="nc" id="L43">                .where(</span>
+<span class="nc" id="L44">                        notification.user.id.eq(userId),</span>
+<span class="nc" id="L45">                        notification.confirmed.isFalse(),</span>
+<span class="nc" id="L46">                        cursorCondition(cursor, after)</span>
+                )
+<span class="nc" id="L48">                .orderBy(</span>
+<span class="nc" id="L49">                        notification.createdAt.desc(),</span>
+<span class="nc" id="L50">                        notification.id.desc()</span>
+                )
+<span class="nc" id="L52">                .limit(limit + 1)</span>
+<span class="nc" id="L53">                .fetch();</span>
+    }
+
+    @Override
+    public long countUnreadNotifications(UUID userId) {
+<span class="nc" id="L58">        Long count = queryFactory</span>
+<span class="nc" id="L59">                .select(notification.count())</span>
+<span class="nc" id="L60">                .from(notification)</span>
+<span class="nc" id="L61">                .where(</span>
+<span class="nc" id="L62">                        notification.user.id.eq(userId),</span>
+<span class="nc" id="L63">                        notification.confirmed.isFalse()</span>
+                )
+<span class="nc" id="L65">                .fetchOne();</span>
+
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        return count == null ? 0L : count;</span>
+    }
+
+    private BooleanExpression cursorCondition(String cursor, LocalDateTime after) {
+<span class="fc bfc" id="L71" title="All 4 branches covered.">        if (cursor == null || after == null) {</span>
+<span class="fc" id="L72">            return null;</span>
+        }
+
+<span class="fc" id="L75">        UUID cursorId = parseCursor(cursor);</span>
+
+<span class="fc" id="L77">        return notification.createdAt.lt(after)</span>
+<span class="fc" id="L78">                .or(</span>
+<span class="fc" id="L79">                        notification.createdAt.eq(after)</span>
+<span class="fc" id="L80">                                .and(notification.id.lt(cursorId))</span>
+                );
+    }
+
+    private UUID parseCursor(String cursor) {
+        try {
+<span class="fc" id="L86">            return UUID.fromString(cursor);</span>
+<span class="fc" id="L87">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L88">            NotificationException exception =</span>
+                    new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR, e);
+<span class="fc" id="L90">            exception.addDetail(&quot;cursor&quot;, cursor);</span>
+<span class="fc" id="L91">            throw exception;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NaverNewsItemResponseDto.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.collect.dto</a> &gt; <span class="el_source">NaverNewsItemResponseDto.java</span></div><h1>NaverNewsItemResponseDto.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.collect.dto;
+
+<span class="nc" id="L3">public record NaverNewsItemResponseDto(</span>
+    String title, // 뉴스 기사의 제목
+    String originallink,  // 뉴스 기사 원문의 URL
+    String link,  // 뉴스 기사의 네이버 뉴스 URL. 네이버에 제공되지 않은 기사라면 기사 원문의 URL을 반환
+    String description, // 뉴스 기사의 내용을 요약한 패시지 정보
+    String pubDate  // 뉴스 기사가 네이버에 제공된 시간
+) {
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

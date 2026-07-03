@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Article.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.article.entity</a> &gt; <span class="el_source">Article.java</span></div><h1>Article.java</h1><pre class="source lang-java linenums">package com.monew.server.article.entity;
+
+import com.monew.server.article.dto.ArticleBackupDto;
+import com.monew.server.common.entity.BaseTimeEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@Entity
+@Table(name = &quot;articles&quot;)
+public class Article extends BaseTimeEntity {
+
+  @Id
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private ArticleSource source;
+
+  @Column(name = &quot;source_url&quot;, nullable = false, unique = true, columnDefinition = &quot;TEXT&quot;)
+  private String sourceUrl;
+
+  @Column(nullable = false, length = 500)
+  private String title;
+
+  @Column(name = &quot;publish_date&quot;, nullable = false)
+  private LocalDateTime publishDate;
+
+  @Column(columnDefinition = &quot;TEXT&quot;)
+  private String summary;
+
+  @Column(name = &quot;comment_count&quot;, nullable = false)
+  private long commentCount;
+
+  @Column(name = &quot;view_count&quot;, nullable = false)
+  private long viewCount;
+
+  @Column(name = &quot;deleted_at&quot;)
+  private LocalDateTime deletedAt;
+
+  private Article(
+      ArticleSource source,
+      String sourceUrl,
+      String title,
+      LocalDateTime publishDate,
+      String summary,
+      long commentCount,
+      long viewCount,
+      LocalDateTime deletedAt
+<span class="fc" id="L60">  ) {</span>
+<span class="fc" id="L61">    this.id = UUID.randomUUID();</span>
+<span class="fc" id="L62">    this.source = source;</span>
+<span class="fc" id="L63">    this.sourceUrl = sourceUrl;</span>
+<span class="fc" id="L64">    this.title = title;</span>
+<span class="fc" id="L65">    this.publishDate = publishDate;</span>
+<span class="fc" id="L66">    this.summary = summary;</span>
+<span class="fc" id="L67">    this.commentCount = commentCount;</span>
+<span class="fc" id="L68">    this.viewCount = viewCount;</span>
+<span class="fc" id="L69">    this.deletedAt = deletedAt;</span>
+<span class="fc" id="L70">  }</span>
+
+  public static Article fromBackup(ArticleBackupDto dto) {
+<span class="fc" id="L73">    return new Article(</span>
+<span class="fc" id="L74">        dto.source(),</span>
+<span class="fc" id="L75">        dto.sourceUrl(),</span>
+<span class="fc" id="L76">        dto.title(),</span>
+<span class="fc" id="L77">        dto.publishDate(),</span>
+<span class="fc" id="L78">        dto.summary(),</span>
+<span class="fc" id="L79">        dto.commentCount(),</span>
+<span class="fc" id="L80">        dto.viewCount(),</span>
+<span class="fc" id="L81">        dto.deletedAt()</span>
+    );
+  }
+
+  public void increaseViewCount() {
+<span class="fc" id="L86">    this.viewCount++;</span>
+<span class="fc" id="L87">  }</span>
+
+  public void increaseCommentCount() {
+<span class="fc" id="L90">    this.commentCount++;</span>
+<span class="fc" id="L91">  }</span>
+
+  public void decreaseCommentCount() {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">    if (this.commentCount &gt; 0) {</span>
+<span class="fc" id="L95">      this.commentCount--;</span>
+    }
+<span class="fc" id="L97">  }</span>
+
+  public void softDelete() {
+<span class="fc" id="L100">    this.deletedAt = LocalDateTime.now();</span>
+<span class="fc" id="L101">  }</span>
+
+  @PrePersist
+  void prePersist() {
+<span class="fc bfc" id="L105" title="All 2 branches covered.">    if (id == null) {</span>
+<span class="fc" id="L106">      id = UUID.randomUUID();</span>
+    }
+<span class="fc" id="L108">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

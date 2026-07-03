@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleRestoreServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.article.service</a> &gt; <span class="el_source">ArticleRestoreServiceImpl.java</span></div><h1>ArticleRestoreServiceImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.article.service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.monew.server.article.config.BackupProperties;
+import com.monew.server.article.dto.ArticleBackupDto;
+import com.monew.server.article.dto.ArticleRestoreResultDto;
+import com.monew.server.article.entity.Article;
+import com.monew.server.article.repository.ArticleRepository;
+import com.monew.server.article.storage.ArticleBackupReader;
+import com.monew.server.common.exception.article.ArticleErrorCode;
+import com.monew.server.common.exception.article.ArticleException;
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+<span class="fc" id="L30">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class ArticleRestoreServiceImpl implements ArticleRestoreService {
+
+<span class="fc" id="L35">  private static final TypeReference&lt;List&lt;ArticleBackupDto&gt;&gt; BACKUP_DTO_LIST_TYPE =</span>
+<span class="fc" id="L36">      new TypeReference&lt;&gt;() {</span>
+      };
+
+  private final ArticleRepository articleRepository;
+  private final ArticleBackupReader articleBackupReader;
+  private final BackupProperties backupProperties;
+  private final ObjectMapper objectMapper;
+
+  @Override
+  @Transactional
+  public List&lt;ArticleRestoreResultDto&gt; restore(LocalDateTime from, LocalDateTime to) {
+<span class="fc" id="L47">    validateDateRange(from, to);</span>
+
+<span class="fc" id="L49">    List&lt;LocalDate&gt; restoreDates = restoreDates(from, to);  // 복구 날짜 리스트 추출</span>
+<span class="fc" id="L50">    log.info(&quot;[article restore] 복구 날짜 리스트={}&quot;, restoreDates);</span>
+
+    // 복구 기사 후보 추출
+<span class="fc" id="L53">    List&lt;ArticleBackupDto&gt; restoreCandidates = restoreDates.stream()</span>
+<span class="fc" id="L54">        .flatMap(date -&gt; readBackups(date).stream())</span>
+<span class="fc" id="L55">        .filter(this::isRestorable)</span>
+<span class="fc" id="L56">        .toList();</span>
+
+<span class="fc" id="L58">    Set&lt;String&gt; existingSourceUrls = findExistingSourceUrls(restoreCandidates);</span>
+<span class="fc" id="L59">    log.info(&quot;[article restore] 기존 뉴스 기사 개수={}&quot;, existingSourceUrls.size());</span>
+
+<span class="fc" id="L61">    Map&lt;String, ArticleBackupDto&gt; uniqueCandidates = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">    for (ArticleBackupDto dto : restoreCandidates) {</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">      if (!existingSourceUrls.contains(dto.sourceUrl())) {</span>
+<span class="fc" id="L64">        uniqueCandidates.putIfAbsent(dto.sourceUrl(), dto);</span>
+      }
+<span class="fc" id="L66">    }</span>
+
+<span class="fc" id="L68">    List&lt;Article&gt; restoredArticles = uniqueCandidates.values().stream()</span>
+<span class="fc" id="L69">        .map(Article::fromBackup)</span>
+<span class="fc" id="L70">        .toList();</span>
+<span class="fc" id="L71">    List&lt;Article&gt; savedArticles = articleRepository.saveAll(restoredArticles);</span>
+<span class="fc" id="L72">    List&lt;UUID&gt; restoredArticleIds = savedArticles.stream()</span>
+<span class="fc" id="L73">        .map(Article::getId)</span>
+<span class="fc" id="L74">        .toList();</span>
+
+<span class="fc" id="L76">    return List.of(new ArticleRestoreResultDto(</span>
+<span class="fc" id="L77">        Instant.now(),</span>
+        restoredArticleIds,
+<span class="fc" id="L79">        restoredArticleIds.size()</span>
+    ));
+  }
+
+  private void validateDateRange(LocalDateTime from, LocalDateTime to) {
+<span class="fc bfc" id="L84" title="All 2 branches covered.">    if (from == null) {</span>
+<span class="nc" id="L85">      throwInvalidRequest(&quot;from&quot;, null);</span>
+    }
+
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">    if (to == null) {</span>
+<span class="nc" id="L89">      throwInvalidRequest(&quot;to&quot;, null);</span>
+    }
+
+<span class="fc bfc" id="L92" title="All 2 branches covered.">    if (!from.isBefore(to)) {</span>
+<span class="fc" id="L93">      ArticleException exception =</span>
+          new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+<span class="fc" id="L95">      exception.addDetail(&quot;from&quot;, from);</span>
+<span class="fc" id="L96">      exception.addDetail(&quot;to&quot;, to);</span>
+<span class="fc" id="L97">      throw exception;</span>
+    }
+<span class="fc" id="L99">  }</span>
+
+  private List&lt;LocalDate&gt; restoreDates(LocalDateTime from, LocalDateTime to) {
+<span class="fc" id="L102">    LocalDate startDate = from.toLocalDate();</span>
+<span class="fc" id="L103">    LocalDate endExclusive = to.toLocalDate();</span>
+
+<span class="fc bfc" id="L105" title="All 2 branches covered.">    if (!to.toLocalTime().equals(LocalTime.MIDNIGHT)) {</span>
+<span class="fc" id="L106">      endExclusive = endExclusive.plusDays(1);</span>
+    }
+
+<span class="fc" id="L109">    return startDate.datesUntil(endExclusive).toList();</span>
+  }
+
+  // 백업 저장소에 기사 읽어오는 메서드
+  private List&lt;ArticleBackupDto&gt; readBackups(LocalDate date) {
+<span class="fc" id="L114">    String key = storageKey(date);</span>
+<span class="fc" id="L115">    boolean exists = articleBackupReader.exists(key);</span>
+<span class="fc" id="L116">    log.info(&quot;[article restore] 백업 파일 체크. date={}, key={}, exists={}&quot;,</span>
+<span class="fc" id="L117">        date, key, exists);</span>
+
+<span class="fc bfc" id="L119" title="All 2 branches covered.">    if (!exists) {</span>
+<span class="fc" id="L120">      return List.of();</span>
+    }
+
+<span class="fc" id="L123">    byte[] json = articleBackupReader.download(key);</span>
+    try {
+      // json -&gt; dto 변경
+<span class="fc" id="L126">      List&lt;ArticleBackupDto&gt; articles = objectMapper.readValue(json, BACKUP_DTO_LIST_TYPE);</span>
+<span class="fc" id="L127">      return articles;</span>
+
+<span class="fc" id="L129">    } catch (IOException ex) {</span>
+<span class="fc" id="L130">      ArticleException exception =</span>
+          new ArticleException(ArticleErrorCode.ARTICLE_BACKUP_JSON_PARSE_FAILED, ex);
+<span class="fc" id="L132">      exception.addDetail(&quot;key&quot;, key);</span>
+
+<span class="fc" id="L134">      throw exception;</span>
+    }
+  }
+
+  private boolean isRestorable(ArticleBackupDto dto) {
+<span class="fc bfc" id="L139" title="All 2 branches covered.">    return dto != null</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">        &amp;&amp; dto.sourceUrl() != null</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        &amp;&amp; !dto.sourceUrl().isBlank()</span>
+<span class="fc bfc" id="L142" title="All 2 branches covered.">        &amp;&amp; dto.publishDate() != null</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">        &amp;&amp; dto.deletedAt() == null;</span>
+  }
+
+  private Set&lt;String&gt; findExistingSourceUrls(Collection&lt;ArticleBackupDto&gt; candidates) {
+<span class="fc" id="L147">    List&lt;String&gt; sourceUrls = candidates.stream()</span>
+<span class="fc" id="L148">        .map(ArticleBackupDto::sourceUrl)</span>
+<span class="fc" id="L149">        .filter(Objects::nonNull)</span>
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">        .filter(sourceUrl -&gt; !sourceUrl.isBlank())</span>
+<span class="fc" id="L151">        .distinct()</span>
+<span class="fc" id="L152">        .toList();</span>
+
+<span class="fc bfc" id="L154" title="All 2 branches covered.">    if (sourceUrls.isEmpty()) {</span>
+<span class="fc" id="L155">      return Set.of();</span>
+    }
+
+<span class="fc" id="L158">    return articleRepository.findExistingSourceUrls(sourceUrls);</span>
+  }
+
+  private String storageKey(LocalDate targetDate) {
+<span class="fc" id="L162">    String prefix = backupProperties.storage().s3().prefix();</span>
+<span class="fc" id="L163">    String normalizedPrefix = prefix.replaceAll(&quot;^/+&quot;, &quot;&quot;).replaceAll(&quot;/+$&quot;, &quot;&quot;);</span>
+
+<span class="fc" id="L165">    return &quot;%s/date=%s/articles-%s.json&quot;.formatted(normalizedPrefix, targetDate, targetDate);</span>
+  }
+
+  private void throwInvalidRequest(String fieldName, Object value) {
+<span class="fc" id="L169">    ArticleException exception =</span>
+        new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+<span class="fc" id="L171">    exception.addDetail(fieldName, value);</span>
+
+<span class="fc" id="L173">    throw exception;</span>
+  }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

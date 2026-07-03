@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserActivityEventHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.activity.event</a> &gt; <span class="el_source">UserActivityEventHandler.java</span></div><h1>UserActivityEventHandler.java</h1><pre class="source lang-java linenums">package com.monew.server.activity.event;
+
+import com.monew.server.activity.document.UserActivity;
+import com.monew.server.activity.document.UserActivity.ArticleViewActivity;
+import com.monew.server.activity.document.UserActivity.CommentActivity;
+import com.monew.server.activity.document.UserActivity.CommentLikeActivity;
+import com.monew.server.activity.document.UserActivity.SubscriptionActivity;
+import com.monew.server.activity.service.UserActivityUpdater;
+import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+@Component
+@RequiredArgsConstructor
+public class UserActivityEventHandler {
+
+  private final UserActivityUpdater userActivityUpdater;
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(UserCreatedEvent event){
+<span class="fc" id="L24">    UserActivity userActivity = UserActivity.create(</span>
+<span class="fc" id="L25">        event.userId().toString(),</span>
+<span class="fc" id="L26">        event.email(),</span>
+<span class="fc" id="L27">        event.nickname(),</span>
+<span class="fc" id="L28">        event.createdAt()</span>
+    );
+<span class="fc" id="L30">    userActivityUpdater.create(userActivity);</span>
+<span class="fc" id="L31">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(UserNicknameUpdatedEvent event) {
+<span class="fc" id="L36">    userActivityUpdater.updateNickname(</span>
+<span class="fc" id="L37">        event.userId().toString(),</span>
+<span class="fc" id="L38">        event.nickname()</span>
+    );
+<span class="fc" id="L40">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(UserDeletedEvent event) {
+<span class="fc" id="L45">    userActivityUpdater.deleteUser(event.userId().toString());</span>
+<span class="fc" id="L46">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(SubscriptionCreatedEvent event) {
+<span class="fc" id="L51">    SubscriptionActivity subscription = new SubscriptionActivity(</span>
+<span class="fc" id="L52">        event.subscriptionId().toString(),</span>
+<span class="fc" id="L53">        event.interestId().toString(),</span>
+<span class="fc" id="L54">        event.interestName(),</span>
+<span class="fc" id="L55">        event.interestKeywords(),</span>
+<span class="fc" id="L56">        event.interestSubscriberCount(),</span>
+<span class="fc" id="L57">        event.createdAt()</span>
+    );
+
+<span class="fc" id="L60">    userActivityUpdater.addSubscription(</span>
+<span class="fc" id="L61">        event.userId().toString(),</span>
+        subscription
+    );
+<span class="fc" id="L64">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(SubscriptionDeletedEvent event) {
+<span class="fc" id="L69">    userActivityUpdater.removeSubscription(</span>
+<span class="fc" id="L70">        event.userId().toString(),</span>
+<span class="fc" id="L71">        event.subscriptionId().toString()</span>
+    );
+<span class="fc" id="L73">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentCreatedEvent event) {
+<span class="fc" id="L78">    CommentActivity comment = new CommentActivity(</span>
+<span class="fc" id="L79">        event.commentId().toString(),</span>
+<span class="fc" id="L80">        event.articleId().toString(),</span>
+<span class="fc" id="L81">        event.articleTitle(),</span>
+<span class="fc" id="L82">        event.userId().toString(),</span>
+<span class="fc" id="L83">        event.userNickname(),</span>
+<span class="fc" id="L84">        event.content(),</span>
+<span class="fc" id="L85">        event.likeCount(),</span>
+<span class="fc" id="L86">        event.createdAt()</span>
+    );
+
+<span class="fc" id="L89">    userActivityUpdater.addComment(</span>
+<span class="fc" id="L90">        event.userId().toString(),</span>
+        comment
+    );
+<span class="fc" id="L93">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentUpdatedEvent event) {
+<span class="fc" id="L98">    userActivityUpdater.updateComment(</span>
+<span class="fc" id="L99">        event.userId().toString(),</span>
+<span class="fc" id="L100">        event.commentId().toString(),</span>
+<span class="fc" id="L101">        event.content()</span>
+    );
+
+<span class="fc" id="L104">    userActivityUpdater.updateLikeCommentContent(</span>
+<span class="fc" id="L105">        event.commentId().toString(),</span>
+<span class="fc" id="L106">        event.content()</span>
+    );
+<span class="fc" id="L108">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentDeletedEvent event) {
+<span class="fc" id="L113">    userActivityUpdater.deleteComment(</span>
+<span class="fc" id="L114">        event.userId().toString(),</span>
+<span class="fc" id="L115">        event.commentId().toString()</span>
+    );
+
+<span class="fc" id="L118">    userActivityUpdater.removeDeletedCommentLikes(</span>
+<span class="fc" id="L119">        event.commentId().toString()</span>
+    );
+<span class="fc" id="L121">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentLikeCreatedEvent event) {
+<span class="fc" id="L126">    CommentLikeActivity commentLike = new CommentLikeActivity(</span>
+<span class="fc" id="L127">        event.commentLikeId().toString(),</span>
+<span class="fc" id="L128">        event.createdAt(),</span>
+<span class="fc" id="L129">        event.commentId().toString(),</span>
+<span class="fc" id="L130">        event.articleId().toString(),</span>
+<span class="fc" id="L131">        event.articleTitle(),</span>
+<span class="fc" id="L132">        event.commentUserId().toString(),</span>
+<span class="fc" id="L133">        event.commentUserNickname(),</span>
+<span class="fc" id="L134">        event.commentContent(),</span>
+<span class="fc" id="L135">        event.commentLikeCount(),</span>
+<span class="fc" id="L136">        event.commentCreatedAt()</span>
+    );
+
+<span class="fc" id="L139">    userActivityUpdater.addCommentLike(</span>
+<span class="fc" id="L140">        event.userId().toString(),</span>
+        commentLike
+    );
+
+<span class="fc" id="L144">    userActivityUpdater.updateCommentLikeCount(</span>
+<span class="fc" id="L145">        event.commentId().toString(),</span>
+<span class="fc" id="L146">        event.commentLikeCount()</span>
+    );
+<span class="fc" id="L148">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(CommentLikeDeletedEvent event) {
+<span class="fc" id="L153">    userActivityUpdater.removeCommentLike(</span>
+<span class="fc" id="L154">        event.userId().toString(),</span>
+<span class="fc" id="L155">        event.commentLikeId().toString()</span>
+    );
+
+<span class="fc" id="L158">    userActivityUpdater.updateCommentLikeCount(</span>
+<span class="fc" id="L159">        event.commentId().toString(),</span>
+<span class="fc" id="L160">        event.commentLikeCount()</span>
+    );
+<span class="fc" id="L162">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(ArticleViewedEvent event) {
+<span class="fc" id="L167">    ArticleViewActivity articleView = new ArticleViewActivity(</span>
+<span class="fc" id="L168">        event.articleViewId().toString(),</span>
+<span class="fc" id="L169">        event.userId().toString(),</span>
+<span class="fc" id="L170">        event.createdAt(),</span>
+<span class="fc" id="L171">        event.articleId().toString(),</span>
+<span class="fc" id="L172">        event.source(),</span>
+<span class="fc" id="L173">        event.sourceUrl(),</span>
+<span class="fc" id="L174">        event.articleTitle(),</span>
+<span class="fc" id="L175">        event.articlePublishedDate(),</span>
+<span class="fc" id="L176">        event.articleSummary(),</span>
+<span class="fc" id="L177">        event.articleCommentCount(),</span>
+<span class="fc" id="L178">        event.articleViewCount()</span>
+    );
+
+<span class="fc" id="L181">    userActivityUpdater.addArticleView(</span>
+<span class="fc" id="L182">        event.userId().toString(),</span>
+        articleView
+    );
+<span class="fc" id="L185">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(ArticleCommentCountUpdatedEvent event) {
+<span class="fc" id="L190">    userActivityUpdater.updateArticleViewCommentCount(</span>
+<span class="fc" id="L191">        event.articleId().toString(),</span>
+<span class="fc" id="L192">        event.articleCommentCount()</span>
+    );
+<span class="fc" id="L194">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(ArticleViewCountUpdatedEvent event) {
+<span class="fc" id="L199">    userActivityUpdater.updateArticleViewCount(</span>
+<span class="fc" id="L200">        event.articleId().toString(),</span>
+<span class="fc" id="L201">        event.articleViewCount()</span>
+    );
+<span class="fc" id="L203">  }</span>
+
+  @Async
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void handle(ArticleDeletedEvent event) {
+<span class="fc" id="L208">    userActivityUpdater.removeArticleViews(</span>
+<span class="fc" id="L209">        event.articleId().toString()</span>
+    );
+<span class="fc" id="L211">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

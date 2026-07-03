@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommonErrorCode.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.common.exception</a> &gt; <span class="el_source">CommonErrorCode.java</span></div><h1>CommonErrorCode.java</h1><pre class="source lang-java linenums">package com.monew.server.common.exception;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+<span class="fc" id="L7">@Getter</span>
+@RequiredArgsConstructor
+public enum CommonErrorCode implements ErrorCode {
+
+    // 공통
+<span class="fc" id="L12">    INVALID_REQUEST(HttpStatus.BAD_REQUEST, &quot;잘못된 요청입니다.&quot;),</span>
+<span class="fc" id="L13">    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, &quot;요청 데이터 유효성 검사에 실패하였습니다.&quot;),</span>
+<span class="fc" id="L14">    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, &quot;서버 내부 오류가 발생했습니다.&quot;),</span>
+
+    // 인증, 권한
+<span class="fc" id="L17">    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, &quot;로그인이 필요합니다.&quot;),</span>
+<span class="fc" id="L18">    LOGIN_FAILED(HttpStatus.UNAUTHORIZED, &quot;이메일 또는 비밀번호가 일치하지 않습니다.&quot;),</span>
+<span class="fc" id="L19">    FORBIDDEN(HttpStatus.FORBIDDEN, &quot;요청 권한이 없습니다.&quot;);</span>
+
+    private final HttpStatus status;
+    private final String message;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

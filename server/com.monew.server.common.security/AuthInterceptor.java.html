@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthInterceptor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.common.security</a> &gt; <span class="el_source">AuthInterceptor.java</span></div><h1>AuthInterceptor.java</h1><pre class="source lang-java linenums">package com.monew.server.common.security;
+
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.CommonErrorCode;
+import com.monew.server.user.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+/**
+ * 전역 인증 인터셉터.
+ * 로그인/회원가입을 제외한 모든 요청에서 MoNew-Request-User-ID 헤더를 검증한다.
+ * - 헤더 존재 + UUID 형식 + DB에 활성 사용자 존재 여부 확인
+ * - 통과 시 userId 를 request attribute 에 저장해 컨트롤러에서 사용할 수 있게 한다.
+ */
+@Component
+@RequiredArgsConstructor
+public class AuthInterceptor implements HandlerInterceptor {
+
+    public static final String USER_ID_HEADER = &quot;MoNew-Request-User-ID&quot;;
+    public static final String USER_ID_ATTRIBUTE = &quot;userId&quot;;
+
+    private final UserRepository userRepository;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+<span class="fc" id="L30">        String header = request.getHeader(USER_ID_HEADER);</span>
+<span class="fc bfc" id="L31" title="All 4 branches covered.">        if (header == null || header.isBlank()) {</span>
+<span class="fc" id="L32">            throw new BaseException(CommonErrorCode.UNAUTHORIZED);</span>
+        }
+
+        UUID userId;
+        try {
+<span class="fc" id="L37">            userId = UUID.fromString(header);</span>
+<span class="fc" id="L38">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L39">            throw new BaseException(CommonErrorCode.UNAUTHORIZED);</span>
+<span class="fc" id="L40">        }</span>
+
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        if (!userRepository.existsByIdAndDeletedAtIsNull(userId)) {</span>
+<span class="fc" id="L43">            throw new BaseException(CommonErrorCode.UNAUTHORIZED);</span>
+        }
+
+<span class="fc" id="L46">        request.setAttribute(USER_ID_ATTRIBUTE, userId);</span>
+<span class="fc" id="L47">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

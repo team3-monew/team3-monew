@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterestMatchedArticleEventListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.notification.event</a> &gt; <span class="el_source">InterestMatchedArticleEventListener.java</span></div><h1>InterestMatchedArticleEventListener.java</h1><pre class="source lang-java linenums">package com.monew.batch.notification.event;
+
+import com.monew.batch.article.event.InterestMatchedArticleEvent;
+import com.monew.batch.notification.entity.Notification;
+import com.monew.batch.notification.entity.NotificationResourceType;
+import com.monew.batch.notification.repository.NotificationRepository;
+import com.monew.batch.subscription.repository.SubscriptionRepository;
+import com.monew.batch.user.entity.User;
+import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+@Component
+@RequiredArgsConstructor
+public class InterestMatchedArticleEventListener {
+
+    private final SubscriptionRepository subscriptionRepository;
+    private final NotificationRepository notificationRepository;
+    private final EntityManager entityManager;
+
+    @EventListener
+    @Transactional
+    public void handle(InterestMatchedArticleEvent event) {
+<span class="fc bfc" id="L32" title="All 6 branches covered.">        if (event == null || event.interests() == null || event.interests().isEmpty()) {</span>
+<span class="fc" id="L33">            return;</span>
+        }
+
+<span class="fc" id="L36">        Map&lt;UUID, Long&gt; articleCountsByInterestId = event.interests().stream()</span>
+<span class="fc bfc" id="L37" title="All 4 branches covered.">                .filter(interest -&gt; interest != null &amp;&amp; interest.interestId() != null)</span>
+<span class="fc" id="L38">                .collect(Collectors.groupingBy(</span>
+                        InterestMatchedArticleEvent.InterestMatchData::interestId,
+                        LinkedHashMap::new,
+<span class="fc" id="L41">                        Collectors.counting()</span>
+                ));
+
+<span class="fc" id="L44">        Map&lt;UUID, String&gt; interestNamesByInterestId = event.interests().stream()</span>
+<span class="fc bfc" id="L45" title="All 4 branches covered.">                .filter(interest -&gt; interest != null &amp;&amp; interest.interestId() != null)</span>
+<span class="fc" id="L46">                .collect(Collectors.toMap(</span>
+                        InterestMatchedArticleEvent.InterestMatchData::interestId,
+                        InterestMatchedArticleEvent.InterestMatchData::interestName,
+<span class="fc" id="L49">                        (first, ignored) -&gt; first,</span>
+                        LinkedHashMap::new
+                ));
+
+<span class="fc" id="L53">        List&lt;Notification&gt; notifications = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        for (Map.Entry&lt;UUID, Long&gt; entry : articleCountsByInterestId.entrySet()) {</span>
+<span class="fc" id="L56">            UUID interestId = entry.getKey();</span>
+<span class="fc" id="L57">            int articleCount = entry.getValue().intValue();</span>
+
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">            if (articleCount &lt;= 0) {</span>
+<span class="nc" id="L60">                continue;</span>
+            }
+
+<span class="fc" id="L63">            List&lt;UUID&gt; subscriberIds = subscriptionRepository.findUserIdsByInterestId(interestId);</span>
+
+<span class="fc bfc" id="L65" title="All 2 branches covered.">            for (UUID subscriberId : subscriberIds) {</span>
+<span class="fc" id="L66">                User userReference = entityManager.getReference(User.class, subscriberId);</span>
+
+<span class="fc" id="L68">                notifications.add(Notification.builder()</span>
+<span class="fc" id="L69">                        .user(userReference)</span>
+<span class="fc" id="L70">                        .content(createContent(interestNamesByInterestId.get(interestId), articleCount))</span>
+<span class="fc" id="L71">                        .resourceType(NotificationResourceType.INTEREST)</span>
+<span class="fc" id="L72">                        .resourceId(interestId)</span>
+<span class="fc" id="L73">                        .build());</span>
+<span class="fc" id="L74">            }</span>
+<span class="fc" id="L75">        }</span>
+
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (!notifications.isEmpty()) {</span>
+<span class="fc" id="L78">            notificationRepository.saveAll(notifications);</span>
+        }
+<span class="fc" id="L80">    }</span>
+
+    private String createContent(String interestName, int articleCount) {
+<span class="fc" id="L83">        return interestName + &quot; 관심사와 관련된 기사가 &quot; + articleCount + &quot;건 등록되었습니다.&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

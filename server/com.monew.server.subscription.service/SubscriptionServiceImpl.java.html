@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubscriptionServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.subscription.service</a> &gt; <span class="el_source">SubscriptionServiceImpl.java</span></div><h1>SubscriptionServiceImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.subscription.service;
+
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.interest.InterestErrorCode;
+import com.monew.server.interest.entity.Interest;
+import com.monew.server.interest.entity.InterestKeyword;
+import com.monew.server.interest.repository.InterestKeywordRepository;
+import com.monew.server.interest.repository.InterestRepository;
+import com.monew.server.subscription.dto.SubscriptionDto;
+import com.monew.server.subscription.entity.Subscription;
+import com.monew.server.subscription.repository.SubscriptionRepository;
+import com.monew.server.user.entity.User;
+import com.monew.server.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+// event publisher 관련 import 추가
+import com.monew.server.activity.event.SubscriptionCreatedEvent;
+import com.monew.server.activity.event.SubscriptionDeletedEvent;
+import org.springframework.context.ApplicationEventPublisher;
+import java.util.Optional;
+
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class SubscriptionServiceImpl implements SubscriptionService {
+
+    private final SubscriptionRepository subscriptionRepository;
+    private final InterestRepository interestRepository;
+    private final InterestKeywordRepository interestKeywordRepository;
+    private final UserRepository userRepository;
+
+    // event publisher 관련 필드 추가
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Override
+    @Transactional
+    public SubscriptionDto subscribe(UUID userId, UUID interestId) {
+<span class="nc" id="L44">        Interest interest = getInterest(interestId);</span>
+
+        // event publisher 용 코드
+<span class="nc" id="L47">        Optional&lt;Subscription&gt; existingSubscription =</span>
+<span class="nc" id="L48">            subscriptionRepository.findByUser_IdAndInterest_Id(userId, interestId);</span>
+
+<span class="nc" id="L50">        boolean created = existingSubscription.isEmpty();</span>
+        //
+
+<span class="nc" id="L53">        Subscription subscription = subscriptionRepository</span>
+<span class="nc" id="L54">                .findByUser_IdAndInterest_Id(userId, interestId)</span>
+<span class="nc" id="L55">                .orElseGet(() -&gt; createSubscription(userId, interest));</span>
+
+<span class="nc" id="L57">        List&lt;String&gt; keywords = interestKeywordRepository.findAllByInterestId(interestId).stream()</span>
+<span class="nc" id="L58">                .map(InterestKeyword::getKeyword)</span>
+<span class="nc" id="L59">                .toList();</span>
+
+        // event publisher 삽입
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (created) {</span>
+<span class="nc" id="L63">            eventPublisher.publishEvent(</span>
+                new SubscriptionCreatedEvent(
+                    userId,
+<span class="nc" id="L66">                    subscription.getId(),</span>
+<span class="nc" id="L67">                    interest.getId(),</span>
+<span class="nc" id="L68">                    interest.getName(),</span>
+                    keywords,
+<span class="nc" id="L70">                    interest.getSubscriberCount(),</span>
+<span class="nc" id="L71">                    subscription.getCreatedAt()</span>
+                )
+            );
+        }
+
+<span class="nc" id="L76">        return SubscriptionDto.of(subscription, interest, keywords);</span>
+    }
+
+    @Override
+    @Transactional
+    public void unsubscribe(UUID userId, UUID interestId) {
+<span class="nc" id="L82">        Interest interest = getInterest(interestId);</span>
+
+<span class="nc" id="L84">        subscriptionRepository.findByUser_IdAndInterest_Id(userId, interestId)</span>
+<span class="nc" id="L85">                .ifPresent(subscription -&gt; {</span>
+
+                    // event publisher용
+<span class="nc" id="L88">                    UUID subscriptionId = subscription.getId();</span>
+
+<span class="nc" id="L90">                    subscriptionRepository.delete(subscription);</span>
+<span class="nc" id="L91">                    interest.decreaseSubscriberCount();</span>
+
+                    // event publisher 삽입
+<span class="nc" id="L94">                    eventPublisher.publishEvent(</span>
+                        new SubscriptionDeletedEvent(
+                            userId,
+                            subscriptionId
+                        )
+                    );
+<span class="nc" id="L100">                });</span>
+<span class="nc" id="L101">    }</span>
+
+    private Subscription createSubscription(UUID userId, Interest interest) {
+<span class="nc" id="L104">        User user = userRepository.getReferenceById(userId);</span>
+
+<span class="nc" id="L106">        Subscription subscription = new Subscription(user, interest);</span>
+<span class="nc" id="L107">        Subscription savedSubscription = subscriptionRepository.save(subscription);</span>
+
+<span class="nc" id="L109">        interest.increaseSubscriberCount();</span>
+<span class="nc" id="L110">        return savedSubscription;</span>
+    }
+
+    private Interest getInterest(UUID interestId) {
+<span class="nc" id="L114">        return interestRepository.findById(interestId)</span>
+<span class="nc" id="L115">                .orElseThrow(() -&gt; new BaseException(InterestErrorCode.INTEREST_NOT_FOUND));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

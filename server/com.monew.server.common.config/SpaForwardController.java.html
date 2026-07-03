@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SpaForwardController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.common.config</a> &gt; <span class="el_source">SpaForwardController.java</span></div><h1>SpaForwardController.java</h1><pre class="source lang-java linenums">package com.monew.server.common.config;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+/**
+ * SPA(React Router) 지원 컨트롤러.
+ *
+ * &lt;p&gt;서버가 직접 처리하지 않는 경로(= 클라이언트 라우팅 경로)를 {@code index.html} 로 forward 한다.
+ * 이렇게 해야 사용자가 {@code /interests} 같은 딥링크로 접속하거나 새로고침해도 404 가 나지 않는다.
+ *
+ * &lt;p&gt;주의: {@code /api/**}, {@code /actuator/**}, 확장자 있는 정적 파일(.js/.css/.woff2 등)은
+ * 각자 더 구체적인 핸들러(REST 컨트롤러/Actuator/정적리소스 핸들러)가 우선 처리하므로 여기로 오지 않는다.
+ * (아래 패턴은 &quot;마지막 경로 세그먼트에 점(.)이 없는&quot; 경우만 매칭 → 정적 파일 제외)
+ */
+@Controller
+<span class="nc" id="L17">public class SpaForwardController {</span>
+
+    @RequestMapping(value = {&quot;/&quot;, &quot;/{path:[^\\.]*}&quot;, &quot;/**/{path:[^\\.]*}&quot;})
+    public String forward() {
+<span class="nc" id="L21">        return &quot;forward:/index.html&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

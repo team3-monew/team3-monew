@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommentResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.comment.dto</a> &gt; <span class="el_source">CommentResponse.java</span></div><h1>CommentResponse.java</h1><pre class="source lang-java linenums">package com.monew.server.comment.dto;
+
+import com.monew.server.comment.entity.Comment;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+<span class="nc" id="L7">public record CommentResponse(</span>
+    UUID id,
+    UUID articleId,
+    UUID userId,
+    String userNickname,
+    String content,
+    long likeCount,
+    boolean likedByMe,
+    LocalDateTime createdAt
+) {
+
+  // 엔티티를 DTO로 편하게 변환하기 위한 팩토리 메서드
+  public static CommentResponse of (Comment comment, boolean likedByMe) {
+<span class="nc" id="L20">    return new CommentResponse(</span>
+<span class="nc" id="L21">        comment.getId(),</span>
+<span class="nc" id="L22">        comment.getArticle().getId(),</span>
+<span class="nc" id="L23">        comment.getUser().getId(),</span>
+<span class="nc" id="L24">        comment.getUser().getNickname(),</span>
+<span class="nc" id="L25">        comment.getContent(),</span>
+<span class="nc" id="L26">        comment.getLikeCount(),</span>
+        likedByMe,
+<span class="nc" id="L28">        comment.getCreatedAt()</span>
+    );
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterestServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.interest.service</a> &gt; <span class="el_source">InterestServiceImpl.java</span></div><h1>InterestServiceImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.interest.service;
+
+import com.monew.server.common.exception.BaseException;
+import com.monew.server.common.exception.interest.InterestErrorCode;
+import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.interest.dto.InterestDto;
+import com.monew.server.interest.dto.InterestRegisterRequest;
+import com.monew.server.interest.dto.InterestUpdateRequest;
+import com.monew.server.interest.entity.Interest;
+import com.monew.server.interest.entity.InterestKeyword;
+import com.monew.server.interest.repository.InterestKeywordRepository;
+import com.monew.server.interest.repository.InterestRepository;
+import com.monew.server.subscription.repository.SubscriptionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class InterestServiceImpl implements InterestService {
+
+    private static final double SIMILARITY_THRESHOLD = 0.8;
+
+    private final InterestRepository interestRepository;
+    private final InterestKeywordRepository interestKeywordRepository;
+    private final SubscriptionRepository subscriptionRepository;
+
+    @Override
+    @Transactional
+    public InterestDto register(InterestRegisterRequest request) {
+<span class="nc" id="L36">        String name = request.name().trim();</span>
+<span class="nc" id="L37">        List&lt;String&gt; keywords = normalizeKeywords(request.keywords());</span>
+
+<span class="nc" id="L39">        validateSimilarInterestName(name);</span>
+
+<span class="nc" id="L41">        Interest interest = new Interest(name);</span>
+<span class="nc" id="L42">        Interest savedInterest = interestRepository.save(interest);</span>
+
+<span class="nc" id="L44">        List&lt;InterestKeyword&gt; interestKeywords = keywords.stream()</span>
+<span class="nc" id="L45">                .map(keyword -&gt; new InterestKeyword(savedInterest, keyword))</span>
+<span class="nc" id="L46">                .toList();</span>
+
+<span class="nc" id="L48">        interestKeywordRepository.saveAll(interestKeywords);</span>
+
+<span class="nc" id="L50">        return InterestDto.of(savedInterest, keywords, false);</span>
+    }
+
+    @Override
+    @Transactional
+    public InterestDto update(UUID interestId, InterestUpdateRequest request) {
+<span class="nc" id="L56">        Interest interest = interestRepository.findById(interestId)</span>
+<span class="nc" id="L57">                .orElseThrow(() -&gt; new BaseException(InterestErrorCode.INTEREST_NOT_FOUND));</span>
+
+<span class="nc" id="L59">        List&lt;String&gt; keywords = normalizeKeywords(request.keywords());</span>
+
+<span class="nc" id="L61">        interestKeywordRepository.deleteByInterest(interest);</span>
+
+<span class="nc" id="L63">        List&lt;InterestKeyword&gt; newKeywords = keywords.stream()</span>
+<span class="nc" id="L64">                .map(keyword -&gt; new InterestKeyword(interest, keyword))</span>
+<span class="nc" id="L65">                .toList();</span>
+
+<span class="nc" id="L67">        interestKeywordRepository.saveAll(newKeywords);</span>
+<span class="nc" id="L68">        interest.markUpdated();</span>
+
+<span class="nc" id="L70">        return InterestDto.of(interest, keywords, false);</span>
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID interestId) {
+<span class="nc" id="L76">        Interest interest = interestRepository.findById(interestId)</span>
+<span class="nc" id="L77">                .orElseThrow(() -&gt; new BaseException(InterestErrorCode.INTEREST_NOT_FOUND));</span>
+<span class="nc" id="L78">        interestRepository.delete(interest);</span>
+<span class="nc" id="L79">    }</span>
+
+    @Override
+    @Transactional(readOnly = true)
+    public CursorPageResponse&lt;InterestDto&gt; getInterests(String keyword, String orderBy, String direction, String cursor,
+                                                        LocalDateTime after, int limit, UUID requestUserId) {
+<span class="nc" id="L85">        validateSearchCondition(orderBy, direction, cursor, after, limit);</span>
+
+<span class="nc" id="L87">        int fetchLimit = limit + 1;</span>
+
+<span class="nc" id="L89">        List&lt;Interest&gt; fetchedInterests = interestRepository.searchInterests(keyword, orderBy, direction, cursor, after,</span>
+                fetchLimit);
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        boolean hasNext = fetchedInterests.size() &gt; limit;</span>
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        List&lt;Interest&gt; interests = hasNext</span>
+<span class="nc" id="L94">                ? fetchedInterests.subList(0, limit) : fetchedInterests;</span>
+<span class="nc" id="L95">        long totalElements = interestRepository.countInterests(keyword);</span>
+
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (interests.isEmpty()) {</span>
+<span class="nc" id="L98">            return new CursorPageResponse&lt;&gt;(List.of(), null, null, 0, totalElements, false);</span>
+        }
+
+<span class="nc" id="L101">        List&lt;UUID&gt; interestIds = interests.stream()</span>
+<span class="nc" id="L102">                .map(Interest::getId)</span>
+<span class="nc" id="L103">                .toList();</span>
+<span class="nc" id="L104">        Map&lt;UUID, List&lt;String&gt;&gt; keywordMap = interestKeywordRepository</span>
+<span class="nc" id="L105">                .findAllByInterestIdIn(interestIds).stream()</span>
+<span class="nc" id="L106">                .collect(Collectors.groupingBy(</span>
+<span class="nc" id="L107">                        interestKeyword -&gt; interestKeyword.getInterest().getId(),</span>
+<span class="nc" id="L108">                        Collectors.mapping(InterestKeyword::getKeyword, Collectors.toList())</span>
+                ));
+<span class="nc" id="L110">        Set&lt;UUID&gt; subscribedInterestIds = new HashSet&lt;&gt;(</span>
+<span class="nc" id="L111">                subscriptionRepository.findSubscribedInterestIds(requestUserId, interestIds)</span>
+        );
+
+<span class="nc" id="L114">        List&lt;InterestDto&gt; content = interests.stream()</span>
+<span class="nc" id="L115">                .map(interest -&gt; InterestDto.of(</span>
+                        interest,
+<span class="nc" id="L117">                        keywordMap.getOrDefault(interest.getId(), List.of()),</span>
+<span class="nc" id="L118">                        subscribedInterestIds.contains(interest.getId())</span>
+<span class="nc" id="L119">                )).toList();</span>
+<span class="nc" id="L120">        Interest lastInterest = interests.get(interests.size() - 1);</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        String nextCursor = hasNext ? getNextCursor(lastInterest, orderBy) : null;</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        LocalDateTime nextAfter = hasNext ? lastInterest.getCreatedAt() : null;</span>
+
+<span class="nc" id="L124">        return new CursorPageResponse&lt;&gt;(</span>
+                content,
+                nextCursor,
+                nextAfter,
+<span class="nc" id="L128">                content.size(),</span>
+                totalElements,
+                hasNext
+        );
+    }
+
+    private List&lt;String&gt; normalizeKeywords(List&lt;String&gt; keywords) {
+<span class="nc" id="L135">        Set&lt;String&gt; normalizedKeywords = new LinkedHashSet&lt;&gt;();</span>
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        for (String keyword : keywords) {</span>
+<span class="nc" id="L138">            normalizedKeywords.add(keyword.trim());</span>
+<span class="nc" id="L139">        }</span>
+
+<span class="nc" id="L141">        return normalizedKeywords.stream().toList();</span>
+    }
+
+    private void validateSimilarInterestName(String name) {
+<span class="nc" id="L145">        String normalizedName = Interest.normalizeName(name);</span>
+
+<span class="nc" id="L147">        List&lt;String&gt; candidateNames = getSimilarNameCandidates(normalizedName);</span>
+
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        for (String candidateName : candidateNames) {</span>
+<span class="nc" id="L150">            double similarity = calculateSimilarity(normalizedName, Interest.normalizeName(candidateName));</span>
+
+<span class="nc bnc" id="L152" title="All 2 branches missed.">            if (similarity &gt;= SIMILARITY_THRESHOLD) {</span>
+<span class="nc" id="L153">                throw new BaseException(InterestErrorCode.SIMILAR_INTEREST_EXISTS);</span>
+            }
+<span class="nc" id="L155">        }</span>
+<span class="nc" id="L156">    }</span>
+
+
+    // 성능 개선 : pg_trgm 기반 후보군만 조회
+    // - 단, 3글자 미만의 짧은 이름은 trigram 후보 검색이 불안정할 수 있음 -&gt; 기존 방식으로 fallback
+    private List&lt;String&gt; getSimilarNameCandidates(String normalizedName) {
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (normalizedName.length() &lt; 3) {</span>
+<span class="nc" id="L163">            return interestRepository.findAllNames();</span>
+        }
+
+<span class="nc" id="L166">        return interestRepository.findSimilarNameCandidates(normalizedName);</span>
+    }
+
+    private double calculateSimilarity(String source, String target) {
+<span class="nc" id="L170">        String normalizedSource = Interest.normalizeName(source);</span>
+<span class="nc" id="L171">        String normalizedTarget = Interest.normalizeName(target);</span>
+
+<span class="nc" id="L173">        int maxLength = Math.max(normalizedSource.length(), normalizedTarget.length());</span>
+
+<span class="nc bnc" id="L175" title="All 2 branches missed.">        if (maxLength == 0) {</span>
+<span class="nc" id="L176">            return 1.0;</span>
+        }
+
+<span class="nc" id="L179">        int distance = calculateLevenshteinDistance(normalizedSource, normalizedTarget);</span>
+<span class="nc" id="L180">        return 1.0 - ((double) distance / maxLength);</span>
+    }
+
+    private int calculateLevenshteinDistance(String source, String target) {
+<span class="nc" id="L184">        int sourceLength = source.length();</span>
+<span class="nc" id="L185">        int targetLength = target.length();</span>
+
+<span class="nc" id="L187">        int[][] dp = new int[sourceLength + 1][targetLength + 1];</span>
+
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        for (int i = 0; i &lt;= sourceLength; i++) {</span>
+<span class="nc" id="L190">            dp[i][0] = i;</span>
+        }
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        for (int j = 0; j &lt;= targetLength; j++) {</span>
+<span class="nc" id="L193">            dp[0][j] = j;</span>
+        }
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        for (int i = 1; i &lt;= sourceLength; i++) {</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">            for (int j = 1; j &lt;= targetLength; j++) {</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">                int cost = source.charAt(i - 1) == target.charAt(j - 1) ? 0 : 1;</span>
+
+<span class="nc" id="L199">                dp[i][j] = Math.min(</span>
+<span class="nc" id="L200">                        Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1), dp[i - 1][j - 1] + cost</span>
+                );
+            }
+        }
+<span class="nc" id="L204">        return dp[sourceLength][targetLength];</span>
+    }
+
+    private void validateSearchCondition(String orderBy, String direction, String cursor,
+                                         LocalDateTime after, int limit) {
+<span class="nc bnc" id="L209" title="All 4 branches missed.">        if (!orderBy.equals(&quot;name&quot;) &amp;&amp; !orderBy.equals(&quot;subscriberCount&quot;)) {</span>
+<span class="nc" id="L210">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_ORDER_BY);</span>
+        }
+
+<span class="nc bnc" id="L213" title="All 4 branches missed.">        if (!direction.equals(&quot;ASC&quot;) &amp;&amp; !direction.equals(&quot;DESC&quot;)) {</span>
+<span class="nc" id="L214">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_DIRECTION);</span>
+        }
+
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        if (limit &lt;= 0) {</span>
+<span class="nc" id="L218">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_LIMIT);</span>
+        }
+
+<span class="nc bnc" id="L221" title="All 4 branches missed.">        boolean hasCursor = cursor != null &amp;&amp; !cursor.isBlank();</span>
+
+<span class="nc bnc" id="L223" title="All 8 branches missed.">        if ((!hasCursor &amp;&amp; after != null) || (hasCursor &amp;&amp; after == null)) {</span>
+<span class="nc" id="L224">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);</span>
+        }
+
+<span class="nc bnc" id="L227" title="All 2 branches missed.">        if (hasCursor) {</span>
+<span class="nc" id="L228">            ParsedCursor parsedCursor = parseCursor(cursor);</span>
+
+<span class="nc bnc" id="L230" title="All 2 branches missed.">            if (orderBy.equals(&quot;subscriberCount&quot;)) {</span>
+<span class="nc" id="L231">                validateSubscriberCountCursor(parsedCursor.value());</span>
+            }
+        }
+<span class="nc" id="L234">    }</span>
+
+    // 추가 &amp; 수정
+    private void validateSubscriberCountCursor(String cursorValue) {
+        try {
+<span class="nc" id="L239">            Long.parseLong(cursorValue);</span>
+<span class="nc" id="L240">        } catch (NumberFormatException e) {</span>
+<span class="nc" id="L241">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);</span>
+<span class="nc" id="L242">        }</span>
+<span class="nc" id="L243">    }</span>
+
+    private String getNextCursor(Interest interest, String orderBy) {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">        String cursorValue = &quot;name&quot;.equals(orderBy)</span>
+<span class="nc" id="L247">                ? interest.getName()</span>
+<span class="nc" id="L248">                : String.valueOf(interest.getSubscriberCount());</span>
+
+<span class="nc" id="L250">        return cursorValue + &quot;|&quot; + interest.getId();</span>
+    }
+
+    private ParsedCursor parseCursor(String cursor) {
+<span class="nc" id="L254">        int delimiterIndex = cursor.lastIndexOf(&quot;|&quot;);</span>
+<span class="nc bnc" id="L255" title="All 4 branches missed.">        if (delimiterIndex &lt;= 0 || delimiterIndex == cursor.length() - 1) {</span>
+<span class="nc" id="L256">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);</span>
+        }
+
+<span class="nc" id="L259">        String value = cursor.substring(0, delimiterIndex);</span>
+<span class="nc" id="L260">        String idValue = cursor.substring(delimiterIndex + 1);</span>
+
+        try {
+<span class="nc" id="L263">            return new ParsedCursor(value, UUID.fromString(idValue));</span>
+<span class="nc" id="L264">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L265">            throw new BaseException(InterestErrorCode.INVALID_INTEREST_CURSOR);</span>
+        }
+    }
+
+<span class="nc" id="L269">    private record ParsedCursor(String value, UUID id) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

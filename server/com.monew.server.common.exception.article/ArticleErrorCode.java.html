@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleErrorCode.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.common.exception.article</a> &gt; <span class="el_source">ArticleErrorCode.java</span></div><h1>ArticleErrorCode.java</h1><pre class="source lang-java linenums">package com.monew.server.common.exception.article;
+
+import com.monew.server.common.exception.ErrorCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+<span class="fc" id="L8">@Getter</span>
+@RequiredArgsConstructor
+public enum ArticleErrorCode implements ErrorCode {
+
+<span class="fc" id="L12">    ARTICLE_NOT_FOUND(HttpStatus.NOT_FOUND, &quot;뉴스 기사 정보를 찾을 수 없습니다.&quot;),</span>
+<span class="fc" id="L13">    INVALID_ARTICLE_REQUEST(HttpStatus.BAD_REQUEST, &quot;뉴스 기사 요청 값이 올바르지 않습니다.&quot;),</span>
+<span class="fc" id="L14">    INVALID_ARTICLE_CURSOR(HttpStatus.BAD_REQUEST, &quot;뉴스 기사 커서 값이 올바르지 않습니다.&quot;),</span>
+<span class="fc" id="L15">    ARTICLE_BACKUP_JSON_PARSE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;뉴스 기사 백업 JSON 파싱에 실패했습니다.&quot;),</span>
+<span class="fc" id="L16">    ARTICLE_BACKUP_STORAGE_ACCESS_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;뉴스 기사 백업 저장소 접근에 실패했습니다.&quot;);</span>
+
+    private final HttpStatus status;
+    private final String message;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

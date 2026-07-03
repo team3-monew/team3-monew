@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleBackup.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.entity</a> &gt; <span class="el_source">ArticleBackup.java</span></div><h1>ArticleBackup.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.entity;
+
+import com.monew.batch.common.entity.BaseCreatedEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@Entity
+@Table(name = &quot;article_backups&quot;)
+public class ArticleBackup extends BaseCreatedEntity {
+
+  @Id
+  private UUID id;
+
+  @Column(name = &quot;backup_date&quot;, nullable = false, unique = true)
+  private LocalDate backupDate;
+
+  @Column(name = &quot;s3_bucket&quot;, nullable = false)
+  private String s3Bucket;
+
+  @Column(name = &quot;s3_object_key&quot;, nullable = false, columnDefinition = &quot;TEXT&quot;)
+  private String s3ObjectKey;
+
+  @Column(name = &quot;article_count&quot;, nullable = false)
+  private long articleCount;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private ArticleBackupStatus status;
+
+  /**
+   * 새 백업 이력을 RUNNING 상태로 생성합니다.
+   */
+  public static ArticleBackup running(LocalDate backupDate, String s3Bucket, String s3ObjectKey) {
+<span class="nc" id="L45">    ArticleBackup articleBackup = new ArticleBackup();</span>
+<span class="nc" id="L46">    articleBackup.backupDate = backupDate;</span>
+<span class="nc" id="L47">    articleBackup.s3Bucket = s3Bucket;</span>
+<span class="nc" id="L48">    articleBackup.s3ObjectKey = s3ObjectKey;</span>
+<span class="nc" id="L49">    articleBackup.articleCount = 0L;</span>
+<span class="nc" id="L50">    articleBackup.status = ArticleBackupStatus.RUNNING;</span>
+<span class="nc" id="L51">    return articleBackup;</span>
+  }
+
+  /**
+   * 기존 날짜의 백업을 재실행할 때 이력을 RUNNING 상태로 초기화합니다.
+   */
+  public void start(String s3Bucket, String s3ObjectKey) {
+<span class="nc" id="L58">    this.s3Bucket = s3Bucket;</span>
+<span class="nc" id="L59">    this.s3ObjectKey = s3ObjectKey;</span>
+<span class="nc" id="L60">    this.articleCount = 0L;</span>
+<span class="nc" id="L61">    this.status = ArticleBackupStatus.RUNNING;</span>
+<span class="nc" id="L62">  }</span>
+
+  /**
+   * 업로드 성공 후 백업 기사 수와 SUCCESS 상태를 기록합니다.
+   */
+  public void succeed(long articleCount) {
+<span class="nc" id="L68">    this.articleCount = articleCount;</span>
+<span class="nc" id="L69">    this.status = ArticleBackupStatus.SUCCESS;</span>
+<span class="nc" id="L70">  }</span>
+
+  /**
+   * 백업 처리 중 실패가 발생했음을 기록합니다.
+   */
+  public void fail() {
+<span class="nc" id="L76">    this.status = ArticleBackupStatus.FAILED;</span>
+<span class="nc" id="L77">  }</span>
+
+  @PrePersist
+  void prePersist() {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">      if (id == null) {</span>
+<span class="nc" id="L82">          id = UUID.randomUUID();</span>
+      }
+<span class="nc" id="L84">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

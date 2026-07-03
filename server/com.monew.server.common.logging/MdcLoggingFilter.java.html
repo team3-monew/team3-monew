@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MdcLoggingFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.common.logging</a> &gt; <span class="el_source">MdcLoggingFilter.java</span></div><h1>MdcLoggingFilter.java</h1><pre class="source lang-java linenums">package com.monew.server.common.logging;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.UUID;
+import org.slf4j.MDC;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+/**
+ * 요청별 추적용 MDC 필터.
+ * - 요청마다 고유 requestId 생성 + 클라이언트 IP를 MDC에 저장 → 모든 로그에 자동 포함
+ * - requestId를 응답 헤더(MoNew-Request-ID)로 내려 클라이언트가 문의 시 추적 가능
+ * - 요청 종료 시 MDC.clear() 로 스레드 재사용에 따른 값 누수 방지
+ */
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
+<span class="fc" id="L23">public class MdcLoggingFilter extends OncePerRequestFilter {</span>
+
+    public static final String REQUEST_ID = &quot;requestId&quot;;
+    public static final String CLIENT_IP = &quot;clientIp&quot;;
+    public static final String REQUEST_ID_HEADER = &quot;MoNew-Request-ID&quot;;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        try {
+<span class="fc" id="L33">            String requestId = UUID.randomUUID().toString().substring(0, 8);</span>
+<span class="fc" id="L34">            MDC.put(REQUEST_ID, requestId);</span>
+<span class="fc" id="L35">            MDC.put(CLIENT_IP, resolveClientIp(request));</span>
+<span class="fc" id="L36">            response.setHeader(REQUEST_ID_HEADER, requestId);</span>
+
+<span class="fc" id="L38">            filterChain.doFilter(request, response);</span>
+        } finally {
+<span class="fc" id="L40">            MDC.clear(); // 반드시 정리 (스레드풀 재사용 시 값 섞임 방지)</span>
+        }
+<span class="fc" id="L42">    }</span>
+
+    // ALB/프록시 뒤에서는 실제 클라이언트 IP가 X-Forwarded-For 에 담김
+    private String resolveClientIp(HttpServletRequest request) {
+<span class="fc" id="L46">        String forwarded = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="pc bpc" id="L47" title="1 of 4 branches missed.">        if (forwarded != null &amp;&amp; !forwarded.isBlank()) {</span>
+<span class="fc" id="L48">            return forwarded.split(&quot;,&quot;)[0].trim();</span>
+        }
+<span class="fc" id="L50">        return request.getRemoteAddr();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

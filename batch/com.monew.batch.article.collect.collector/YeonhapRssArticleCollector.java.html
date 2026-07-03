@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>YeonhapRssArticleCollector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.collect.collector</a> &gt; <span class="el_source">YeonhapRssArticleCollector.java</span></div><h1>YeonhapRssArticleCollector.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.collect.collector;
+
+import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
+import com.monew.batch.article.collect.collector.dto.RssCollectResultDto;
+import com.monew.batch.article.config.ArticleCollectProperties;
+import com.monew.batch.article.config.RssProperties;
+import com.monew.batch.article.entity.ArticleSource;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+
+/**
+ * 연합뉴스TV 카테고리별 RSS 목록을 순서대로 수집하는 구현체입니다.
+ * 최신 RSS 단일 URL은 사용하지 않고, monew.rss.yeonhap.urls 목록을 순회합니다.
+ */
+<span class="fc" id="L20">@Slf4j</span>
+@Component
+public class YeonhapRssArticleCollector extends AbstractRssArticleCollector {
+
+  private final RssProperties rssProperties;
+
+  public YeonhapRssArticleCollector(RestClient.Builder restClientBuilder,
+      ArticleCollectProperties properties, RssProperties rssProperties) {
+<span class="fc" id="L28">    super(restClientBuilder, properties);</span>
+<span class="fc" id="L29">    this.rssProperties = rssProperties;</span>
+<span class="fc" id="L30">  }</span>
+
+  @Override
+  public ArticleSource getSource() {
+<span class="fc" id="L34">    return ArticleSource.YEONHAP;</span>
+  }
+
+  /**
+   * 연합뉴스TV는 단일 URL 흐름을 쓰지 않으므로 null을 반환합니다.
+   * 실제 수집은 collectLatestResult에서 URL 목록을 직접 순회합니다.
+   */
+  @Override
+  protected String getFeedUrl() {
+<span class="nc" id="L43">    return null;</span>
+  }
+
+  @Override
+  public RssCollectResultDto collectLatestResult(int limit) {
+<span class="fc" id="L48">    List&lt;String&gt; urls = rssProperties.yeonhap().urls();</span>
+<span class="pc bpc" id="L49" title="2 of 4 branches missed.">    if (urls == null || urls.isEmpty()) {</span>
+<span class="nc" id="L50">      return RssCollectResultDto.empty();</span>
+    }
+
+<span class="fc" id="L53">    Map&lt;String, CollectedArticleDto&gt; articlesByUrl = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L54">    int requestCount = 0;</span>
+<span class="fc" id="L55">    int successCount = 0;</span>
+<span class="fc" id="L56">    int failureCount = 0;</span>
+<span class="fc" id="L57">    int collectedBeforeDeduplication = 0;</span>
+
+<span class="fc bfc" id="L59" title="All 2 branches covered.">    for (String url : urls) {</span>
+<span class="fc" id="L60">      RssCollectResultDto result = collectFeed(url, limit);</span>
+<span class="fc" id="L61">      requestCount += result.requestCount();</span>
+<span class="fc" id="L62">      successCount += result.successCount();</span>
+<span class="fc" id="L63">      failureCount += result.failureCount();</span>
+<span class="fc" id="L64">      collectedBeforeDeduplication += result.articles().size();</span>
+
+<span class="fc bfc" id="L66" title="All 2 branches covered.">      for (CollectedArticleDto article : result.articles()) {</span>
+<span class="fc" id="L67">        articlesByUrl.putIfAbsent(article.sourceUrl(), article);</span>
+<span class="fc" id="L68">      }</span>
+<span class="fc" id="L69">    }</span>
+
+<span class="fc" id="L71">    int duplicateSkippedCount = collectedBeforeDeduplication - articlesByUrl.size();</span>
+<span class="fc" id="L72">    log.info(&quot;Yonhap RSS collect finished. requestCount={}, successCount={}, failureCount={}, collected={}, duplicateSkipped={}&quot;,</span>
+<span class="fc" id="L73">        requestCount, successCount, failureCount, articlesByUrl.size(), duplicateSkippedCount);</span>
+
+<span class="fc" id="L75">    return new RssCollectResultDto(new ArrayList&lt;&gt;(articlesByUrl.values()), requestCount, successCount,</span>
+        failureCount);
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

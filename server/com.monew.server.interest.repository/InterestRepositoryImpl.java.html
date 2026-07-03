@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterestRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.interest.repository</a> &gt; <span class="el_source">InterestRepositoryImpl.java</span></div><h1>InterestRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.interest.repository;
+
+import com.monew.server.interest.entity.Interest;
+import com.monew.server.interest.entity.QInterest;
+import com.monew.server.interest.entity.QInterestKeyword;
+import com.querydsl.core.types.Order;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
+
+@RequiredArgsConstructor
+public class InterestRepositoryImpl implements InterestRepositoryCustom {
+
+    private final JPAQueryFactory queryFactory;
+
+    private final QInterest interest = QInterest.interest;
+    private final QInterestKeyword interestKeyword = QInterestKeyword.interestKeyword;
+
+    @Override
+    public List&lt;Interest&gt; searchInterests(
+            String keyword,
+            String orderBy,
+            String direction,
+            String cursor,
+            LocalDateTime after,
+            int limit
+    ) {
+<span class="nc" id="L36">        return queryFactory</span>
+<span class="nc" id="L37">                .selectFrom(interest)</span>
+<span class="nc" id="L38">                .where(keywordContains(keyword),</span>
+<span class="nc" id="L39">                        cursorCondition(orderBy, direction, cursor, after))</span>
+<span class="nc" id="L40">                .orderBy(orderSpecifier(orderBy, direction))</span>
+<span class="nc" id="L41">                .limit(limit)</span>
+<span class="nc" id="L42">                .fetch();</span>
+    }
+
+    @Override
+    public long countInterests(String keyword) {
+<span class="nc" id="L47">        Long count = queryFactory</span>
+<span class="nc" id="L48">                .select(interest.count())</span>
+<span class="nc" id="L49">                .from(interest)</span>
+<span class="nc" id="L50">                .where(keywordContains(keyword))</span>
+<span class="nc" id="L51">                .fetchOne();</span>
+
+<span class="nc bnc" id="L53" title="All 2 branches missed.">        return count == null ? 0L : count;</span>
+    }
+
+    private BooleanExpression keywordContains(String keyword) {
+<span class="nc bnc" id="L57" title="All 4 branches missed.">        if (keyword == null || keyword.isBlank()) {</span>
+<span class="nc" id="L58">            return null;</span>
+        }
+<span class="nc" id="L60">        String trimmedKeyword = keyword.trim();</span>
+
+<span class="nc" id="L62">        return interest.name.containsIgnoreCase(trimmedKeyword)</span>
+<span class="nc" id="L63">                .or(JPAExpressions</span>
+<span class="nc" id="L64">                        .selectOne()</span>
+<span class="nc" id="L65">                        .from(interestKeyword)</span>
+<span class="nc" id="L66">                        .where(</span>
+<span class="nc" id="L67">                                interestKeyword.interest.eq(interest),</span>
+<span class="nc" id="L68">                                interestKeyword.keyword.containsIgnoreCase(trimmedKeyword)</span>
+                        )
+<span class="nc" id="L70">                        .exists());</span>
+    }
+
+    private BooleanExpression cursorCondition(
+            String orderBy,
+            String direction,
+            String cursor,
+            LocalDateTime after) {
+<span class="nc bnc" id="L78" title="All 4 branches missed.">        if (!StringUtils.hasText(cursor) || after == null) {</span>
+<span class="nc" id="L79">            return null;</span>
+        }
+
+        // 수정 : cursor에 정렬 필드 값과 마지막 요소 id를 함께 담아 파싱
+<span class="nc" id="L83">        ParsedCursor parsedCursor = parseCursor(cursor);</span>
+<span class="nc" id="L84">        String cursorValue = parsedCursor.value();</span>
+<span class="nc" id="L85">        UUID cursorId = parsedCursor.id();</span>
+
+<span class="nc" id="L87">        boolean asc = direction.equals(&quot;ASC&quot;);</span>
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (orderBy.equals(&quot;name&quot;)) {</span>
+<span class="nc" id="L90">            return nameCursorCondition(cursorValue, after, cursorId, asc);</span>
+        }
+
+<span class="nc" id="L93">        long cursorSubscriberCount = Long.parseLong(cursorValue);</span>
+<span class="nc" id="L94">        return subscriberCountCursorCondition(cursorSubscriberCount, after, cursorId, asc);</span>
+    }
+
+    private BooleanExpression nameCursorCondition(
+            String cursorName,
+            LocalDateTime after,
+            UUID cursorId,
+            boolean asc
+    ) {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (asc) {</span>
+<span class="nc" id="L104">            return interest.name.gt(cursorName)</span>
+<span class="nc" id="L105">                    .or(interest.name.eq(cursorName)</span>
+<span class="nc" id="L106">                            .and(interest.createdAt.gt(after)))</span>
+<span class="nc" id="L107">                    .or(interest.name.eq(cursorName)</span>
+<span class="nc" id="L108">                            .and(interest.createdAt.eq(after))</span>
+<span class="nc" id="L109">                            .and(interest.id.gt(cursorId)));</span>
+        }
+
+<span class="nc" id="L112">        return interest.name.lt(cursorName)</span>
+<span class="nc" id="L113">                .or(interest.name.eq(cursorName)</span>
+<span class="nc" id="L114">                        .and(interest.createdAt.lt(after)))</span>
+<span class="nc" id="L115">                .or(interest.name.eq(cursorName)</span>
+<span class="nc" id="L116">                        .and(interest.createdAt.eq(after))</span>
+<span class="nc" id="L117">                        .and(interest.id.lt(cursorId)));</span>
+    }
+
+    private BooleanExpression subscriberCountCursorCondition(
+            long cursorSubscriberCount,
+            LocalDateTime after,
+            UUID cursorId,
+            boolean asc
+    ) {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (asc) {</span>
+<span class="nc" id="L127">            return interest.subscriberCount.gt(cursorSubscriberCount)</span>
+<span class="nc" id="L128">                    .or(interest.subscriberCount.eq(cursorSubscriberCount)</span>
+<span class="nc" id="L129">                            .and(interest.createdAt.gt(after)))</span>
+<span class="nc" id="L130">                    .or(interest.subscriberCount.eq(cursorSubscriberCount)</span>
+<span class="nc" id="L131">                            .and(interest.createdAt.eq(after))</span>
+<span class="nc" id="L132">                            .and(interest.id.gt(cursorId)));</span>
+        }
+
+<span class="nc" id="L135">        return interest.subscriberCount.lt(cursorSubscriberCount)</span>
+<span class="nc" id="L136">                .or(interest.subscriberCount.eq(cursorSubscriberCount)</span>
+<span class="nc" id="L137">                        .and(interest.createdAt.lt(after)))</span>
+<span class="nc" id="L138">                .or(interest.subscriberCount.eq(cursorSubscriberCount)</span>
+<span class="nc" id="L139">                        .and(interest.createdAt.eq(after))</span>
+<span class="nc" id="L140">                        .and(interest.id.lt(cursorId)));</span>
+    }
+
+    private OrderSpecifier&lt;?&gt;[] orderSpecifier(String orderBy, String direction) {
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        Order order = direction.equals(&quot;ASC&quot;) ? Order.ASC : Order.DESC;</span>
+
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        OrderSpecifier&lt;?&gt; primaryOrder = orderBy.equals(&quot;name&quot;)</span>
+<span class="nc" id="L147">                ? new OrderSpecifier&lt;&gt;(order, interest.name)</span>
+<span class="nc" id="L148">                : new OrderSpecifier&lt;&gt;(order, interest.subscriberCount);</span>
+
+<span class="nc" id="L150">        OrderSpecifier&lt;?&gt; createdAtOrder = new OrderSpecifier&lt;&gt;(order, interest.createdAt);</span>
+<span class="nc" id="L151">        OrderSpecifier&lt;?&gt; idOrder = new OrderSpecifier&lt;&gt;(order, interest.id);</span>
+
+<span class="nc" id="L153">        return new OrderSpecifier&lt;?&gt;[] {primaryOrder, createdAtOrder, idOrder};</span>
+    }
+
+    // 추가 : nextCursor 형식인 &quot;정렬값|id&quot;를 파싱
+    private ParsedCursor parseCursor(String cursor) {
+<span class="nc" id="L158">        int delimiterIndex = cursor.lastIndexOf(&quot;|&quot;);</span>
+<span class="nc" id="L159">        String value = cursor.substring(0, delimiterIndex);</span>
+<span class="nc" id="L160">        UUID id = UUID.fromString(cursor.substring(delimiterIndex + 1));</span>
+
+<span class="nc" id="L162">        return new ParsedCursor(value, id);</span>
+    }
+
+    // PR 수정 : 커서 파싱 결과를 담기 위한 내부 record
+<span class="nc" id="L166">    private record ParsedCursor(String value, UUID id) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

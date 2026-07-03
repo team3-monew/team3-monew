@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BatchJobNames.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.monitoring</a> &gt; <span class="el_source">BatchJobNames.java</span></div><h1>BatchJobNames.java</h1><pre class="source lang-java linenums">package com.monew.batch.monitoring;
+
+import java.util.Locale;
+
+public final class BatchJobNames {
+
+  private BatchJobNames() {
+  }
+
+  public static String normalize(String jobName) {
+<span class="nc bnc" id="L11" title="All 4 branches missed.">    if (jobName == null || jobName.isBlank()) {</span>
+<span class="nc" id="L12">      return &quot;unknown&quot;;</span>
+    }
+
+<span class="nc" id="L15">    String normalized = jobName;</span>
+<span class="nc bnc" id="L16" title="All 2 branches missed.">    if (normalized.endsWith(&quot;Job&quot;)) {</span>
+<span class="nc" id="L17">      normalized = normalized.substring(0, normalized.length() - 3);</span>
+    }
+
+    // Actuator tag 값은 외부에서 조회하기 쉽도록 camelCase Bean 이름을 snake_case로 통일합니다.
+<span class="nc" id="L21">    return normalized</span>
+<span class="nc" id="L22">        .replaceAll(&quot;([a-z])([A-Z])&quot;, &quot;$1_$2&quot;)</span>
+<span class="nc" id="L23">        .replace('-', '_')</span>
+<span class="nc" id="L24">        .toLowerCase(Locale.ROOT);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

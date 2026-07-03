@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.article.service</a> &gt; <span class="el_source">ArticleServiceImpl.java</span></div><h1>ArticleServiceImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.article.service;
+
+import com.monew.server.article.dto.ArticleListQueryResult;
+import com.monew.server.article.dto.ArticleResponse;
+import com.monew.server.article.dto.ArticleSearchCondition;
+import com.monew.server.article.dto.ArticleViewResponse;
+import com.monew.server.article.entity.Article;
+import com.monew.server.article.entity.ArticleSource;
+import com.monew.server.article.entity.ArticleView;
+import com.monew.server.article.repository.ArticleRepository;
+import com.monew.server.article.repository.ArticleViewRepository;
+import com.monew.server.article.repository.querydsl.ArticleQueryRepository;
+import com.monew.server.article.type.ArticleSortType;
+import com.monew.server.common.exception.article.ArticleErrorCode;
+import com.monew.server.common.exception.article.ArticleException;
+import com.monew.server.common.exception.user.UserErrorCode;
+import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.user.entity.User;
+import com.monew.server.user.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+// event publisher 관련 import
+import com.monew.server.activity.event.ArticleDeletedEvent;
+import com.monew.server.activity.event.ArticleViewCountUpdatedEvent;
+import com.monew.server.activity.event.ArticleViewedEvent;
+import org.springframework.context.ApplicationEventPublisher;
+
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ArticleServiceImpl implements ArticleService {
+
+    private static final int MAX_LIMIT = 50;
+    private static final String CURSOR_DELIMITER = &quot;|&quot;;
+
+    private final ArticleRepository articleRepository;
+    private final ArticleViewRepository articleViewRepository;
+    private final ArticleQueryRepository articleQueryRepository;
+    private final UserRepository userRepository;
+
+    // event publisher 관련 필드 추가
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Override
+    public CursorPageResponse&lt;ArticleResponse&gt; findArticles(
+            ArticleSearchCondition condition,
+            UUID userId
+    ) {
+<span class="fc" id="L56">        validateSearchCondition(condition);</span>
+<span class="fc" id="L57">        findActiveUser(userId);</span>
+
+<span class="fc" id="L59">        List&lt;ArticleListQueryResult&gt; queriedArticles =</span>
+<span class="fc" id="L60">                articleQueryRepository.findArticles(condition, userId);</span>
+
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        boolean hasNext = queriedArticles.size() &gt; condition.limit();</span>
+
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        List&lt;ArticleListQueryResult&gt; pageResults = hasNext</span>
+<span class="fc" id="L65">                ? queriedArticles.subList(0, condition.limit())</span>
+<span class="fc" id="L66">                : queriedArticles;</span>
+
+<span class="fc" id="L68">        List&lt;ArticleResponse&gt; content = pageResults.stream()</span>
+<span class="fc" id="L69">                .map(ArticleListQueryResult::article)</span>
+<span class="fc" id="L70">                .toList();</span>
+
+<span class="fc" id="L72">        String nextCursor = null;</span>
+<span class="fc" id="L73">        LocalDateTime nextAfter = null;</span>
+
+<span class="pc bpc" id="L75" title="1 of 4 branches missed.">        if (hasNext &amp;&amp; !pageResults.isEmpty()) {</span>
+<span class="fc" id="L76">            ArticleListQueryResult lastResult = pageResults.get(pageResults.size() - 1);</span>
+<span class="fc" id="L77">            ArticleResponse lastArticle = lastResult.article();</span>
+
+<span class="fc" id="L79">            nextCursor = resolveNextCursor(lastArticle, condition.orderBy());</span>
+<span class="fc" id="L80">            nextAfter = lastResult.createdAt();</span>
+        }
+
+<span class="fc" id="L83">        long totalElements = articleQueryRepository.countArticles(condition);</span>
+
+<span class="fc" id="L85">        return new CursorPageResponse&lt;&gt;(</span>
+                content,
+                nextCursor,
+                nextAfter,
+<span class="fc" id="L89">                content.size(),</span>
+                totalElements,
+                hasNext
+        );
+    }
+
+    @Override
+    public ArticleResponse findArticle(UUID articleId, UUID userId) {
+<span class="fc" id="L97">        findActiveUser(userId);</span>
+
+<span class="fc" id="L99">        Article article = findActiveArticle(articleId);</span>
+<span class="fc" id="L100">        boolean viewedByMe = articleViewRepository.existsByArticleIdAndUserId(articleId, userId);</span>
+
+<span class="fc" id="L102">        return ArticleResponse.from(article, viewedByMe);</span>
+    }
+
+    @Override
+    @Transactional
+    public ArticleViewResponse registerArticleView(UUID articleId, UUID userId) {
+<span class="fc" id="L108">        validateActiveArticleExists(articleId);</span>
+<span class="fc" id="L109">        User user = findActiveUser(userId);</span>
+
+<span class="fc" id="L111">        int inserted = articleViewRepository.insertIgnore(</span>
+<span class="fc" id="L112">                UUID.randomUUID(),</span>
+                articleId,
+<span class="fc" id="L114">                user.getId()</span>
+        );
+
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        if (inserted == 1) {</span>
+<span class="fc" id="L118">            int updated = articleRepository.increaseViewCount(articleId);</span>
+
+<span class="fc bfc" id="L120" title="All 2 branches covered.">            if (updated != 1) {</span>
+<span class="fc" id="L121">                ArticleException exception =</span>
+                        new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+<span class="fc" id="L123">                exception.addDetail(&quot;articleId&quot;, articleId);</span>
+<span class="fc" id="L124">                throw exception;</span>
+            }
+        }
+
+<span class="fc" id="L128">        ArticleView articleView = articleViewRepository</span>
+<span class="fc" id="L129">                .findByArticleIdAndUserId(articleId, user.getId())</span>
+<span class="fc" id="L130">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L131">                    ArticleException exception =</span>
+                            new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+<span class="fc" id="L133">                    exception.addDetail(&quot;articleId&quot;, articleId);</span>
+<span class="fc" id="L134">                    exception.addDetail(&quot;userId&quot;, user.getId());</span>
+<span class="fc" id="L135">                    return exception;</span>
+                });
+        // event publisher 삽입
+<span class="fc" id="L138">        Article article = articleView.getArticle();</span>
+
+<span class="fc" id="L140">        long articleViewCount = article.getViewCount();</span>
+
+<span class="fc" id="L142">        eventPublisher.publishEvent(</span>
+            new ArticleViewedEvent(
+<span class="fc" id="L144">                user.getId(),</span>
+<span class="fc" id="L145">                articleView.getId(),</span>
+<span class="fc" id="L146">                article.getId(),</span>
+<span class="fc" id="L147">                article.getSource().name(),</span>
+<span class="fc" id="L148">                article.getSourceUrl(),</span>
+<span class="fc" id="L149">                article.getTitle(),</span>
+<span class="fc" id="L150">                article.getPublishDate(),</span>
+<span class="fc" id="L151">                article.getSummary(),</span>
+<span class="fc" id="L152">                article.getCommentCount(),</span>
+                articleViewCount,
+<span class="fc" id="L154">                articleView.getCreatedAt()</span>
+            )
+        );
+
+<span class="fc bfc" id="L158" title="All 2 branches covered.">        if (inserted == 1) {</span>
+<span class="fc" id="L159">            eventPublisher.publishEvent(</span>
+                new ArticleViewCountUpdatedEvent(
+<span class="fc" id="L161">                    article.getId(),</span>
+                    articleViewCount
+                )
+            );
+        }
+
+<span class="fc" id="L167">        return ArticleViewResponse.from(articleView);</span>
+    }
+
+    @Override
+    @Transactional
+    public void softDelete(UUID articleId) {
+<span class="fc" id="L173">        Article article = findActiveArticleForUpdate(articleId);</span>
+<span class="fc" id="L174">        article.softDelete();</span>
+        
+        // event publisher 삽입
+<span class="fc" id="L177">        eventPublisher.publishEvent(</span>
+<span class="fc" id="L178">            new ArticleDeletedEvent(article.getId())</span>
+        );
+<span class="fc" id="L180">    }</span>
+
+    @Override
+    @Transactional
+    public void hardDelete(UUID articleId) {
+<span class="fc" id="L185">        Article article = findArticleIncludingDeleted(articleId);</span>
+<span class="fc" id="L186">        articleRepository.delete(article);</span>
+<span class="fc" id="L187">    }</span>
+
+    @Override
+    public List&lt;ArticleSource&gt; findSources() {
+<span class="fc" id="L191">        return Arrays.asList(ArticleSource.values());</span>
+    }
+
+    private void validateSearchCondition(ArticleSearchCondition condition) {
+<span class="fc bfc" id="L195" title="All 2 branches covered.">        if (condition == null) {</span>
+<span class="nc" id="L196">            throwInvalidRequest(&quot;condition&quot;, null);</span>
+        }
+
+<span class="fc" id="L199">        validateOrderBy(condition.orderBy());</span>
+<span class="fc" id="L200">        validateDirection(condition.direction());</span>
+<span class="fc" id="L201">        validateLimit(condition.limit());</span>
+<span class="fc" id="L202">        validatePublishDateRange(condition.publishDateFrom(), condition.publishDateTo());</span>
+<span class="fc" id="L203">        validateCursorPair(condition.cursor(), condition.after());</span>
+<span class="fc" id="L204">        validateCursorFormat(condition);</span>
+<span class="fc" id="L205">    }</span>
+
+    private void validateOrderBy(String orderBy) {
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">        if (ArticleSortType.isValid(orderBy)) {</span>
+<span class="fc" id="L209">            return;</span>
+        }
+
+<span class="nc" id="L212">        throwInvalidRequest(&quot;orderBy&quot;, orderBy);</span>
+<span class="nc" id="L213">    }</span>
+
+    private void validateDirection(String direction) {
+<span class="pc bpc" id="L216" title="1 of 4 branches missed.">        if (&quot;ASC&quot;.equalsIgnoreCase(direction) || &quot;DESC&quot;.equalsIgnoreCase(direction)) {</span>
+<span class="fc" id="L217">            return;</span>
+        }
+
+<span class="nc" id="L220">        throwInvalidRequest(&quot;direction&quot;, direction);</span>
+<span class="nc" id="L221">    }</span>
+
+    private void validateLimit(int limit) {
+<span class="fc bfc" id="L224" title="All 4 branches covered.">        if (limit &lt;= 0 || limit &gt; MAX_LIMIT) {</span>
+<span class="nc" id="L225">            throwInvalidRequest(&quot;limit&quot;, limit);</span>
+        }
+<span class="fc" id="L227">    }</span>
+
+    private void validatePublishDateRange(
+            LocalDateTime publishDateFrom,
+            LocalDateTime publishDateTo
+    ) {
+<span class="pc bpc" id="L233" title="1 of 4 branches missed.">        if (publishDateFrom == null || publishDateTo == null) {</span>
+<span class="fc" id="L234">            return;</span>
+        }
+
+<span class="pc bpc" id="L237" title="1 of 2 branches missed.">        if (publishDateFrom.isAfter(publishDateTo)) {</span>
+<span class="fc" id="L238">            ArticleException exception =</span>
+                    new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+<span class="fc" id="L240">            exception.addDetail(&quot;publishDateFrom&quot;, publishDateFrom);</span>
+<span class="fc" id="L241">            exception.addDetail(&quot;publishDateTo&quot;, publishDateTo);</span>
+<span class="fc" id="L242">            throw exception;</span>
+        }
+<span class="nc" id="L244">    }</span>
+
+    private void validateCursorPair(String cursor, LocalDateTime after) {
+<span class="pc bpc" id="L247" title="1 of 4 branches missed.">        boolean hasCursor = cursor != null &amp;&amp; !cursor.isBlank();</span>
+<span class="fc bfc" id="L248" title="All 2 branches covered.">        boolean hasAfter = after != null;</span>
+
+<span class="fc bfc" id="L250" title="All 2 branches covered.">        if (hasCursor != hasAfter) {</span>
+<span class="fc" id="L251">            ArticleException exception =</span>
+                    new ArticleException(ArticleErrorCode.INVALID_ARTICLE_CURSOR);
+<span class="fc" id="L253">            exception.addDetail(&quot;cursor&quot;, cursor);</span>
+<span class="fc" id="L254">            exception.addDetail(&quot;after&quot;, after);</span>
+<span class="fc" id="L255">            throw exception;</span>
+        }
+<span class="fc" id="L257">    }</span>
+
+    private void validateCursorFormat(ArticleSearchCondition condition) {
+<span class="fc" id="L260">        String cursor = condition.cursor();</span>
+
+<span class="pc bpc" id="L262" title="1 of 4 branches missed.">        if (cursor == null || cursor.isBlank()) {</span>
+<span class="fc" id="L263">            return;</span>
+        }
+
+        try {
+<span class="fc" id="L267">            ParsedArticleCursor parsedCursor = parseArticleCursor(cursor);</span>
+
+<span class="pc bpc" id="L269" title="1 of 3 branches missed.">            switch (ArticleSortType.from(condition.orderBy())) {</span>
+<span class="fc" id="L270">                case COMMENT_COUNT, VIEW_COUNT -&gt; Long.parseLong(parsedCursor.sortValue());</span>
+<span class="fc" id="L271">                case PUBLISH_DATE -&gt; LocalDateTime.parse(parsedCursor.sortValue());</span>
+            }
+
+<span class="fc" id="L274">            UUID.fromString(parsedCursor.articleId());</span>
+<span class="fc" id="L275">        } catch (IllegalArgumentException | DateTimeParseException e) {</span>
+<span class="fc" id="L276">            ArticleException exception =</span>
+                    new ArticleException(ArticleErrorCode.INVALID_ARTICLE_CURSOR, e);
+<span class="fc" id="L278">            exception.addDetail(&quot;cursor&quot;, cursor);</span>
+<span class="fc" id="L279">            exception.addDetail(&quot;orderBy&quot;, condition.orderBy());</span>
+<span class="fc" id="L280">            throw exception;</span>
+<span class="fc" id="L281">        }</span>
+<span class="fc" id="L282">    }</span>
+
+    private String resolveNextCursor(ArticleResponse article, String orderBy) {
+<span class="fc bfc" id="L285" title="All 3 branches covered.">        String sortValue = switch (ArticleSortType.from(orderBy)) {</span>
+<span class="fc" id="L286">            case COMMENT_COUNT -&gt; String.valueOf(article.commentCount());</span>
+<span class="fc" id="L287">            case VIEW_COUNT -&gt; String.valueOf(article.viewCount());</span>
+<span class="fc" id="L288">            case PUBLISH_DATE -&gt; article.publishDate().toString();</span>
+        };
+
+<span class="fc" id="L291">        return sortValue + CURSOR_DELIMITER + article.id();</span>
+    }
+
+    private ParsedArticleCursor parseArticleCursor(String cursor) {
+<span class="fc" id="L295">        String[] parts = cursor.split(&quot;\\|&quot;, 2);</span>
+
+<span class="pc bpc" id="L297" title="2 of 6 branches missed.">        if (parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {</span>
+<span class="fc" id="L298">            throw new IllegalArgumentException(&quot;Invalid cursor format&quot;);</span>
+        }
+
+<span class="fc" id="L301">        return new ParsedArticleCursor(parts[0], parts[1]);</span>
+    }
+
+<span class="fc" id="L304">    private record ParsedArticleCursor(</span>
+            String sortValue,
+            String articleId
+    ) {
+    }
+
+    private void validateActiveArticleExists(UUID articleId) {
+<span class="fc bfc" id="L311" title="All 4 branches covered.">        if (articleId == null || !articleRepository.existsByIdAndDeletedAtIsNull(articleId)) {</span>
+<span class="fc" id="L312">            ArticleException exception =</span>
+                    new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+<span class="fc" id="L314">            exception.addDetail(&quot;articleId&quot;, articleId);</span>
+<span class="fc" id="L315">            throw exception;</span>
+        }
+<span class="fc" id="L317">    }</span>
+
+    private Article findActiveArticleForUpdate(UUID articleId) {
+<span class="fc" id="L320">        return articleRepository.findActiveByIdForUpdate(articleId)</span>
+<span class="fc" id="L321">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L322">                    ArticleException exception =</span>
+                            new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+<span class="fc" id="L324">                    exception.addDetail(&quot;articleId&quot;, articleId);</span>
+<span class="fc" id="L325">                    return exception;</span>
+                });
+    }
+
+    private User findActiveUser(UUID userId) {
+<span class="fc bfc" id="L330" title="All 2 branches covered.">        if (userId == null) {</span>
+<span class="fc" id="L331">            ArticleException exception =</span>
+                    new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+<span class="fc" id="L333">            exception.addDetail(&quot;userId&quot;, null);</span>
+<span class="fc" id="L334">            throw exception;</span>
+        }
+
+<span class="fc" id="L337">        return userRepository.findByIdAndDeletedAtIsNull(userId)</span>
+<span class="fc" id="L338">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L339">                    ArticleException exception =</span>
+                            new ArticleException(UserErrorCode.USER_NOT_FOUND);
+<span class="fc" id="L341">                    exception.addDetail(&quot;userId&quot;, userId);</span>
+<span class="fc" id="L342">                    return exception;</span>
+                });
+    }
+
+    private void throwInvalidRequest(String fieldName, Object value) {
+<span class="fc" id="L347">        ArticleException exception =</span>
+                new ArticleException(ArticleErrorCode.INVALID_ARTICLE_REQUEST);
+<span class="fc" id="L349">        exception.addDetail(fieldName, value);</span>
+<span class="fc" id="L350">        throw exception;</span>
+    }
+
+    private Article findActiveArticle(UUID articleId) {
+<span class="fc" id="L354">        return articleRepository.findByIdAndDeletedAtIsNull(articleId)</span>
+<span class="fc" id="L355">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L356">                    ArticleException exception =</span>
+                            new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+<span class="fc" id="L358">                    exception.addDetail(&quot;articleId&quot;, articleId);</span>
+<span class="fc" id="L359">                    return exception;</span>
+                });
+    }
+
+    private Article findArticleIncludingDeleted(UUID articleId) {
+<span class="fc" id="L364">        return articleRepository.findById(articleId)</span>
+<span class="fc" id="L365">                .orElseThrow(() -&gt; {</span>
+<span class="fc" id="L366">                    ArticleException exception =</span>
+                            new ArticleException(ArticleErrorCode.ARTICLE_NOT_FOUND);
+<span class="fc" id="L368">                    exception.addDetail(&quot;articleId&quot;, articleId);</span>
+<span class="fc" id="L369">                    return exception;</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

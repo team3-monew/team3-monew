@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleCollectJobConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.collect.config</a> &gt; <span class="el_source">ArticleCollectJobConfig.java</span></div><h1>ArticleCollectJobConfig.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.collect.config;
+
+import com.monew.batch.article.collect.dto.ArticleCollectResultDto;
+import com.monew.batch.article.collect.dto.ArticleCollectStagingCleanupResultDto;
+import com.monew.batch.article.collect.dto.ArticleCollectStepResultDto;
+import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultDto;
+import com.monew.batch.article.collect.service.ArticleCollectService;
+import com.monew.batch.article.entity.ArticleSource;
+import com.monew.batch.monitoring.ArticleCollectMetrics;
+import com.monew.batch.monitoring.BatchJobMetricsListener;
+import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+
+/**
+ * 기사 수집 작업을 Spring Batch Job과 Step으로 등록하는 설정 클래스입니다.
+ */
+<span class="nc" id="L30">@Slf4j</span>
+@Configuration
+@RequiredArgsConstructor
+public class ArticleCollectJobConfig {
+
+  private static final String NAVER_REQUEST_COUNT = &quot;naverRequestCount&quot;;
+  private static final String NAVER_SUCCESS_COUNT = &quot;naverSuccessCount&quot;;
+  private static final String NAVER_FAILURE_COUNT = &quot;naverFailureCount&quot;;
+  private static final String RSS_REQUEST_COUNT = &quot;rssRequestCount&quot;;
+  private static final String RSS_SUCCESS_COUNT = &quot;rssSuccessCount&quot;;
+  private static final String RSS_FAILURE_COUNT = &quot;rssFailureCount&quot;;
+  private static final String YEONHAP_RSS_REQUEST_COUNT = &quot;yeonhapRssRequestCount&quot;;
+  private static final String YEONHAP_RSS_SUCCESS_COUNT = &quot;yeonhapRssSuccessCount&quot;;
+  private static final String YEONHAP_RSS_FAILURE_COUNT = &quot;yeonhapRssFailureCount&quot;;
+  private static final String COLLECTED_COUNT = &quot;collectedCount&quot;;
+  private static final String SAVED_COUNT = &quot;savedCount&quot;;
+  private static final String DUPLICATE_SKIPPED_COUNT = &quot;duplicateSkippedCount&quot;;
+  private static final String INVALID_SKIPPED_COUNT = &quot;invalidSkippedCount&quot;;
+<span class="nc" id="L48">  private static final ExitStatus COMPLETED_WITH_EXTERNAL_API_FAILURE =</span>
+      new ExitStatus(&quot;COMPLETED_WITH_EXTERNAL_API_FAILURE&quot;);
+
+  private final ArticleCollectService articleCollectService;
+  private final ArticleCollectMetrics articleCollectMetrics;
+
+  /**
+   * 매 시간 실행될 기사 수집 Batch Job입니다.
+   * 외부 수집 Step은 실패해도 다음 출처 수집으로 넘어가고,
+   * DB 반영 Step과 staging 정리 Step은 실패 시 재시도 후 최종 실패하면 Job을 실패시킵니다.
+   */
+  @Bean
+  public Job articleCollectJob(JobRepository jobRepository,
+      Step naverCollectStep,
+      Step hankyungRssCollectStep,
+      Step chosunRssCollectStep,
+      Step yeonhapRssCollectStep,
+      Step articlePersistStep,
+      Step articleCollectStagingCleanupStep,
+      BatchJobMetricsListener batchJobMetricsListener) {
+<span class="nc" id="L68">    return new JobBuilder(&quot;articleCollectJob&quot;, jobRepository)</span>
+        // Job 종료 시 공통 실행/성공/실패/소요시간 메트릭을 기록합니다.
+<span class="nc" id="L70">        .listener(batchJobMetricsListener)</span>
+<span class="nc" id="L71">        .start(naverCollectStep)</span>
+<span class="nc" id="L72">        .next(hankyungRssCollectStep)</span>
+<span class="nc" id="L73">        .next(chosunRssCollectStep)</span>
+<span class="nc" id="L74">        .next(yeonhapRssCollectStep)</span>
+<span class="nc" id="L75">        .next(articlePersistStep)</span>
+<span class="nc" id="L76">        .next(articleCollectStagingCleanupStep)</span>
+<span class="nc" id="L77">        .build();</span>
+  }
+
+  @Bean
+  public Step naverCollectStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L83">    return collectStep(jobRepository, transactionManager, &quot;naverCollectStep&quot;, chunkContext -&gt;</span>
+<span class="nc" id="L84">        articleCollectService.collectNaverArticlesToStaging(jobExecutionId(chunkContext)));</span>
+  }
+
+  @Bean
+  public Step hankyungRssCollectStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L90">    return rssCollectStep(jobRepository, transactionManager, &quot;hankyungRssCollectStep&quot;,</span>
+        ArticleSource.HANKYUNG);
+  }
+
+  @Bean
+  public Step chosunRssCollectStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L97">    return rssCollectStep(jobRepository, transactionManager, &quot;chosunRssCollectStep&quot;,</span>
+        ArticleSource.CHOSUN);
+  }
+
+  @Bean
+  public Step yeonhapRssCollectStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L104">    return rssCollectStep(jobRepository, transactionManager, &quot;yeonhapRssCollectStep&quot;,</span>
+        ArticleSource.YEONHAP);
+  }
+
+  /**
+   * staging 데이터를 articles에 저장하고, 저장된 기사와 관심사를 연결하는 Step입니다.
+   * DB 반영 작업이므로 실패 예외를 삼키지 않고 그대로 던져 Step이 FAILED로 기록되게 합니다.
+   * 같은 JobInstance를 재시작하면 완료된 수집 Step은 건너뛰고 이 Step부터 다시 실행될 수 있습니다.
+   */
+  @Bean
+  public Step articlePersistStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L116">    return new StepBuilder(&quot;articlePersistStep&quot;, jobRepository)</span>
+<span class="nc" id="L117">        .tasklet((contribution, chunkContext) -&gt; {</span>
+<span class="nc" id="L118">          ArticleSaveAndInterestLinkStepResultDto result =</span>
+<span class="nc" id="L119">              articleCollectService.saveStagedArticlesAndLinkInterests(jobExecutionId(chunkContext));</span>
+          // staging 데이터를 실제 articles에 반영한 뒤 최종 처리 건수 메트릭을 갱신합니다.
+<span class="nc" id="L121">          articleCollectMetrics.recordPersistResult(result);</span>
+
+<span class="nc" id="L123">          ExecutionContext context = jobContext(chunkContext);</span>
+<span class="nc" id="L124">          context.putInt(SAVED_COUNT, result.savedCount());</span>
+<span class="nc" id="L125">          increment(context, DUPLICATE_SKIPPED_COUNT, result.duplicateSkippedCount());</span>
+<span class="nc" id="L126">          context.putInt(INVALID_SKIPPED_COUNT, result.invalidSkippedCount());</span>
+
+<span class="nc" id="L128">          ArticleCollectResultDto finalResult = toFinalResult(context,</span>
+<span class="nc" id="L129">              result.articleInterestLinkedCount());</span>
+<span class="nc" id="L130">          log.info(&quot;Article collect job finished before cleanup. result={}&quot;, finalResult);</span>
+<span class="nc" id="L131">          return RepeatStatus.FINISHED;</span>
+        }, transactionManager)
+<span class="nc" id="L133">        .build();</span>
+  }
+
+  /**
+   * articlePersistStep이 성공한 뒤 이번 실행에서 사용한 staging 데이터를 삭제하는 Step입니다.
+   * cleanup 실패도 예외를 삼키지 않고 그대로 던져 Step이 FAILED로 기록되게 합니다.
+   * 재시작 시 articlePersistStep이 이미 COMPLETED라면 이 cleanup Step부터 다시 실행될 수 있습니다.
+   */
+  @Bean
+  public Step articleCollectStagingCleanupStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager) {
+<span class="nc" id="L144">    return new StepBuilder(&quot;articleCollectStagingCleanupStep&quot;, jobRepository)</span>
+<span class="nc" id="L145">        .tasklet((contribution, chunkContext) -&gt; {</span>
+<span class="nc" id="L146">          ArticleCollectStagingCleanupResultDto result =</span>
+<span class="nc" id="L147">              articleCollectService.cleanupStaging(jobExecutionId(chunkContext));</span>
+<span class="nc" id="L148">          log.info(&quot;Article collect staging cleanup finished. result={}&quot;, result);</span>
+<span class="nc" id="L149">          return RepeatStatus.FINISHED;</span>
+        }, transactionManager)
+<span class="nc" id="L151">        .build();</span>
+  }
+
+  /**
+   * RSS 출처별 수집 Step을 같은 실패 정책으로 만들기 위한 공통 생성 메서드입니다.
+   */
+  private Step rssCollectStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager,
+      String stepName,
+      ArticleSource source) {
+<span class="nc" id="L161">    return collectStep(jobRepository, transactionManager, stepName, chunkContext -&gt;</span>
+<span class="nc" id="L162">        articleCollectService.collectRssArticlesToStaging(jobExecutionId(chunkContext), source));</span>
+  }
+
+  /**
+   * 외부 수집 Step을 생성합니다.
+   * Step 실행 중 예외가 나도 로그만 남기고 FINISHED를 반환해서 다음 Step으로 계속 진행합니다.
+   */
+  private Step collectStep(JobRepository jobRepository,
+      PlatformTransactionManager transactionManager,
+      String stepName,
+      Function&lt;ChunkContext, ArticleCollectStepResultDto&gt; collectAction) {
+<span class="nc" id="L173">    return new StepBuilder(stepName, jobRepository)</span>
+<span class="nc" id="L174">        .tasklet((contribution, chunkContext) -&gt; {</span>
+          try {
+<span class="nc" id="L176">            ArticleCollectStepResultDto result = collectAction.apply(chunkContext);</span>
+<span class="nc" id="L177">            recordCollectResult(jobContext(chunkContext), result);</span>
+
+            // 각 수집 Step이 끝날 때 source별 staging 결과를 먼저 기록합니다.
+<span class="nc" id="L180">            articleCollectMetrics.recordSourceCollectResult(result);</span>
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">            if (result.failureCount() &gt; 0) {</span>
+<span class="nc" id="L183">              contribution.setExitStatus(COMPLETED_WITH_EXTERNAL_API_FAILURE);</span>
+            }
+<span class="nc" id="L185">          } catch (Exception ex) {</span>
+<span class="nc" id="L186">            log.warn(&quot;기사 수집 step 실패. 다음 step 실행. stepName={}, message={}&quot;,</span>
+<span class="nc" id="L187">                stepName, ex.getMessage(), ex);</span>
+<span class="nc" id="L188">            contribution.setExitStatus(COMPLETED_WITH_EXTERNAL_API_FAILURE);</span>
+<span class="nc" id="L189">          }</span>
+<span class="nc" id="L190">          return RepeatStatus.FINISHED;</span>
+        }, transactionManager)
+<span class="nc" id="L192">        .build();</span>
+  }
+
+  /**
+   * 현재 Job 실행 ID를 꺼냅니다.
+   * 이 ID를 staging row에 함께 저장해서 같은 배치 실행에서 수집된 데이터끼리 묶습니다.
+   */
+  private Long jobExecutionId(ChunkContext chunkContext) {
+<span class="nc" id="L200">    return chunkContext.getStepContext()</span>
+<span class="nc" id="L201">        .getStepExecution()</span>
+<span class="nc" id="L202">        .getJobExecution()</span>
+<span class="nc" id="L203">        .getId();</span>
+  }
+
+  /**
+   * Step 간에 공유되는 Job ExecutionContext를 꺼냅니다.
+   * 수집/저장 결과 카운트를 여기에 모아 최종 결과 DTO를 만듭니다.
+   */
+  private ExecutionContext jobContext(ChunkContext chunkContext) {
+<span class="nc" id="L211">    return chunkContext.getStepContext()</span>
+<span class="nc" id="L212">        .getStepExecution()</span>
+<span class="nc" id="L213">        .getJobExecution()</span>
+<span class="nc" id="L214">        .getExecutionContext();</span>
+  }
+
+  /**
+   * 수집 Step 결과를 Job ExecutionContext에 누적합니다.
+   * Job이 끝난 후 전체 결과를 알기 위한 메서드
+   */
+  private void recordCollectResult(ExecutionContext context, ArticleCollectStepResultDto result) {
+<span class="nc" id="L222">    increment(context, COLLECTED_COUNT, result.collectedCount());</span>
+<span class="nc" id="L223">    increment(context, DUPLICATE_SKIPPED_COUNT, result.duplicateSkippedCount());</span>
+
+<span class="nc bnc" id="L225" title="All 2 branches missed.">    if (result.source() == ArticleSource.NAVER) {</span>
+<span class="nc" id="L226">      increment(context, NAVER_REQUEST_COUNT, result.requestCount());</span>
+<span class="nc" id="L227">      increment(context, NAVER_SUCCESS_COUNT, result.successCount());</span>
+<span class="nc" id="L228">      increment(context, NAVER_FAILURE_COUNT, result.failureCount());</span>
+<span class="nc" id="L229">      return;</span>
+    }
+
+<span class="nc" id="L232">    increment(context, RSS_REQUEST_COUNT, result.requestCount());</span>
+<span class="nc" id="L233">    increment(context, RSS_SUCCESS_COUNT, result.successCount());</span>
+<span class="nc" id="L234">    increment(context, RSS_FAILURE_COUNT, result.failureCount());</span>
+
+<span class="nc bnc" id="L236" title="All 2 branches missed.">    if (result.source() == ArticleSource.YEONHAP) {</span>
+<span class="nc" id="L237">      increment(context, YEONHAP_RSS_REQUEST_COUNT, result.requestCount());</span>
+<span class="nc" id="L238">      increment(context, YEONHAP_RSS_SUCCESS_COUNT, result.successCount());</span>
+<span class="nc" id="L239">      increment(context, YEONHAP_RSS_FAILURE_COUNT, result.failureCount());</span>
+    }
+<span class="nc" id="L241">  }</span>
+
+  /**
+   * ExecutionContext에 저장된 정수 값을 누적합니다.
+   */
+  private void increment(ExecutionContext context, String key, int amount) {
+<span class="nc" id="L247">    context.putInt(key, context.getInt(key, 0) + amount);</span>
+<span class="nc" id="L248">  }</span>
+
+  /**
+   * Job ExecutionContext에 모인 중간 카운트와 저장/연결 결과를 합쳐 최종 결과 DTO를 만듭니다.
+   */
+  private ArticleCollectResultDto toFinalResult(ExecutionContext context,
+      int articleInterestLinkedCount) {
+<span class="nc" id="L255">    int naverFailureCount = context.getInt(NAVER_FAILURE_COUNT, 0);</span>
+<span class="nc" id="L256">    int rssFailureCount = context.getInt(RSS_FAILURE_COUNT, 0);</span>
+
+<span class="nc" id="L258">    return new ArticleCollectResultDto(</span>
+<span class="nc" id="L259">        context.getInt(NAVER_REQUEST_COUNT, 0),</span>
+<span class="nc" id="L260">        context.getInt(NAVER_SUCCESS_COUNT, 0),</span>
+        naverFailureCount,
+        false,
+<span class="nc" id="L263">        context.getInt(RSS_REQUEST_COUNT, 0),</span>
+<span class="nc" id="L264">        context.getInt(RSS_SUCCESS_COUNT, 0),</span>
+        rssFailureCount,
+<span class="nc" id="L266">        context.getInt(YEONHAP_RSS_REQUEST_COUNT, 0),</span>
+<span class="nc" id="L267">        context.getInt(YEONHAP_RSS_SUCCESS_COUNT, 0),</span>
+<span class="nc" id="L268">        context.getInt(YEONHAP_RSS_FAILURE_COUNT, 0),</span>
+<span class="nc" id="L269">        context.getInt(COLLECTED_COUNT, 0),</span>
+<span class="nc" id="L270">        context.getInt(SAVED_COUNT, 0),</span>
+<span class="nc" id="L271">        context.getInt(DUPLICATE_SKIPPED_COUNT, 0),</span>
+<span class="nc" id="L272">        context.getInt(INVALID_SKIPPED_COUNT, 0),</span>
+        articleInterestLinkedCount,
+        naverFailureCount + rssFailureCount
+    );
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

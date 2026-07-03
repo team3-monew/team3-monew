@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArticleCollectService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.article.collect.service</a> &gt; <span class="el_source">ArticleCollectService.java</span></div><h1>ArticleCollectService.java</h1><pre class="source lang-java linenums">package com.monew.batch.article.collect.service;
+
+import com.monew.batch.article.collect.collector.FeedBasedArticleCollector;
+import com.monew.batch.article.collect.collector.KeywordBasedArticleCollector;
+import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
+import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
+import com.monew.batch.article.collect.collector.dto.RssCollectResultDto;
+import com.monew.batch.article.collect.dto.ArticleCollectStagingCleanupResultDto;
+import com.monew.batch.article.collect.dto.ArticleCollectStepResultDto;
+import com.monew.batch.article.collect.dto.ArticleSourceCollectResultDto;
+import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultDto;
+import com.monew.batch.article.collect.entity.ArticleCollectStaging;
+import com.monew.batch.article.collect.repository.ArticleCollectStagingRepository;
+import com.monew.batch.article.config.ArticleCollectProperties;
+import com.monew.batch.article.entity.Article;
+import com.monew.batch.article.entity.ArticleInterest;
+import com.monew.batch.article.entity.ArticleInterestId;
+import com.monew.batch.article.entity.ArticleSource;
+import com.monew.batch.article.event.InterestMatchedArticleEvent;
+import com.monew.batch.article.repository.ArticleInterestRepository;
+import com.monew.batch.article.repository.ArticleRepository;
+import com.monew.batch.common.event.BatchEventPublisher;
+import com.monew.batch.interest.entity.Interest;
+import com.monew.batch.interest.entity.InterestKeyword;
+import com.monew.batch.interest.repository.InterestKeywordRepository;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 기사 수집 배치의 실제 업무 로직을 담당하는 서비스입니다.
+ * 각 수집 Step은 외부 API/RSS 호출 결과를 바로 articles에 저장하지 않고 staging 테이블에 먼저 저장하며,
+ * 이후 저장 Step과 관심사 연결 Step이 staging 데이터를 기준으로 후속 처리를 수행합니다.
+ */
+<span class="nc" id="L47">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class ArticleCollectService {
+
+  private final List&lt;KeywordBasedArticleCollector&gt; keywordCollectors;
+  private final List&lt;FeedBasedArticleCollector&gt; feedCollectors;
+  private final ArticleCollectProperties properties;
+  private final InterestKeywordRepository interestKeywordRepository;
+  private final ArticleRepository articleRepository;
+  private final ArticleInterestRepository articleInterestRepository;
+  private final ArticleCollectStagingRepository stagingRepository;
+
+  private final BatchEventPublisher batchEventPublisher;
+
+  // Naver 뉴스 검색 API로 기사 수집
+  @Transactional
+  public ArticleCollectStepResultDto collectNaverArticlesToStaging(Long jobExecutionId) {
+    // 관심사 키워드 찾기
+<span class="nc" id="L66">    List&lt;InterestKeyword&gt; interestKeywords = findInterestKeywords();</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">    if (interestKeywords.isEmpty()) {</span>
+<span class="nc" id="L68">      log.info(&quot;Skip Naver article collect because no interest keywords exist.&quot;);</span>
+<span class="nc" id="L69">      return ArticleCollectStepResultDto.empty(ArticleSource.NAVER);</span>
+    }
+
+<span class="nc" id="L72">    Set&lt;String&gt; keywords = groupByNormalizedKeyword(interestKeywords).keySet();</span>
+<span class="nc" id="L73">    List&lt;CollectedArticleDto&gt; collectedArticles = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L74">    int requestCount = 0;</span>
+<span class="nc" id="L75">    int successCount = 0;</span>
+<span class="nc" id="L76">    int failureCount = 0;</span>
+
+    // naver api 호출해서 기사 수집
+<span class="nc bnc" id="L79" title="All 2 branches missed.">    for (KeywordBasedArticleCollector collector : keywordCollectors) {</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">      for (String keyword : keywords) {</span>
+<span class="nc" id="L81">        KeywordCollectResultDto collected = collector.collectByKeywordResult(keyword,</span>
+<span class="nc" id="L82">            properties.naverDisplay());</span>
+<span class="nc" id="L83">        collectedArticles.addAll(collected.articles());</span>
+<span class="nc" id="L84">        requestCount += collected.requestCount();</span>
+<span class="nc" id="L85">        successCount += collected.successCount();</span>
+<span class="nc" id="L86">        failureCount += collected.failureCount();</span>
+<span class="nc" id="L87">      }</span>
+<span class="nc" id="L88">    }</span>
+
+    // 관심사 포함된 기사 필터링
+<span class="nc" id="L91">    List&lt;CollectedArticleDto&gt; matchedArticles = filterMatchedArticles(collectedArticles,</span>
+        interestKeywords);
+    // db에 staging 기사들 저장
+<span class="nc" id="L94">    StageResult stageResult = saveStagingArticles(jobExecutionId, matchedArticles);</span>
+
+<span class="nc" id="L96">    ArticleCollectStepResultDto result = new ArticleCollectStepResultDto(</span>
+        ArticleSource.NAVER,
+        requestCount,
+        successCount,
+        failureCount,
+<span class="nc" id="L101">        collectedArticles.size(),</span>
+<span class="nc" id="L102">        matchedArticles.size(),</span>
+<span class="nc" id="L103">        stageResult.savedCount(),</span>
+<span class="nc" id="L104">        stageResult.duplicateSkippedCount()</span>
+    );
+<span class="nc" id="L106">    log.info(&quot;Naver collect step finished. result={}&quot;, result);</span>
+<span class="nc" id="L107">    return result;</span>
+  }
+
+  // RSS로 뉴스 기사 수집
+  @Transactional
+  public ArticleCollectStepResultDto collectRssArticlesToStaging(Long jobExecutionId,
+      ArticleSource source) {
+    // 관심사 키워드 찾기
+<span class="nc" id="L115">    List&lt;InterestKeyword&gt; interestKeywords = findInterestKeywords();</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">    if (interestKeywords.isEmpty()) {</span>
+<span class="nc" id="L117">      log.info(&quot;Skip RSS article collect because no interest keywords exist. source={}&quot;, source);</span>
+<span class="nc" id="L118">      return ArticleCollectStepResultDto.empty(source);</span>
+    }
+
+    // 뉴스 기사 출처에 해당하는 수집기 찾기
+<span class="nc" id="L122">    FeedBasedArticleCollector collector = findFeedCollector(source);</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">    if (collector == null) {</span>
+<span class="nc" id="L124">      log.warn(&quot;Skip RSS article collect because collector does not exist. source={}&quot;, source);</span>
+<span class="nc" id="L125">      return ArticleCollectStepResultDto.empty(source);</span>
+    }
+
+    // 수집기 통해 뉴스 기사 수집
+<span class="nc" id="L129">    RssCollectResultDto collectResult = collector.collectLatestResult(properties.rssLimit());</span>
+    // 관심사 포함된 기사 필터링
+<span class="nc" id="L131">    List&lt;CollectedArticleDto&gt; matchedArticles = filterMatchedArticles(collectResult.articles(),</span>
+        interestKeywords);
+    // db에 staging 기사들 저장
+<span class="nc" id="L134">    StageResult stageResult = saveStagingArticles(jobExecutionId, matchedArticles);</span>
+
+<span class="nc" id="L136">    ArticleCollectStepResultDto result = new ArticleCollectStepResultDto(</span>
+        source,
+<span class="nc" id="L138">        collectResult.requestCount(),</span>
+<span class="nc" id="L139">        collectResult.successCount(),</span>
+<span class="nc" id="L140">        collectResult.failureCount(),</span>
+<span class="nc" id="L141">        collectResult.articles().size(),</span>
+<span class="nc" id="L142">        matchedArticles.size(),</span>
+<span class="nc" id="L143">        stageResult.savedCount(),</span>
+<span class="nc" id="L144">        stageResult.duplicateSkippedCount()</span>
+    );
+<span class="nc" id="L146">    log.info(&quot;RSS collect step finished. result={}&quot;, result);</span>
+<span class="nc" id="L147">    return result;</span>
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public ArticleSaveAndInterestLinkStepResultDto saveStagedArticlesAndLinkInterests(
+      Long jobExecutionId) {
+<span class="nc" id="L153">    List&lt;InterestKeyword&gt; interestKeywords = findInterestKeywords();</span>
+<span class="nc" id="L154">    List&lt;CollectedArticleDto&gt; stagedArticles = stagingRepository.findAllByJobExecutionId(</span>
+            jobExecutionId)
+<span class="nc" id="L156">        .stream()</span>
+<span class="nc" id="L157">        .map(ArticleCollectStaging::toCollectedArticleDto)</span>
+<span class="nc" id="L158">        .toList();</span>
+
+<span class="nc" id="L160">    SaveResult saveResult = saveArticles(stagedArticles);</span>
+<span class="nc" id="L161">    int linkedCount = saveArticleInterests(saveResult.articlesByUrl().values(), interestKeywords);</span>
+
+<span class="nc" id="L163">    ArticleSaveAndInterestLinkStepResultDto result = new ArticleSaveAndInterestLinkStepResultDto(</span>
+<span class="nc" id="L164">        stagedArticles.size(),</span>
+<span class="nc" id="L165">        saveResult.savedCount(),</span>
+<span class="nc" id="L166">        saveResult.duplicateSkippedCount(),</span>
+<span class="nc" id="L167">        saveResult.invalidSkippedCount(),</span>
+        linkedCount,
+<span class="nc" id="L169">        saveResult.sourceResults()</span>
+    );
+<span class="nc" id="L171">    log.info(&quot;Article save and interest link step finished. result={}&quot;, result);</span>
+<span class="nc" id="L172">    return result;</span>
+  }
+
+  /**
+   * 이번 배치 실행에서 사용한 staging 데이터를 삭제합니다.
+   * 저장과 관심사 연결이 끝난 뒤 호출되므로 staging 테이블은 중간 저장소 역할만 하고 비워집니다.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public ArticleCollectStagingCleanupResultDto cleanupStaging(Long jobExecutionId) {
+<span class="nc" id="L181">    long deletedCount = stagingRepository.deleteByJobExecutionId(jobExecutionId);</span>
+<span class="nc" id="L182">    ArticleCollectStagingCleanupResultDto result =</span>
+        new ArticleCollectStagingCleanupResultDto(deletedCount);
+<span class="nc" id="L184">    log.info(&quot;Article collect staging cleanup step finished. result={}&quot;, result);</span>
+<span class="nc" id="L185">    return result;</span>
+  }
+
+  private List&lt;InterestKeyword&gt; findInterestKeywords() {
+<span class="nc" id="L189">    return interestKeywordRepository.findAll();</span>
+  }
+
+  /**
+   * RSS 수집기 목록에서 요청한 출처를 담당하는 수집기를 찾습니다.
+   */
+  private FeedBasedArticleCollector findFeedCollector(ArticleSource source) {
+<span class="nc" id="L196">    return feedCollectors.stream()</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">        .filter(collector -&gt; collector.getSource() == source)</span>
+<span class="nc" id="L198">        .findFirst()</span>
+<span class="nc" id="L199">        .orElse(null);</span>
+  }
+
+  /**
+   * 제목과 요약에 관심사 키워드가 하나라도 포함된 기사만 저장 후보로 남깁니다.
+   */
+  private List&lt;CollectedArticleDto&gt; filterMatchedArticles(
+      List&lt;CollectedArticleDto&gt; collectedArticleDtos,
+      List&lt;InterestKeyword&gt; interestKeywords) {
+<span class="nc" id="L208">    return collectedArticleDtos.stream()</span>
+<span class="nc" id="L209">        .filter(article -&gt; !matchInterests(article.title(), article.summary(),</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            interestKeywords).isEmpty())</span>
+<span class="nc" id="L211">        .toList();</span>
+  }
+
+  /**
+   * 수집 Step에서 얻은 저장 후보 기사를 staging 테이블에 저장합니다.
+   * 같은 배치 실행 안에서 sourceUrl이 중복되면 첫 번째 기사만 남기고 나머지는 건너뜁니다.
+   */
+  private StageResult saveStagingArticles(Long jobExecutionId,
+      List&lt;CollectedArticleDto&gt; collectedArticleDtos) {
+<span class="nc" id="L220">    int invalidSkippedCount = (int) collectedArticleDtos.stream()</span>
+<span class="nc bnc" id="L221" title="All 4 branches missed.">        .filter(article -&gt; article.sourceUrl() == null || article.sourceUrl().isBlank())</span>
+<span class="nc" id="L222">        .count();</span>
+
+    // sourceUrl 중복 시 첫번째 기사만 남김
+<span class="nc" id="L225">    Map&lt;String, CollectedArticleDto&gt; collectedByUrl = collectedArticleDtos.stream()</span>
+<span class="nc bnc" id="L226" title="All 4 branches missed.">        .filter(article -&gt; article.sourceUrl() != null &amp;&amp; !article.sourceUrl().isBlank())</span>
+<span class="nc" id="L227">        .collect(Collectors.toMap(</span>
+            CollectedArticleDto::sourceUrl,
+<span class="nc" id="L229">            Function.identity(),</span>
+<span class="nc" id="L230">            (first, ignored) -&gt; first,</span>
+            LinkedHashMap::new
+        ));
+
+    // 현재 실행중인 job에서 staging 테이블에 저장되어 있는 url 목록
+<span class="nc" id="L235">    Set&lt;String&gt; existingStagingUrls = stagingRepository.findAllByJobExecutionIdAndSourceUrlIn(</span>
+<span class="nc" id="L236">            jobExecutionId, collectedByUrl.keySet())</span>
+<span class="nc" id="L237">        .stream()</span>
+<span class="nc" id="L238">        .map(ArticleCollectStaging::getSourceUrl)</span>
+<span class="nc" id="L239">        .collect(Collectors.toSet());</span>
+
+    // staging에 없는 기사들 목록
+<span class="nc" id="L242">    List&lt;ArticleCollectStaging&gt; stagingArticles = collectedByUrl.entrySet().stream()</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        .filter(entry -&gt; !existingStagingUrls.contains(entry.getKey()))</span>
+<span class="nc" id="L244">        .map(entry -&gt; new ArticleCollectStaging(jobExecutionId, entry.getValue()))</span>
+<span class="nc" id="L245">        .toList();</span>
+    // staging에 새 기사들 저장
+<span class="nc" id="L247">    stagingRepository.saveAll(stagingArticles);</span>
+
+<span class="nc" id="L249">    int duplicateSkippedCount =</span>
+<span class="nc" id="L250">        collectedArticleDtos.size() - invalidSkippedCount - collectedByUrl.size()</span>
+<span class="nc" id="L251">            + existingStagingUrls.size();</span>
+<span class="nc" id="L252">    return new StageResult(stagingArticles.size(), duplicateSkippedCount, invalidSkippedCount);</span>
+  }
+
+  private SaveResult saveArticles(List&lt;CollectedArticleDto&gt; collectedArticleDtos) {
+<span class="nc" id="L256">    int invalidSkippedCount = (int) collectedArticleDtos.stream()</span>
+<span class="nc bnc" id="L257" title="All 4 branches missed.">        .filter(article -&gt; article.sourceUrl() == null || article.sourceUrl().isBlank())</span>
+<span class="nc" id="L258">        .count();</span>
+
+<span class="nc" id="L260">    Map&lt;String, CollectedArticleDto&gt; collectedByUrl = collectedArticleDtos.stream()</span>
+<span class="nc bnc" id="L261" title="All 4 branches missed.">        .filter(article -&gt; article.sourceUrl() != null &amp;&amp; !article.sourceUrl().isBlank())</span>
+<span class="nc" id="L262">        .collect(Collectors.toMap(</span>
+            CollectedArticleDto::sourceUrl,
+<span class="nc" id="L264">            Function.identity(),</span>
+<span class="nc" id="L265">            (first, ignored) -&gt; first,</span>
+            LinkedHashMap::new
+        ));
+
+<span class="nc" id="L269">    Map&lt;String, Article&gt; articlesByUrl = articleRepository.findAllBySourceUrlIn(</span>
+<span class="nc" id="L270">            collectedByUrl.keySet())</span>
+<span class="nc" id="L271">        .stream()</span>
+<span class="nc" id="L272">        .collect(Collectors.toMap(Article::getSourceUrl, Function.identity()));</span>
+
+<span class="nc" id="L274">    int existingCount = articlesByUrl.size();</span>
+    // 최종 persist Step 결과를 source tag로도 볼 수 있게 출처별 처리 건수를 함께 집계합니다.
+<span class="nc" id="L276">    Map&lt;ArticleSource, SourceSaveCounts&gt; sourceCounts = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">    for (CollectedArticleDto article : collectedArticleDtos) {</span>
+<span class="nc" id="L278">      SourceSaveCounts counts = sourceCounts.computeIfAbsent(article.source(),</span>
+<span class="nc" id="L279">          ignored -&gt; new SourceSaveCounts());</span>
+<span class="nc" id="L280">      counts.incrementStaged();</span>
+<span class="nc bnc" id="L281" title="All 4 branches missed.">      if (article.sourceUrl() == null || article.sourceUrl().isBlank()) {</span>
+<span class="nc" id="L282">        counts.incrementInvalidSkipped();</span>
+      }
+<span class="nc" id="L284">    }</span>
+
+<span class="nc" id="L286">    int savedCount = 0;</span>
+<span class="nc bnc" id="L287" title="All 2 branches missed.">    for (Map.Entry&lt;String, CollectedArticleDto&gt; entry : collectedByUrl.entrySet()) {</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">      if (!articlesByUrl.containsKey(entry.getKey())) {</span>
+<span class="nc" id="L289">        articlesByUrl.put(entry.getKey(), articleRepository.save(Article.from(entry.getValue())));</span>
+<span class="nc" id="L290">        savedCount++;</span>
+<span class="nc" id="L291">        sourceCounts.computeIfAbsent(entry.getValue().source(), ignored -&gt; new SourceSaveCounts())</span>
+<span class="nc" id="L292">            .incrementSaved();</span>
+      } else {
+<span class="nc" id="L294">        sourceCounts.computeIfAbsent(entry.getValue().source(), ignored -&gt; new SourceSaveCounts())</span>
+<span class="nc" id="L295">            .incrementDuplicateSkipped();</span>
+      }
+<span class="nc" id="L297">    }</span>
+
+<span class="nc" id="L299">    int duplicateSkippedCount =</span>
+<span class="nc" id="L300">        collectedArticleDtos.size() - invalidSkippedCount - collectedByUrl.size()</span>
+            + existingCount;
+    // ArticleCollectMetrics가 바로 기록할 수 있도록 source tag 이름까지 변환한 DTO로 만듭니다.
+<span class="nc" id="L303">    List&lt;ArticleSourceCollectResultDto&gt; sourceResults = sourceCounts.entrySet().stream()</span>
+<span class="nc" id="L304">        .map(entry -&gt; entry.getValue().toDto(sourceMetricName(entry.getKey())))</span>
+<span class="nc" id="L305">        .toList();</span>
+<span class="nc" id="L306">    return new SaveResult(articlesByUrl, savedCount, duplicateSkippedCount, invalidSkippedCount,</span>
+        sourceResults);
+  }
+
+  private int saveArticleInterests(Iterable&lt;Article&gt; articles,
+      List&lt;InterestKeyword&gt; interestKeywords) {
+<span class="nc" id="L312">    int savedCount = 0;</span>
+<span class="nc" id="L313">    Set&lt;ArticleInterestId&gt; seenIds = new LinkedHashSet&lt;&gt;();</span>
+
+    // 우리주석 시작
+<span class="nc" id="L316">    List&lt;InterestMatchedArticleEvent.InterestMatchData&gt; matchedInterests = new ArrayList&lt;&gt;();</span>
+    // 우리주석 끝
+
+<span class="nc bnc" id="L319" title="All 2 branches missed.">    for (Article article : articles) {</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">      for (Interest interest : matchInterests(article.getTitle(), article.getSummary(),</span>
+          interestKeywords)) {
+<span class="nc" id="L322">        ArticleInterestId id = new ArticleInterestId(article.getId(), interest.getId());</span>
+<span class="nc bnc" id="L323" title="All 4 branches missed.">        if (seenIds.add(id) &amp;&amp; !articleInterestRepository.existsById(id)) {</span>
+<span class="nc" id="L324">          articleInterestRepository.save(new ArticleInterest(article, interest));</span>
+<span class="nc" id="L325">          savedCount++;</span>
+
+          // 우리주석 시작
+<span class="nc" id="L328">          matchedInterests.add(new InterestMatchedArticleEvent.InterestMatchData(</span>
+<span class="nc" id="L329">                  interest.getId(),</span>
+<span class="nc" id="L330">                  interest.getName()</span>
+          ));
+          // 우리주석 끝
+        }
+<span class="nc" id="L334">      }</span>
+<span class="nc" id="L335">    }</span>
+
+    // 우리주석 시작
+<span class="nc bnc" id="L338" title="All 2 branches missed.">    if (!matchedInterests.isEmpty()) {</span>
+<span class="nc" id="L339">      batchEventPublisher.publish(new InterestMatchedArticleEvent(matchedInterests));</span>
+    }
+    // 우리주석 끝
+
+<span class="nc" id="L343">    return savedCount;</span>
+  }
+
+  /**
+   * 기사 제목/요약에 포함된 키워드를 기준으로 매칭되는 관심사 목록을 찾습니다.
+   * 하나의 관심사에 여러 키워드가 매칭되어도 같은 관심사는 한 번만 반환합니다.
+   */
+  private List&lt;Interest&gt; matchInterests(String title, String summary,
+      List&lt;InterestKeyword&gt; interestKeywords) {
+<span class="nc" id="L352">    String searchableText = normalize(title + &quot; &quot; + summary);</span>
+<span class="nc" id="L353">    Map&lt;UUID, Interest&gt; matchedInterests = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L355" title="All 2 branches missed.">    for (InterestKeyword interestKeyword : interestKeywords) {</span>
+<span class="nc" id="L356">      String keyword = normalize(interestKeyword.getKeyword());</span>
+<span class="nc bnc" id="L357" title="All 4 branches missed.">      if (!keyword.isBlank() &amp;&amp; searchableText.contains(keyword)) {</span>
+<span class="nc" id="L358">        matchedInterests.putIfAbsent(interestKeyword.getInterest().getId(),</span>
+<span class="nc" id="L359">            interestKeyword.getInterest());</span>
+      }
+<span class="nc" id="L361">    }</span>
+<span class="nc" id="L362">    return List.copyOf(matchedInterests.values());</span>
+  }
+
+  /**
+   * 같은 키워드가 여러 관심사에 등록되어 있어도 외부 API 요청은 한 번만 보내도록 정규화한 키워드로 묶습니다.
+   */
+  private Map&lt;String, List&lt;InterestKeyword&gt;&gt; groupByNormalizedKeyword(
+      List&lt;InterestKeyword&gt; interestKeywords) {
+
+<span class="nc" id="L371">    return interestKeywords.stream()</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">        .filter(interestKeyword -&gt; interestKeyword.getKeyword() != null</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">            &amp;&amp; !interestKeyword.getKeyword().isBlank())</span>
+<span class="nc" id="L374">        .collect(Collectors.groupingBy(</span>
+<span class="nc" id="L375">            interestKeyword -&gt; normalize(interestKeyword.getKeyword()),</span>
+            LinkedHashMap::new,
+<span class="nc" id="L377">            Collectors.toList()</span>
+        ));
+  }
+
+  private String normalize(String value) {
+<span class="nc bnc" id="L382" title="All 2 branches missed.">    if (value == null) {</span>
+<span class="nc" id="L383">      return &quot;&quot;;</span>
+    }
+<span class="nc" id="L385">    return value.toLowerCase(Locale.ROOT).trim();</span>
+  }
+
+<span class="nc" id="L388">  private record StageResult(</span>
+      int savedCount,
+      int duplicateSkippedCount,
+      int invalidSkippedCount
+  ) {
+  }
+
+<span class="nc" id="L395">  private record SaveResult(</span>
+      Map&lt;String, Article&gt; articlesByUrl,
+      int savedCount,
+      int duplicateSkippedCount,
+      int invalidSkippedCount,
+      List&lt;ArticleSourceCollectResultDto&gt; sourceResults
+  ) {
+  }
+
+  // Actuator 조회 시 RSS 계열 출처임을 tag 값만 보고도 알 수 있게 변환합니다.
+  private String sourceMetricName(ArticleSource source) {
+<span class="nc bnc" id="L406" title="All 4 branches missed.">    return switch (source) {</span>
+<span class="nc" id="L407">      case NAVER -&gt; &quot;NAVER&quot;;</span>
+<span class="nc" id="L408">      case HANKYUNG -&gt; &quot;RSS_HANKYUNG&quot;;</span>
+<span class="nc" id="L409">      case CHOSUN -&gt; &quot;RSS_CHOSUN&quot;;</span>
+<span class="nc" id="L410">      case YEONHAP -&gt; &quot;RSS_YEONHAP&quot;;</span>
+    };
+  }
+
+  // persist Step의 source별 마지막 처리 건수를 담기 위한 내부 집계 객체입니다.
+  private static class SourceSaveCounts {
+
+    private int stagedCount;
+    private int savedCount;
+    private int duplicateSkippedCount;
+    private int invalidSkippedCount;
+
+    private void incrementStaged() {
+<span class="nc" id="L423">      stagedCount++;</span>
+<span class="nc" id="L424">    }</span>
+
+    private void incrementSaved() {
+<span class="nc" id="L427">      savedCount++;</span>
+<span class="nc" id="L428">    }</span>
+
+    private void incrementDuplicateSkipped() {
+<span class="nc" id="L431">      duplicateSkippedCount++;</span>
+<span class="nc" id="L432">    }</span>
+
+    private void incrementInvalidSkipped() {
+<span class="nc" id="L435">      invalidSkippedCount++;</span>
+<span class="nc" id="L436">    }</span>
+
+    private ArticleSourceCollectResultDto toDto(String source) {
+<span class="nc" id="L439">      return new ArticleSourceCollectResultDto(</span>
+          source,
+          stagedCount,
+          savedCount,
+          duplicateSkippedCount,
+          invalidSkippedCount
+      );
+    }
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
