@@ -101,6 +101,30 @@ class NotificationControllerTest extends ControllerTestSupport {
     }
 
     @Test
+    @DisplayName("미확인 알림 목록 조회 성공 - UTC OffsetDateTime 형식 after를 KST LocalDateTime으로 변환한다")
+    void findUnreadNotifications_success_parseUtcOffsetDateTimeAfter() throws Exception {
+        // given
+        UUID userId = UUID.randomUUID();
+        String cursor = UUID.randomUUID().toString();
+        LocalDateTime expectedAfter = LocalDateTime.of(2026, 7, 1, 19, 0);
+        CursorPageResponse<NotificationResponse> response = new CursorPageResponse<>(List.of(), null, null, 0, 0, false);
+
+        given(notificationService.findUnreadNotifications(eq(userId), eq(cursor), eq(expectedAfter), eq(5)))
+                .willReturn(response);
+
+        // when
+        // then
+        mockMvc.perform(get("/api/notifications")
+                        .header("MoNew-Request-User-ID", userId)
+                        .param("cursor", cursor)
+                        .param("after", "2026-07-01T10:00:00+00:00")
+                        .param("limit", "5"))
+                .andExpect(status().isOk());
+
+        then(notificationService).should().findUnreadNotifications(userId, cursor, expectedAfter, 5);
+    }
+
+    @Test
     @DisplayName("미확인 알림 목록 조회 성공 - LocalDateTime 형식 after를 그대로 변환한다")
     void findUnreadNotifications_success_parseLocalDateTimeAfter() throws Exception {
         // given

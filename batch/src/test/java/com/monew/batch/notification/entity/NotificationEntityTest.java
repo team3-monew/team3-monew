@@ -21,14 +21,14 @@ class NotificationEntityTest {
         // When
         Notification notification = Notification.builder()
                 .user(user)
-                .content("인공지능와 관련된 기사가 2건 등록되었습니다.")
+                .content("인공지능 관심사와 관련된 기사가 2건 등록되었습니다.")
                 .resourceType(NotificationResourceType.INTEREST)
                 .resourceId(resourceId)
                 .build();
 
         // Then
         assertThat(notification.getUser()).isSameAs(user);
-        assertThat(notification.getContent()).isEqualTo("인공지능와 관련된 기사가 2건 등록되었습니다.");
+        assertThat(notification.getContent()).isEqualTo("인공지능 관심사와 관련된 기사가 2건 등록되었습니다.");
         assertThat(notification.getResourceType()).isEqualTo(NotificationResourceType.INTEREST);
         assertThat(notification.getResourceId()).isEqualTo(resourceId);
         assertThat(notification.isConfirmed()).isFalse();
