@@ -65,7 +65,7 @@ public class ArticleCollectService {
     // 관심사 키워드 찾기
     List<InterestKeyword> interestKeywords = findInterestKeywords();
     if (interestKeywords.isEmpty()) {
-      log.info("Skip Naver article collect because no interest keywords exist.");
+      log.info("[collect article] 관심사 키워드 없음으로 네이버 뉴스 기사 수집 skip.");
       return ArticleCollectStepResultDto.empty(ArticleSource.NAVER);
     }
 
@@ -103,7 +103,7 @@ public class ArticleCollectService {
         stageResult.savedCount(),
         stageResult.duplicateSkippedCount()
     );
-    log.info("Naver collect step finished. result={}", result);
+    log.info("[collect article] 네이버 기사 수집 완료. result={}", result);
     return result;
   }
 
@@ -114,14 +114,14 @@ public class ArticleCollectService {
     // 관심사 키워드 찾기
     List<InterestKeyword> interestKeywords = findInterestKeywords();
     if (interestKeywords.isEmpty()) {
-      log.info("Skip RSS article collect because no interest keywords exist. source={}", source);
+      log.info("[collect article] 관심사 키워드 없으므로 RSS 기사 수집 skip. source={}", source);
       return ArticleCollectStepResultDto.empty(source);
     }
 
     // 뉴스 기사 출처에 해당하는 수집기 찾기
     FeedBasedArticleCollector collector = findFeedCollector(source);
     if (collector == null) {
-      log.warn("Skip RSS article collect because collector does not exist. source={}", source);
+      log.warn("[collect article] RSS 기사 수집기 없어 기사 수집 skip. source={}", source);
       return ArticleCollectStepResultDto.empty(source);
     }
 
@@ -143,7 +143,8 @@ public class ArticleCollectService {
         stageResult.savedCount(),
         stageResult.duplicateSkippedCount()
     );
-    log.info("RSS collect step finished. result={}", result);
+
+    log.info("[collect article] RSS 기사 수집 완료. result={}", result);
     return result;
   }
 
@@ -168,7 +169,8 @@ public class ArticleCollectService {
         linkedCount,
         saveResult.sourceResults()
     );
-    log.info("Article save and interest link step finished. result={}", result);
+
+    log.info("[collect article] 기사, 관심도 연결 step 완료. result={}", result);
     return result;
   }
 
@@ -181,7 +183,8 @@ public class ArticleCollectService {
     long deletedCount = stagingRepository.deleteByJobExecutionId(jobExecutionId);
     ArticleCollectStagingCleanupResultDto result =
         new ArticleCollectStagingCleanupResultDto(deletedCount);
-    log.info("Article collect staging cleanup step finished. result={}", result);
+
+    log.info("[collect article] 기사 수집 staging 데이터 삭제 완료. result={}", result);
     return result;
   }
 
