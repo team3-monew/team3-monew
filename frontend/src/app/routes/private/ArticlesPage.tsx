@@ -484,16 +484,18 @@ export default function ArticlesPage() {
     }
   }, [articleId, articles, stateArticle]);
 
-  const handleRestoreArticle = (data: RestoreArticlesParams) => {
+  const handleRestoreArticle = async (data: RestoreArticlesParams) => {
+    if (!userId) return;
+
     try {
       const formattedData = {
         from: `${data.from.replace(/\./g, "-")}T00:00:00`,
         to: `${data.to.replace(/\./g, "-")}T23:59:59`,
       };
 
-      restoreArticles(formattedData);
+      await restoreArticles(formattedData, userId);
 
-      fetchInitialData();
+      await fetchInitialData();
 
       toast.success("기사가 복구되었습니다.");
 

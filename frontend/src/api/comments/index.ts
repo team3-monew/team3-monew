@@ -17,8 +17,11 @@ export async function getComments(
 /* 댓글 등록 */
 export async function createComment(
   body: T.CreateCommentBody,
+  requestUserId: UserId,
 ): Promise<T.CommentItem> {
-  const { data } = await http.post<T.CommentItem>("/comments", body);
+  const { data } = await http.post<T.CommentItem>("/comments", body, {
+    headers: { "Monew-Request-User-ID": requestUserId },
+  });
   return data;
 }
 
@@ -62,8 +65,13 @@ export async function deleteLikeComment(
 }
 
 /* 댓글 논리 삭제 */
-export async function deleteComment(commentId: CommentId): Promise<void> {
-  await http.delete<void>(`/comments/${commentId}`);
+export async function deleteComment(
+  commentId: CommentId,
+  requestUserId: UserId,
+): Promise<void> {
+  await http.delete<void>(`/comments/${commentId}`, {
+    headers: { "Monew-Request-User-ID": requestUserId },
+  });
 }
 
 /* 댓글 물리 삭제 */

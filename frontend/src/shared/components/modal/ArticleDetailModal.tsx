@@ -221,7 +221,7 @@ export default function ArticleDetailModal({
   };
 
   const handleAddComment = async (content: string) => {
-    if (!article || !content.trim()) return;
+    if (!article || !userId || !content.trim()) return;
 
     try {
       const params = {
@@ -229,7 +229,7 @@ export default function ArticleDetailModal({
         userId,
         content: content.trim(),
       };
-      await createComment(params);
+      await createComment(params, userId);
 
       setWrittenComment("");
       await fetchInitialData();
@@ -245,7 +245,9 @@ export default function ArticleDetailModal({
       message: "정말 삭제하시겠습니까?",
       onConfirm: async () => {
         try {
-          await deleteComment(commentId);
+          if (!userId) return;
+
+          await deleteComment(commentId, userId);
           toast.success("댓글이 삭제되었습니다.");
           await fetchInitialData();
         } catch (error) {
