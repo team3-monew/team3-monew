@@ -46,3 +46,9 @@ server/src/main/generated/
 # 개발/테스트 로컬 백업 저장소
 .monew
 
+
+# ── 프론트엔드(모노레포) ──
+/frontend/node_modules/
+/frontend/dist/
+# gradle-node-plugin 이 받는 node 배포판
+.gradle/nodejs/

@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@import "./font.css";
+@import "./text.css";
+@import "./color.css";
+@import "./toast.css";
+
+@layer base {
+  html,
+  body {
+    font-family:
+      "Pretendard",
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      "Apple SD Gothic Neo",
+      "Noto Sans KR",
+      "Malgun Gothic",
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Noto Color Emoji",
+      "Segoe UI Symbol",
+      sans-serif;
+    color: var(--color-gray-700);
+    background-color: var(--color-gray-50);
+  }
+
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@supports (scrollbar-gutter: stable) {
+  html {
+    scrollbar-gutter: stable both-edges;
+  }
+}
