@@ -90,8 +90,15 @@ jobs:
             --service monew-server-svc \
             --force-new-deployment
 
-      - name: Wait for server service stable
+      - name: Deploy batch service (rolling)
+        run: |
+          aws ecs update-service \
+            --cluster monew-cluster \
+            --service monew-batch-svc \
+            --force-new-deployment
+
+      - name: Wait for services stable
         run: |
           aws ecs wait services-stable \
             --cluster monew-cluster \
-            --services monew-server-svc
+            --services monew-server-svc monew-batch-svc
