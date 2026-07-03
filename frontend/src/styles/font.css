@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Pretendard";
+  src:
+    url("/fonts/pretendard/PretendardVariable.woff2") format("woff2-variations"),
+    url("/fonts/pretendard/PretendardVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@supports not (font-variation-settings: normal) {
+  @font-face {
+    font-family: "Pretendard";
+    src: url("/fonts/pretendard/Pretendard-Regular.woff2") format("woff2");
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: "Pretendard";
+    src: url("/fonts/pretendard/Pretendard-Bold.woff2") format("woff2");
+    font-weight: 700;
+  }
+}
+
+@theme {
+  --font-pretendard: "Pretendard";
+  --font-sans:
+    var(--font-pretendard), system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic",
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+    "Segoe UI Symbol", sans-serif;
+}

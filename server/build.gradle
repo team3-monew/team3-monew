@@ -1,3 +1,8 @@
+plugins {
+    // 프론트엔드(React/Vite) 빌드를 Gradle에서 구동 (node를 직접 다운로드해서 사용)
+    id 'com.github.node-gradle.node' version '7.0.2'
+}
+
 // 서버(API) 모듈 — REST API 제공
 dependencies {
     // Web
@@ -19,9 +24,53 @@ dependencies {
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
+    // Repository 통합테스트용 Testcontainers (실 PostgreSQL + pg_trgm)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
 }
 
-// 실행 가능한 jar 이름 고정 (Dockerfile 에서 참조)
+// ─────────────────────────────────────────────────────────────
+// 프론트엔드(모노레포) 빌드 → 서버 정적 리소스(static)로 포함
+//  - node는 플러그인이 자동 다운로드(로컬/CI에 node 설치 불필요)
+//  - jar 패키징(bootJar) 때만 FE를 빌드 → bootRun/test 는 영향 없음
+// ─────────────────────────────────────────────────────────────
+node {
+    // Vite 7 은 Node 20.19+ / 22.12+ 필요 (crypto.hash 사용)
+    version = '22.14.0'
+    download = true
+    nodeProjectDir = file("${rootDir}/frontend")
+}
+
+// npm install (package-lock 기반)
+tasks.named('npmInstall') {
+    // husky(git 훅)는 빌드 시 불필요 + 모노레포라 frontend/.git 없어 설치 실패 -> 비활성화
+    environment.put('HUSKY', '0')
+}
+
+// FE 빌드: npm run build (tsc -b && vite build) → frontend/dist 생성
+tasks.register('buildFrontend', com.github.gradle.node.npm.task.NpmTask) {
+    dependsOn tasks.named('npmInstall')
+    args = ['run', 'build']
+    inputs.dir("${rootDir}/frontend/src")
+    inputs.dir("${rootDir}/frontend/public")
+    inputs.file("${rootDir}/frontend/package.json")
+    inputs.file("${rootDir}/frontend/vite.config.ts")
+    outputs.dir("${rootDir}/frontend/dist")
+}
+
+// 실행 가능한 jar 이름 고정 (Dockerfile 에서 참조) + FE 빌드 산출물(dist)을 jar 의 static/ 으로 포함
 tasks.named('bootJar') {
+    dependsOn 'buildFrontend'
+    from("${rootDir}/frontend/dist") {
+        into 'static'
+    }
     archiveFileName = 'server.jar'
+}
+tasks.named('jar') {
+    dependsOn 'buildFrontend'
+    from("${rootDir}/frontend/dist") {
+        into 'static'
+    }
 }

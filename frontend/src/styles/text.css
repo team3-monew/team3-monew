@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* 폰트 크기, 행간 설정 */
+@theme {
+  --fs-12: 12px;
+  --lh-12: 16px;
+
+  --fs-14: 14px;
+  --lh-14: 20px;
+
+  --fs-16: 16px;
+  --lh-16: 24px;
+
+  --fs-18: 18px;
+  --lh-18: 28px;
+
+  --fs-20: 20px;
+  --lh-20: 28px;
+
+  --fs-24: 24px;
+  --lh-24: 32px;
+}
+
+/* 12px */
+@utility text-12-r {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: 400;
+}
+@utility text-12-m {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: 500;
+}
+@utility text-12-sb {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: 600;
+}
+@utility text-12-b {
+  font-size: var(--fs-12);
+  line-height: var(--lh-12);
+  font-weight: 700;
+} /* bold */
+
+/* 14px */
+@utility text-14-r {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: 400;
+}
+@utility text-14-m {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: 500;
+}
+@utility text-14-sb {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: 600;
+}
+@utility text-14-b {
+  font-size: var(--fs-14);
+  line-height: var(--lh-14);
+  font-weight: 700;
+}
+
+/* 16px */
+@utility text-16-r {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: 400;
+}
+@utility text-16-m {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: 500;
+}
+@utility text-16-sb {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: 600;
+}
+@utility text-16-b {
+  font-size: var(--fs-16);
+  line-height: var(--lh-16);
+  font-weight: 700;
+}
+
+/* 18px */
+@utility text-18-r {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: 400;
+}
+@utility text-18-m {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: 500;
+}
+@utility text-18-sb {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: 600;
+}
+@utility text-18-b {
+  font-size: var(--fs-18);
+  line-height: var(--lh-18);
+  font-weight: 700;
+}
+
+/* 20px */
+@utility text-20-r {
+  font-size: var(--fs-20);
+  line-height: var(--lh-20);
+  font-weight: 400;
+}
+@utility text-20-m {
+  font-size: var(--fs-20);
+  line-height: var(--lh-20);
+  font-weight: 500;
+}
+@utility text-20-sb {
+  font-size: var(--fs-20);
+  line-height: var(--lh-20);
+  font-weight: 600;
+}
+@utility text-20-b {
+  font-size: var(--fs-20);
+  line-height: var(--lh-20);
+  font-weight: 700;
+}
+
+/* 24px */
+@utility text-24-r {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: 400;
+}
+@utility text-24-m {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: 500;
+}
+@utility text-24-sb {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: 600;
+}
+@utility text-24-b {
+  font-size: var(--fs-24);
+  line-height: var(--lh-24);
+  font-weight: 700;
+}

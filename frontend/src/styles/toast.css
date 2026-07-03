@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+.Toastify__toast {
+  width: fit-content !important;
+  max-width: 380px !important;
+  min-width: 200px;
+  white-space: normal !important;
+  text-align: center !important;
+  margin: 0 auto !important;
+  word-break: keep-all;
+  border-radius: 8px;
+  padding: 12px 24px !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+:root {
+  --toastify-icon-color-success: #47cd89;
+  --toastify-icon-color-error: #ff6257;
+}
