@@ -69,21 +69,21 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
         return request(keyword, display);
       } catch (RestClientResponseException ex) {
         if (!shouldRetry(ex) || attempt == maxAttempts) {
-          log.warn("Naver news collect failed. keyword={}, status={}, attempt={}, message={}",
+          log.warn("[collect article] 네이버 뉴스 기사 수집 실패. keyword={}, status={}, attempt={}, message={}",
               keyword, ex.getStatusCode().value(), attempt, ex.getMessage());
           return null;
         }
 
-        log.warn("Retryable Naver response. keyword={}, status={}, attempt={}, message={}",
+        log.warn("[collect article] 네이버 API 재요청 가능. keyword={}, status={}, attempt={}, message={}",
             keyword, ex.getStatusCode().value(), attempt, ex.getMessage());
       } catch (ResourceAccessException ex) {
         if (attempt == maxAttempts) {
-          log.warn("Naver news collect failed. keyword={}, status=NETWORK, attempt={}, message={}",
+          log.warn("[collect article] 네이버 뉴스 기사 수집 실패. keyword={}, status=NETWORK, attempt={}, message={}",
               keyword, attempt, ex.getMessage());
           return null;
         }
 
-        log.warn("Retryable Naver network error. keyword={}, attempt={}, message={}",
+        log.warn("[collect article] 재시도 가능한 네이버 네트워크 에러. keyword={}, attempt={}, message={}",
             keyword, attempt, ex.getMessage());
       }
 
