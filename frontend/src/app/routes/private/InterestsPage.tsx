@@ -205,8 +205,10 @@ export default function InterestsPage() {
   };
 
   const handleAddInterest = async (data: AddInterestBody) => {
+    if (!userId) return;
+
     try {
-      await addInterest(data);
+      await addInterest(data, userId);
 
       fetchInitialData();
 
@@ -238,7 +240,7 @@ export default function InterestsPage() {
         keywords: keywords,
       };
 
-      await updateInterest(interestId, updateBody);
+      await updateInterest(interestId, updateBody, userId);
 
       await fetchInitialData();
 
@@ -250,8 +252,10 @@ export default function InterestsPage() {
   };
 
   const handleDeleteInterest = async (interestId: InterestId) => {
+    if (!userId) return;
+
     try {
-      await deleteInterest(interestId);
+      await deleteInterest(interestId, userId);
 
       await fetchInitialData();
     } catch (error) {
