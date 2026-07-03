@@ -14,7 +14,6 @@ import com.monew.batch.notification.repository.NotificationRepository;
 import com.monew.batch.subscription.repository.SubscriptionRepository;
 import com.monew.batch.user.entity.User;
 import jakarta.persistence.EntityManager;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -84,9 +83,9 @@ class InterestMatchedArticleEventListenerTest {
         assertThat(notifications)
                 .extracting(Notification::getContent)
                 .containsExactly(
-                        "인공지능와 관련된 기사가 2건 등록되었습니다.",
-                        "인공지능와 관련된 기사가 2건 등록되었습니다.",
-                        "자바와 관련된 기사가 1건 등록되었습니다."
+                        "인공지능 관심사와 관련된 기사가 2건 등록되었습니다.",
+                        "인공지능 관심사와 관련된 기사가 2건 등록되었습니다.",
+                        "자바 관심사와 관련된 기사가 1건 등록되었습니다."
                 );
         assertThat(notifications)
                 .extracting(Notification::getUser)
@@ -160,7 +159,7 @@ class InterestMatchedArticleEventListenerTest {
 
         assertThat(notifications).hasSize(1);
         assertThat(notifications.get(0).getResourceId()).isEqualTo(interestId);
-        assertThat(notifications.get(0).getContent()).isEqualTo("백엔드와 관련된 기사가 1건 등록되었습니다.");
+        assertThat(notifications.get(0).getContent()).isEqualTo("백엔드 관심사와 관련된 기사가 1건 등록되었습니다.");
     }
 
     @Test
