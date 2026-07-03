@@ -115,12 +115,11 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willReturn(List.of());
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).restoredArticleCount()).isZero();
-    assertThat(result.get(0).restoredArticleIds()).isEmpty();
+    assertThat(result.restoredArticleCount()).isZero();
+    assertThat(result.restoredArticleIds()).isEmpty();
 
     then(articleBackupReader).should().exists(KEY_2026_07_01);
     then(articleBackupReader).should(never()).exists(KEY_2026_07_02);
@@ -138,12 +137,11 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willReturn(List.of());
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).restoredArticleCount()).isZero();
-    assertThat(result.get(0).restoredArticleIds()).isEmpty();
+    assertThat(result.restoredArticleCount()).isZero();
+    assertThat(result.restoredArticleIds()).isEmpty();
 
     then(articleBackupReader).should().exists(KEY_2026_07_01);
     then(articleBackupReader).should().exists(KEY_2026_07_02);
@@ -160,12 +158,11 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willReturn(List.of());
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).restoredArticleCount()).isZero();
-    assertThat(result.get(0).restoredArticleIds()).isEmpty();
+    assertThat(result.restoredArticleCount()).isZero();
+    assertThat(result.restoredArticleIds()).isEmpty();
 
     then(articleBackupReader).should(never()).download(anyString());
     then(articleRepository).should(never()).findExistingSourceUrls(anyCollection());
@@ -191,7 +188,7 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willAnswer(invocation -> toList(invocation.getArgument(0)));
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
     ArgumentCaptor<Iterable<Article>> captor = ArgumentCaptor.forClass(Iterable.class);
@@ -206,9 +203,8 @@ class ArticleRestoreServiceTest {
     assertThat(savedArticles.get(0).getViewCount()).isEqualTo(first.viewCount());
     assertThat(savedArticles.get(1).getSourceUrl()).isEqualTo(second.sourceUrl());
 
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).restoredArticleCount()).isEqualTo(2);
-    assertThat(result.get(0).restoredArticleIds())
+    assertThat(result.restoredArticleCount()).isEqualTo(2);
+    assertThat(result.restoredArticleIds())
         .containsExactly(savedArticles.get(0).getId(), savedArticles.get(1).getId());
   }
 
@@ -231,7 +227,7 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willAnswer(invocation -> toList(invocation.getArgument(0)));
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
     ArgumentCaptor<Iterable<Article>> captor = ArgumentCaptor.forClass(Iterable.class);
@@ -240,8 +236,8 @@ class ArticleRestoreServiceTest {
 
     assertThat(savedArticles).hasSize(1);
     assertThat(savedArticles.get(0).getSourceUrl()).isEqualTo(fresh.sourceUrl());
-    assertThat(result.get(0).restoredArticleCount()).isEqualTo(1);
-    assertThat(result.get(0).restoredArticleIds()).containsExactly(savedArticles.get(0).getId());
+    assertThat(result.restoredArticleCount()).isEqualTo(1);
+    assertThat(result.restoredArticleIds()).containsExactly(savedArticles.get(0).getId());
   }
 
   @Test
@@ -263,7 +259,7 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willAnswer(invocation -> toList(invocation.getArgument(0)));
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
     ArgumentCaptor<Iterable<Article>> captor = ArgumentCaptor.forClass(Iterable.class);
@@ -273,7 +269,7 @@ class ArticleRestoreServiceTest {
     assertThat(savedArticles).hasSize(1);
     assertThat(savedArticles.get(0).getTitle()).isEqualTo(first.title());
     assertThat(savedArticles.get(0).getSummary()).isEqualTo(first.summary());
-    assertThat(result.get(0).restoredArticleCount()).isEqualTo(1);
+    assertThat(result.restoredArticleCount()).isEqualTo(1);
   }
 
   @Test
@@ -315,7 +311,7 @@ class ArticleRestoreServiceTest {
     given(articleRepository.saveAll(any())).willAnswer(invocation -> toList(invocation.getArgument(0)));
 
     // when
-    List<ArticleRestoreResultDto> result = articleRestoreService.restore(from, to);
+    ArticleRestoreResultDto result = articleRestoreService.restore(from, to);
 
     // then
     ArgumentCaptor<Iterable<Article>> captor = ArgumentCaptor.forClass(Iterable.class);
@@ -324,7 +320,7 @@ class ArticleRestoreServiceTest {
 
     assertThat(savedArticles).hasSize(1);
     assertThat(savedArticles.get(0).getSourceUrl()).isEqualTo(valid.sourceUrl());
-    assertThat(result.get(0).restoredArticleCount()).isEqualTo(1);
+    assertThat(result.restoredArticleCount()).isEqualTo(1);
   }
 
   @Test
