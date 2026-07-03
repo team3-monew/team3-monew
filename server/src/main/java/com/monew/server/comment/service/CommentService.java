@@ -34,6 +34,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher; // event publisher 관련 import
+import com.monew.server.activity.event.ArticleCommentCountUpdatedEvent;
+import com.monew.server.activity.event.CommentCreatedEvent;
+import com.monew.server.activity.event.CommentDeletedEvent;
+import com.monew.server.activity.event.CommentLikeCreatedEvent;
+import com.monew.server.activity.event.CommentLikeDeletedEvent;
+import com.monew.server.activity.event.CommentUpdatedEvent;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +56,8 @@ public class CommentService {
   private final ArticleRepository articleRepository;
   private final UserRepository userRepository;
   private final NotificationService notificationService; // 알림 서비스 주입
+  private final ApplicationEventPublisher eventPublisher; // event publisher 관련필드
+
 
   //댓글 등록
 
@@ -69,6 +78,23 @@ public class CommentService {
 
     Comment savedComment = commentRepository.save(comment);
     articleRepository.increaseCommentCount(article.getId());
+    // event publisher 삽입
+    eventPublisher.publishEvent(new CommentCreatedEvent(
+        user.getId(),
+        savedComment.getId(),
+        article.getId(),
+        article.getTitle(),
+        user.getNickname(),
+        savedComment.getContent(),
+        savedComment.getLikeCount(),
+        savedComment.getCreatedAt()
+    ));
+
+    eventPublisher.publishEvent(new ArticleCommentCountUpdatedEvent(
+        article.getId(),
+        article.getCommentCount() + 1
+    ));
+
     return savedComment;
   }
 
@@ -81,6 +107,15 @@ public class CommentService {
       throw new BaseException(CommonErrorCode.FORBIDDEN);
 
     comment.updateContent(request.content());
+
+    // event publisher 삽입
+    eventPublisher.publishEvent(new CommentUpdatedEvent(
+        comment.getUser().getId(),
+        comment.getId(),
+        comment.getContent()
+    ));
+    //
+
     return comment;
   }
 
@@ -105,8 +140,25 @@ public class CommentService {
     if (!Objects.equals(comment.getUser().getId(), userId))
       throw new BaseException(CommonErrorCode.FORBIDDEN);
 
+    // 삭제전 변수 저장(event publisher용) 및 event publisher 삽입
+    UUID articleId = comment.getArticle().getId();
+    long updatedArticleCommentCount = Math.max(0, comment.getArticle().getCommentCount() - 1);
+
     comment.delete();
-    articleRepository.decreaseCommentCount(comment.getArticle().getId());
+    int updated = articleRepository.decreaseCommentCount(articleId);
+
+    eventPublisher.publishEvent(new CommentDeletedEvent(
+        comment.getUser().getId(),
+        comment.getId()
+    ));
+
+
+    if (updated == 1) {
+      eventPublisher.publishEvent(new ArticleCommentCountUpdatedEvent(
+          articleId,
+          updatedArticleCommentCount
+      ));
+    }
   }
 
 
@@ -139,8 +191,26 @@ public class CommentService {
     );
 
     // insertIgnore는 native insert라 영속성 컨텍스트에 엔티티가 없으므로 재조회
-    return commentLikeRepository.findByCommentIdAndUserId(commentId, userId)
+    CommentLike commentLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)
         .orElseThrow(() -> new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));
+    // event publisher 삽입
+    Comment refreshed = getComment(commentId); // db가 업데이트 된 후의 정보 저장
+
+    eventPublisher.publishEvent(new CommentLikeCreatedEvent(
+        user.getId(),
+        commentLike.getId(),
+        commentLike.getCreatedAt(),
+        refreshed.getId(),
+        refreshed.getArticle().getId(),
+        refreshed.getArticle().getTitle(),
+        refreshed.getUser().getId(),
+        refreshed.getUser().getNickname(),
+        refreshed.getContent(),
+        refreshed.getLikeCount(),
+        refreshed.getCreatedAt()
+    ));
+
+    return commentLike;
   }
 
 
@@ -151,8 +221,21 @@ public class CommentService {
   public void removeLike(UUID commentId, UUID userId) {
     CommentLike like = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)
         .orElseThrow(() -> new BaseException(CommonErrorCode.INVALID_REQUEST));
+
+    UUID commentLikeId = like.getId(); // event publihser용
+
     commentLikeRepository.delete(like);
     commentRepository.decreaseLikeCount(commentId);
+
+    Comment refreshed = getComment(commentId); // event publihser용
+
+    // event publisher삽입
+    eventPublisher.publishEvent(new CommentLikeDeletedEvent(
+        userId,
+        commentLikeId,
+        refreshed.getId(),
+        refreshed.getLikeCount()
+    ));
   }
 
 
