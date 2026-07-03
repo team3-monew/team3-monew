@@ -17,8 +17,11 @@ export async function getInterests(
 /* 관심사 등록 */
 export async function addInterest(
   body: T.AddInterestBody,
+  requestUserId: UserId,
 ): Promise<T.AddInterestResponse> {
-  const { data } = await http.post<T.AddInterestResponse>("/interests", body);
+  const { data } = await http.post<T.AddInterestResponse>("/interests", body, {
+    headers: { "Monew-Request-User-ID": requestUserId },
+  });
   return data;
 }
 
@@ -39,10 +42,12 @@ export async function subscribeInterest(
 export async function updateInterest(
   interestId: InterestId,
   keywords: T.UpdateInterestBody,
+  requestUserId: UserId,
 ): Promise<T.UpdateInterestResponse> {
   const { data } = await http.patch<T.UpdateInterestResponse>(
     `/interests/${interestId}`,
     keywords,
+    { headers: { "Monew-Request-User-ID": requestUserId } },
   );
   return data;
 }
@@ -58,6 +63,11 @@ export async function deleteInterestSubscription(
 }
 
 /* 관심사 물리 삭제 */
-export async function deleteInterest(interestId: InterestId): Promise<void> {
-  await http.delete<void>(`/interests/${interestId}`);
+export async function deleteInterest(
+  interestId: InterestId,
+  requestUserId: UserId,
+): Promise<void> {
+  await http.delete<void>(`/interests/${interestId}`, {
+    headers: { "Monew-Request-User-ID": requestUserId },
+  });
 }
