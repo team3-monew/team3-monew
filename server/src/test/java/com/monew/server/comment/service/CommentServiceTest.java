@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.never;
@@ -12,6 +13,7 @@ import com.monew.server.article.entity.Article;
 import com.monew.server.article.entity.ArticleSource;
 import com.monew.server.article.repository.ArticleRepository;
 import com.monew.server.comment.entity.Comment;
+import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.repository.CommentRepository;
 import com.monew.server.common.exception.BaseException;
@@ -138,4 +140,126 @@ class CommentServiceTest {
     ReflectionTestUtils.setField(comment, "likeCount", 0L);
     return comment;
   }
+
+
+
+  @Test
+  @DisplayName("좋아요 등록 성공 - 처음 누르는 좋아요면 카운트를 증가시키고 알림을 생성한다")
+  void addLike_success() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+    UUID commentOwnerId = UUID.randomUUID();
+
+    User liker = user(userId);
+    User commentOwner = user(commentOwnerId);
+    Article article = article(UUID.randomUUID());
+    Comment comment = comment(commentId, article, commentOwner, "좋아요 대상 댓글");
+    CommentLike commentLike = commentLike(UUID.randomUUID(), comment, liker);
+
+    given(commentRepository.findByIdAndDeletedAtIsNull(commentId))
+        .willReturn(Optional.of(comment));
+    given(userRepository.findByIdAndDeletedAtIsNull(userId))
+        .willReturn(Optional.of(liker));
+    given(commentLikeRepository.insertIgnore(any(UUID.class), eq(commentId), eq(userId)))
+        .willReturn(1);
+    given(commentLikeRepository.findByCommentIdAndUserId(commentId, userId))
+        .willReturn(Optional.of(commentLike));
+
+    // when
+    CommentLike result = commentService.addLike(commentId, userId);
+
+    // then
+    assertThat(result).isEqualTo(commentLike);
+    then(commentRepository).should().increaseLikeCount(commentId);
+    then(notificationService).should().createCommentLikeNotification(
+        commentOwnerId, userId, commentId, liker.getNickname());
+  }
+
+
+  @Test
+  @DisplayName("좋아요 등록 실패 - 이미 좋아요 상태면 카운트 증가와 알림 생성 없이 잘못된 요청 예외가 발생한다")
+  void addLike_fail_alreadyLiked() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+
+    User liker = user(userId);
+    Article article = article(UUID.randomUUID());
+    Comment comment = comment(commentId, article, user(UUID.randomUUID()), "댓글");
+
+    given(commentRepository.findByIdAndDeletedAtIsNull(commentId))
+        .willReturn(Optional.of(comment));
+    given(userRepository.findByIdAndDeletedAtIsNull(userId))
+        .willReturn(Optional.of(liker));
+    // insertIgnore가 0을 반환 = UNIQUE 제약 충돌 = 이미 좋아요 상태
+    given(commentLikeRepository.insertIgnore(any(UUID.class), eq(commentId), eq(userId)))
+        .willReturn(0);
+
+    // when & then
+    assertThatThrownBy(() -> commentService.addLike(commentId, userId))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(CommonErrorCode.INVALID_REQUEST);
+
+    // 핵심 검증: 예외가 발생하면 카운트 증가와 알림 생성은 절대 호출되면 안 된다
+    then(commentRepository).should(never()).increaseLikeCount(any());
+    then(notificationService).should(never())
+        .createCommentLikeNotification(any(), any(), any(), any());
+  }
+
+
+  @Test
+  @DisplayName("좋아요 취소 성공 - 좋아요 상태이면 삭제하고 카운트를 감소시킨다")
+  void removeLike_success() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+
+    User liker = user(userId);
+    Article article = article(UUID.randomUUID());
+    Comment comment = comment(commentId, article, user(UUID.randomUUID()), "댓글");
+    CommentLike commentLike = commentLike(UUID.randomUUID(), comment, liker);
+
+    given(commentLikeRepository.findByCommentIdAndUserId(commentId, userId))
+        .willReturn(Optional.of(commentLike));
+
+    // when
+    commentService.removeLike(commentId, userId);
+
+    // then
+    then(commentLikeRepository).should().delete(commentLike);
+    then(commentRepository).should().decreaseLikeCount(commentId);
+  }
+
+
+  @Test
+  @DisplayName("좋아요 취소 실패 - 좋아요를 누르지 않은 상태면 잘못된 요청 예외가 발생한다")
+  void removeLike_fail_notLiked() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+
+    given(commentLikeRepository.findByCommentIdAndUserId(commentId, userId))
+        .willReturn(Optional.empty());
+
+    // when & then
+    assertThatThrownBy(() -> commentService.removeLike(commentId, userId))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(CommonErrorCode.INVALID_REQUEST);
+
+    then(commentRepository).should(never()).decreaseLikeCount(any());
+  }
+
+  // 헬퍼 메서드 추가
+  private CommentLike commentLike(UUID id, Comment comment, User user) {
+    CommentLike commentLike = CommentLike.builder()
+        .comment(comment)
+        .user(user)
+        .build();
+    ReflectionTestUtils.setField(commentLike, "id", id);
+    return commentLike;
+  }
+
 }
