@@ -6,7 +6,6 @@ import com.monew.server.common.exception.article.ArticleException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -21,11 +20,9 @@ public class S3ArticleBackupReader implements ArticleBackupReader {
   private final BackupProperties backupProperties;
   private final S3Client s3Client;
 
-  public S3ArticleBackupReader(BackupProperties backupProperties) {
+  public S3ArticleBackupReader(BackupProperties backupProperties, S3Client s3Client) {
     this.backupProperties = backupProperties;
-    this.s3Client = S3Client.builder()
-        .region(Region.of(backupProperties.storage().s3().region()))
-        .build();
+    this.s3Client = s3Client;
   }
 
   @Override

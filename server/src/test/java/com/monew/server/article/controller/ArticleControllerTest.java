@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.monew.server.article.dto.ArticleResponse;
+import com.monew.server.article.dto.ArticleRestoreResultDto;
 import com.monew.server.article.dto.ArticleSearchCondition;
 import com.monew.server.article.dto.ArticleViewResponse;
 import com.monew.server.article.entity.ArticleSource;
@@ -18,6 +20,7 @@ import com.monew.server.article.service.ArticleRestoreService;
 import com.monew.server.article.service.ArticleService;
 import com.monew.server.common.response.CursorPageResponse;
 import com.monew.server.support.ControllerTestSupport;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +36,6 @@ class ArticleControllerTest extends ControllerTestSupport {
     ArticleService articleService;
 
     // ArticleController 생성자 의존성 때문에 WebMvcTest 컨텍스트 로딩용 mock은 필요하다.
-    // 다만 기사 복구 기능 자체는 배치 담당 범위라 여기서는 테스트하지 않는다.
     @MockitoBean
     ArticleRestoreService articleRestoreService;
 
@@ -186,6 +188,54 @@ class ArticleControllerTest extends ControllerTestSupport {
         // then
         mockMvc.perform(get("/api/articles/{articleId}", articleId))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("기사 복구 성공 - from과 to를 서비스로 전달하고 복구 결과를 반환한다")
+    void restore_success() throws Exception {
+        // given
+        UUID userId = UUID.randomUUID();
+        LocalDateTime from = LocalDateTime.of(2026, 7, 1, 10, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 7, 2, 0, 0);
+        UUID firstArticleId = UUID.randomUUID();
+        UUID secondArticleId = UUID.randomUUID();
+        ArticleRestoreResultDto response = new ArticleRestoreResultDto(
+                Instant.parse("2026-07-02T01:00:00Z"),
+                List.of(firstArticleId, secondArticleId),
+                2
+        );
+        given(articleRestoreService.restore(from, to)).willReturn(List.of(response));
+
+        // when
+        // then
+        mockMvc.perform(get("/api/articles/restore")
+                        .header("MoNew-Request-User-ID", userId)
+                        .param("from", "2026-07-01T10:00:00")
+                        .param("to", "2026-07-02T00:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].restoreDate").value("2026-07-02T01:00:00Z"))
+                .andExpect(jsonPath("$[0].restoredArticleIds[0]").value(firstArticleId.toString()))
+                .andExpect(jsonPath("$[0].restoredArticleIds[1]").value(secondArticleId.toString()))
+                .andExpect(jsonPath("$[0].restoredArticleCount").value(2));
+
+        then(articleRestoreService).should().restore(from, to);
+    }
+
+    @Test
+    @DisplayName("기사 복구 실패 - from 날짜 형식이 올바르지 않으면 400 Bad Request를 반환한다")
+    void restore_fail_invalidFromDateFormat() throws Exception {
+        // given
+        UUID userId = UUID.randomUUID();
+
+        // when
+        // then
+        mockMvc.perform(get("/api/articles/restore")
+                        .header("MoNew-Request-User-ID", userId)
+                        .param("from", "2026/07/01 10:00:00")
+                        .param("to", "2026-07-02T00:00:00"))
+                .andExpect(status().isBadRequest());
+
+        then(articleRestoreService).should(never()).restore(any(), any());
     }
 
     private ArticleResponse articleResponse(UUID articleId, boolean viewedByMe) {
