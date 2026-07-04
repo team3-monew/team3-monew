@@ -5,12 +5,20 @@ import com.monew.batch.article.collect.dto.ArticleCollectStagingCleanupResultDto
 import com.monew.batch.article.collect.dto.ArticleCollectStepResultDto;
 import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultDto;
 import com.monew.batch.article.collect.service.ArticleCollectService;
+import com.monew.batch.article.config.ArticleCollectProperties;
 import com.monew.batch.article.entity.ArticleSource;
 import com.monew.batch.monitoring.ArticleCollectMetrics;
 import com.monew.batch.monitoring.BatchJobMetricsListener;
+import jakarta.persistence.LockTimeoutException;
+import jakarta.persistence.PessimisticLockException;
+import java.sql.SQLTransientException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.JDBCConnectionException;
+import org.hibernate.exception.LockAcquisitionException;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -20,9 +28,11 @@ import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionSystemException;
 
 /**
  * 기사 수집 작업을 Spring Batch Job과 Step으로 등록하는 설정 클래스입니다.
@@ -50,6 +60,7 @@ public class ArticleCollectJobConfig {
 
   private final ArticleCollectService articleCollectService;
   private final ArticleCollectMetrics articleCollectMetrics;
+  private final ArticleCollectProperties articleCollectProperties;
 
   /**
    * 매 시간 실행될 기사 수집 Batch Job입니다.
@@ -81,7 +92,7 @@ public class ArticleCollectJobConfig {
   public Step naverCollectStep(JobRepository jobRepository,
       PlatformTransactionManager transactionManager) {
     return collectStep(jobRepository, transactionManager, "naverCollectStep", chunkContext ->
-        articleCollectService.collectNaverArticlesToStaging(jobExecutionId(chunkContext)));
+        articleCollectService.collectNaverArticlesToStaging(jobInstanceId(chunkContext)));
   }
 
   @Bean
@@ -116,7 +127,9 @@ public class ArticleCollectJobConfig {
     return new StepBuilder("articlePersistStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
           ArticleSaveAndInterestLinkStepResultDto result =
-              articleCollectService.saveStagedArticlesAndLinkInterests(jobExecutionId(chunkContext));
+              executeDbStepWithRetry("articlePersistStep",
+                  () -> articleCollectService.saveStagedArticlesAndLinkInterests(
+                      jobInstanceId(chunkContext)));
           // staging 데이터를 실제 articles에 반영한 뒤 최종 처리 건수 메트릭을 갱신합니다.
           articleCollectMetrics.recordPersistResult(result);
 
@@ -144,7 +157,8 @@ public class ArticleCollectJobConfig {
     return new StepBuilder("articleCollectStagingCleanupStep", jobRepository)
         .tasklet((contribution, chunkContext) -> {
           ArticleCollectStagingCleanupResultDto result =
-              articleCollectService.cleanupStaging(jobExecutionId(chunkContext));
+              executeDbStepWithRetry("articleCollectStagingCleanupStep",
+                  () -> articleCollectService.cleanupStaging(jobInstanceId(chunkContext)));
           log.info("Article collect staging cleanup finished. result={}", result);
           return RepeatStatus.FINISHED;
         }, transactionManager)
@@ -159,7 +173,7 @@ public class ArticleCollectJobConfig {
       String stepName,
       ArticleSource source) {
     return collectStep(jobRepository, transactionManager, stepName, chunkContext ->
-        articleCollectService.collectRssArticlesToStaging(jobExecutionId(chunkContext), source));
+        articleCollectService.collectRssArticlesToStaging(jobInstanceId(chunkContext), source));
   }
 
   /**
@@ -183,7 +197,7 @@ public class ArticleCollectJobConfig {
               contribution.setExitStatus(COMPLETED_WITH_EXTERNAL_API_FAILURE);
             }
           } catch (Exception ex) {
-            log.warn("기사 수집 step 실패. 다음 step 실행. stepName={}, message={}",
+            log.warn("[collect article] 기사 수집 step 실패. 다음 step 실행. stepName={}, message={}",
                 stepName, ex.getMessage(), ex);
             contribution.setExitStatus(COMPLETED_WITH_EXTERNAL_API_FAILURE);
           }
@@ -193,14 +207,72 @@ public class ArticleCollectJobConfig {
   }
 
   /**
-   * 현재 Job 실행 ID를 꺼냅니다.
-   * 이 ID를 staging row에 함께 저장해서 같은 배치 실행에서 수집된 데이터끼리 묶습니다.
+   * 현재 JobInstance ID를 꺼냅니다.
+   * 이 ID를 staging row에 함께 저장해서 재시작 JobExecution도 같은 수집 데이터를 읽게 합니다.
    */
-  private Long jobExecutionId(ChunkContext chunkContext) {
+  private Long jobInstanceId(ChunkContext chunkContext) {
     return chunkContext.getStepContext()
         .getStepExecution()
         .getJobExecution()
-        .getId();
+        .getJobInstance()
+        .getInstanceId();
+  }
+
+  /**
+   * DB 저장/정리 Step에서 일시적인 DB 장애가 발생하면 설정된 횟수만큼 재시도합니다.
+   * 재시도 대상이 아니거나 최대 시도 횟수를 넘긴 예외는 그대로 던져 Step과 Job을 실패 상태로 남깁니다.
+   */
+  private <T> T executeDbStepWithRetry(String stepName, Supplier<T> action) {
+    int maxAttempts = Math.max(1, articleCollectProperties.retryMaxAttempts());
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return action.get();
+      } catch (RuntimeException ex) {
+        if (!isRetryableDbException(ex) || attempt == maxAttempts) {
+          log.warn("[collect article] 기사 수집 DB 스텝 실패. stepName={}, attempt={}, message={}",
+              stepName, attempt, ex.getMessage(), ex);
+          throw ex;
+        }
+
+        log.warn("[collect article] 재시도 가능한 기사 수집 DB step 실패. stepName={}, attempt={}, message={}",
+            stepName, attempt, ex.getMessage(), ex);
+        sleepBeforeRetry(attempt);
+      }
+    }
+
+    throw new IllegalStateException("Unexpected DB retry state. stepName=" + stepName);
+  }
+
+  private boolean isRetryableDbException(Throwable ex) {
+    Throwable current = ex;
+    while (current != null) {
+      if (current instanceof TransientDataAccessException
+          || current instanceof SQLTransientException
+          || current instanceof JDBCConnectionException
+          || current instanceof LockAcquisitionException
+          || current instanceof LockTimeoutException
+          || current instanceof PessimisticLockException
+          || current instanceof TransactionSystemException) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  private void sleepBeforeRetry(int failedAttempt) {
+    long baseDelay = articleCollectProperties.retryInitialDelayMillis()
+        * (1L << Math.max(0, failedAttempt - 1));
+    long cappedDelay = Math.min(baseDelay, articleCollectProperties.retryMaxDelayMillis());
+    long jitter = ThreadLocalRandom.current().nextLong(0, Math.max(1L, cappedDelay / 5L + 1L));
+
+    try {
+      Thread.sleep(cappedDelay + jitter);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while waiting for DB retry.", ex);
+    }
   }
 
   /**

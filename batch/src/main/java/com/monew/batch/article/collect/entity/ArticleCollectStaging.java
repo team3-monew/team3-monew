@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
     name = "article_collect_staging",
     uniqueConstraints = @UniqueConstraint(
         name = "uk_article_collect_staging_job_url",
-        columnNames = {"job_execution_id", "source_url"}
+        columnNames = {"job_instance_id", "source_url"}
     )
 )
 public class ArticleCollectStaging extends BaseCreatedEntity {
@@ -36,8 +36,8 @@ public class ArticleCollectStaging extends BaseCreatedEntity {
   @Id
   private UUID id;
 
-  @Column(name = "job_execution_id", nullable = false)
-  private Long jobExecutionId;
+  @Column(name = "job_instance_id", nullable = false)
+  private Long jobInstanceId;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
@@ -55,8 +55,8 @@ public class ArticleCollectStaging extends BaseCreatedEntity {
   @Column(columnDefinition = "TEXT")
   private String summary;
 
-  public ArticleCollectStaging(Long jobExecutionId, CollectedArticleDto article) {
-    this.jobExecutionId = jobExecutionId;
+  public ArticleCollectStaging(Long jobInstanceId, CollectedArticleDto article) {
+    this.jobInstanceId = jobInstanceId;
     this.source = article.source();
     this.sourceUrl = article.sourceUrl();
     this.title = article.title();

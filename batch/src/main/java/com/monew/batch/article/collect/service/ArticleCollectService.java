@@ -61,7 +61,7 @@ public class ArticleCollectService {
 
   // Naver 뉴스 검색 API로 기사 수집
   @Transactional
-  public ArticleCollectStepResultDto collectNaverArticlesToStaging(Long jobExecutionId) {
+  public ArticleCollectStepResultDto collectNaverArticlesToStaging(Long jobInstanceId) {
     // 관심사 키워드 찾기
     List<InterestKeyword> interestKeywords = findInterestKeywords();
     if (interestKeywords.isEmpty()) {
@@ -91,7 +91,7 @@ public class ArticleCollectService {
     List<CollectedArticleDto> matchedArticles = filterMatchedArticles(collectedArticles,
         interestKeywords);
     // db에 staging 기사들 저장
-    StageResult stageResult = saveStagingArticles(jobExecutionId, matchedArticles);
+    StageResult stageResult = saveStagingArticles(jobInstanceId, matchedArticles);
 
     ArticleCollectStepResultDto result = new ArticleCollectStepResultDto(
         ArticleSource.NAVER,
@@ -109,7 +109,7 @@ public class ArticleCollectService {
 
   // RSS로 뉴스 기사 수집
   @Transactional
-  public ArticleCollectStepResultDto collectRssArticlesToStaging(Long jobExecutionId,
+  public ArticleCollectStepResultDto collectRssArticlesToStaging(Long jobInstanceId,
       ArticleSource source) {
     // 관심사 키워드 찾기
     List<InterestKeyword> interestKeywords = findInterestKeywords();
@@ -131,7 +131,7 @@ public class ArticleCollectService {
     List<CollectedArticleDto> matchedArticles = filterMatchedArticles(collectResult.articles(),
         interestKeywords);
     // db에 staging 기사들 저장
-    StageResult stageResult = saveStagingArticles(jobExecutionId, matchedArticles);
+    StageResult stageResult = saveStagingArticles(jobInstanceId, matchedArticles);
 
     ArticleCollectStepResultDto result = new ArticleCollectStepResultDto(
         source,
@@ -149,10 +149,10 @@ public class ArticleCollectService {
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public ArticleSaveAndInterestLinkStepResultDto saveStagedArticlesAndLinkInterests(
-      Long jobExecutionId) {
+      Long jobInstanceId) {
     List<InterestKeyword> interestKeywords = findInterestKeywords();
-    List<CollectedArticleDto> stagedArticles = stagingRepository.findAllByJobExecutionId(
-            jobExecutionId)
+    List<CollectedArticleDto> stagedArticles = stagingRepository.findAllByJobInstanceId(
+            jobInstanceId)
         .stream()
         .map(ArticleCollectStaging::toCollectedArticleDto)
         .toList();
@@ -177,8 +177,8 @@ public class ArticleCollectService {
    * 저장과 관심사 연결이 끝난 뒤 호출되므로 staging 테이블은 중간 저장소 역할만 하고 비워집니다.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public ArticleCollectStagingCleanupResultDto cleanupStaging(Long jobExecutionId) {
-    long deletedCount = stagingRepository.deleteByJobExecutionId(jobExecutionId);
+  public ArticleCollectStagingCleanupResultDto cleanupStaging(Long jobInstanceId) {
+    long deletedCount = stagingRepository.deleteByJobInstanceId(jobInstanceId);
     ArticleCollectStagingCleanupResultDto result =
         new ArticleCollectStagingCleanupResultDto(deletedCount);
     log.info("Article collect staging cleanup step finished. result={}", result);
@@ -215,7 +215,7 @@ public class ArticleCollectService {
    * 수집 Step에서 얻은 저장 후보 기사를 staging 테이블에 저장합니다.
    * 같은 배치 실행 안에서 sourceUrl이 중복되면 첫 번째 기사만 남기고 나머지는 건너뜁니다.
    */
-  private StageResult saveStagingArticles(Long jobExecutionId,
+  private StageResult saveStagingArticles(Long jobInstanceId,
       List<CollectedArticleDto> collectedArticleDtos) {
     int invalidSkippedCount = (int) collectedArticleDtos.stream()
         .filter(article -> article.sourceUrl() == null || article.sourceUrl().isBlank())
@@ -231,9 +231,9 @@ public class ArticleCollectService {
             LinkedHashMap::new
         ));
 
-    // 현재 실행중인 job에서 staging 테이블에 저장되어 있는 url 목록
-    Set<String> existingStagingUrls = stagingRepository.findAllByJobExecutionIdAndSourceUrlIn(
-            jobExecutionId, collectedByUrl.keySet())
+    // 현재 JobInstance에서 staging 테이블에 저장되어 있는 url 목록
+    Set<String> existingStagingUrls = stagingRepository.findAllByJobInstanceIdAndSourceUrlIn(
+            jobInstanceId, collectedByUrl.keySet())
         .stream()
         .map(ArticleCollectStaging::getSourceUrl)
         .collect(Collectors.toSet());
@@ -241,7 +241,7 @@ public class ArticleCollectService {
     // staging에 없는 기사들 목록
     List<ArticleCollectStaging> stagingArticles = collectedByUrl.entrySet().stream()
         .filter(entry -> !existingStagingUrls.contains(entry.getKey()))
-        .map(entry -> new ArticleCollectStaging(jobExecutionId, entry.getValue()))
+        .map(entry -> new ArticleCollectStaging(jobInstanceId, entry.getValue()))
         .toList();
     // staging에 새 기사들 저장
     stagingRepository.saveAll(stagingArticles);
