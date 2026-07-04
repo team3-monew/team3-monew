@@ -131,7 +131,7 @@ public class InterestServiceImplTest {
         assertThat(response.keywords()).containsExactly("축구", "야구");
         assertThat(interest.getUpdatedAt()).isNotNull();
 
-        verify(interestKeywordRepository).deleteByInterest(interest);
+        verify(interestKeywordRepository).deleteByInterestId(interestId);
         verify(interestKeywordRepository).saveAll(any(Collection.class));
     }
 
@@ -149,7 +149,7 @@ public class InterestServiceImplTest {
         assertThatThrownBy(() -> interestService.update(interestId, request))
                 .isInstanceOf(BaseException.class);
 
-        verify(interestKeywordRepository, never()).deleteByInterest(any(Interest.class));
+        verify(interestKeywordRepository, never()).deleteByInterestId(interestId);
         verify(interestKeywordRepository, never()).saveAll(any(Collection.class));
     }
 
