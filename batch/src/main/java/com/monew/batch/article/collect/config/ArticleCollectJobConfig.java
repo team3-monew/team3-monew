@@ -7,6 +7,8 @@ import com.monew.batch.article.collect.dto.ArticleSaveAndInterestLinkStepResultD
 import com.monew.batch.article.collect.service.ArticleCollectService;
 import com.monew.batch.article.config.ArticleCollectProperties;
 import com.monew.batch.article.entity.ArticleSource;
+import com.monew.batch.common.exception.article.ArticleCollectErrorCode;
+import com.monew.batch.common.exception.article.ArticleCollectException;
 import com.monew.batch.monitoring.ArticleCollectMetrics;
 import com.monew.batch.monitoring.BatchJobMetricsListener;
 import jakarta.persistence.LockTimeoutException;
@@ -233,7 +235,7 @@ public class ArticleCollectJobConfig {
         if (!isRetryableDbException(ex) || attempt == maxAttempts) {
           log.warn("[collect article] 기사 수집 DB 스텝 실패. stepName={}, attempt={}, message={}",
               stepName, attempt, ex.getMessage(), ex);
-          throw ex;
+          throw dbStepFailedException(stepName, attempt, maxAttempts, ex);
         }
 
         log.warn("[collect article] 재시도 가능한 기사 수집 DB step 실패. stepName={}, attempt={}, message={}",
@@ -242,7 +244,19 @@ public class ArticleCollectJobConfig {
       }
     }
 
-    throw new IllegalStateException("Unexpected DB retry state. stepName=" + stepName);
+    throw dbStepFailedException(stepName, maxAttempts, maxAttempts,
+        new IllegalStateException("Unexpected DB retry state. stepName=" + stepName));
+  }
+
+  private ArticleCollectException dbStepFailedException(String stepName, int attempt,
+      int maxAttempts, RuntimeException cause) {
+    ArticleCollectException exception =
+        new ArticleCollectException(ArticleCollectErrorCode.DB_STEP_FAILED, cause);
+    exception.addDetail("stepName", stepName);
+    exception.addDetail("attempt", attempt);
+    exception.addDetail("maxAttempts", maxAttempts);
+    exception.addDetail("retryable", isRetryableDbException(cause));
+    return exception;
   }
 
   private boolean isRetryableDbException(Throwable ex) {
@@ -272,7 +286,10 @@ public class ArticleCollectJobConfig {
       Thread.sleep(cappedDelay + jitter);
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while waiting for DB retry.", ex);
+      ArticleCollectException exception =
+          new ArticleCollectException(ArticleCollectErrorCode.DB_RETRY_INTERRUPTED, ex);
+      exception.addDetail("failedAttempt", failedAttempt);
+      throw exception;
     }
   }
 
