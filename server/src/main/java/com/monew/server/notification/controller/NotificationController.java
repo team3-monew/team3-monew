@@ -7,6 +7,7 @@ import com.monew.server.notification.dto.NotificationResponse;
 import com.monew.server.notification.service.NotificationService;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -69,7 +70,9 @@ public class NotificationController {
         }
 
         try {
-            return OffsetDateTime.parse(after).toLocalDateTime();
+            return OffsetDateTime.parse(after)
+                    .atZoneSameInstant(ZoneId.of("Asia/Seoul"))
+                    .toLocalDateTime();
         } catch (DateTimeParseException ignored) {
             try {
                 return LocalDateTime.parse(after);

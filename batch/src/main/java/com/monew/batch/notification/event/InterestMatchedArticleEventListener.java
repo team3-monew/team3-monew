@@ -80,6 +80,6 @@ public class InterestMatchedArticleEventListener {
     }
 
     private String createContent(String interestName, int articleCount) {
-        return interestName + "와 관련된 기사가 " + articleCount + "건 등록되었습니다.";
+        return interestName + " 관심사와 관련된 기사가 " + articleCount + "건 등록되었습니다.";
     }
 }

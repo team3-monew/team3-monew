@@ -4,8 +4,10 @@ import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
 import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
 import com.monew.batch.article.collect.dto.NaverNewsResponseDto;
 import com.monew.batch.article.config.ArticleCollectProperties;
+import com.monew.batch.article.config.NaverApiProperties;
 import com.monew.batch.article.entity.ArticleSource;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,8 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
 
   private final RestClient naverRestClient;
   private final ArticleCollectProperties properties;
+  private final NaverApiProperties naverApiProperties;
+  private final AtomicBoolean missingCredentialLogged = new AtomicBoolean(false);
 
   @Override
   public ArticleSource getSource() {
@@ -39,6 +43,11 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
 
   @Override
   public KeywordCollectResultDto collectByKeywordResult(String keyword, int limit) {
+    if (isCredentialMissing()) {
+      logMissingCredentialOnce();
+      return new KeywordCollectResultDto(List.of(), 0, 0, 0);
+    }
+
     int display = Math.min(limit, properties.naverDisplay());
     NaverNewsResponseDto response = requestWithRetry(keyword, display);
 
@@ -112,6 +121,20 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
   private boolean shouldRetry(RestClientResponseException ex) {
     int status = ex.getStatusCode().value();
     return status == 429 || status >= 500;
+  }
+
+  private boolean isCredentialMissing() {
+    return isBlank(naverApiProperties.clientId()) || isBlank(naverApiProperties.clientSecret());
+  }
+
+  private boolean isBlank(String value) {
+    return value == null || value.isBlank();
+  }
+
+  private void logMissingCredentialOnce() {
+    if (missingCredentialLogged.compareAndSet(false, true)) {
+      log.warn("[collect article] Naver API 자격 증명 실패로 네이버 기사 수집 skip");
+    }
   }
 
   private void sleepBeforeRetry(int failedAttempt) {
