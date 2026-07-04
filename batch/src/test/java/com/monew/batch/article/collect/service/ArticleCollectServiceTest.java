@@ -46,7 +46,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class ArticleCollectServiceTest {
 
-  private static final long JOB_EXECUTION_ID = 1L;
+  private static final long JOB_INSTANCE_ID = 1L;
   private static final LocalDateTime PUBLISH_DATE = LocalDateTime.of(2026, 7, 3, 10, 0);
 
   @Mock
@@ -85,7 +85,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleCollectStepResultDto result =
-        articleCollectService.collectNaverArticlesToStaging(JOB_EXECUTION_ID);
+        articleCollectService.collectNaverArticlesToStaging(JOB_INSTANCE_ID);
 
     // then
     assertThat(result).isEqualTo(ArticleCollectStepResultDto.empty(ArticleSource.NAVER));
@@ -107,7 +107,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleCollectStepResultDto result =
-        articleCollectService.collectNaverArticlesToStaging(JOB_EXECUTION_ID);
+        articleCollectService.collectNaverArticlesToStaging(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.requestCount()).isEqualTo(1);
@@ -127,12 +127,12 @@ class ArticleCollectServiceTest {
             collected("https://news.example.com/java", "Java 새 버전 공개", "요약", ArticleSource.NAVER),
             collected("https://news.example.com/sports", "야구 소식", "요약", ArticleSource.NAVER)
         ), 1, 1, 0));
-    given(stagingRepository.findAllByJobExecutionIdAndSourceUrlIn(eq(JOB_EXECUTION_ID),
+    given(stagingRepository.findAllByJobInstanceIdAndSourceUrlIn(eq(JOB_INSTANCE_ID),
         anyCollection())).willReturn(List.of());
 
     // when
     ArticleCollectStepResultDto result =
-        articleCollectService.collectNaverArticlesToStaging(JOB_EXECUTION_ID);
+        articleCollectService.collectNaverArticlesToStaging(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.collectedCount()).isEqualTo(2);
@@ -158,12 +158,12 @@ class ArticleCollectServiceTest {
             collected("https://news.example.com/java", "Java 첫 번째 기사", "요약", ArticleSource.NAVER),
             collected("https://news.example.com/java", "Java 두 번째 기사", "요약", ArticleSource.NAVER)
         ), 1, 1, 0));
-    given(stagingRepository.findAllByJobExecutionIdAndSourceUrlIn(eq(JOB_EXECUTION_ID),
+    given(stagingRepository.findAllByJobInstanceIdAndSourceUrlIn(eq(JOB_INSTANCE_ID),
         anyCollection())).willReturn(List.of());
 
     // when
     ArticleCollectStepResultDto result =
-        articleCollectService.collectNaverArticlesToStaging(JOB_EXECUTION_ID);
+        articleCollectService.collectNaverArticlesToStaging(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.matchedCount()).isEqualTo(2);
@@ -182,7 +182,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleCollectStepResultDto result =
-        serviceWithoutFeedCollector.collectRssArticlesToStaging(JOB_EXECUTION_ID,
+        serviceWithoutFeedCollector.collectRssArticlesToStaging(JOB_INSTANCE_ID,
             ArticleSource.HANKYUNG);
 
     // then
@@ -202,7 +202,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleCollectStepResultDto result =
-        articleCollectService.collectRssArticlesToStaging(JOB_EXECUTION_ID, ArticleSource.HANKYUNG);
+        articleCollectService.collectRssArticlesToStaging(JOB_INSTANCE_ID, ArticleSource.HANKYUNG);
 
     // then
     assertThat(result.source()).isEqualTo(ArticleSource.HANKYUNG);
@@ -219,7 +219,7 @@ class ArticleCollectServiceTest {
     Interest interest = interest("개발");
     given(interestKeywordRepository.findAll()).willReturn(
         List.of(interestKeyword(interest, "java")));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging("https://news.example.com/java", "Java 기사", "요약", ArticleSource.NAVER),
         staging(null, "Java URL 없음", "요약", ArticleSource.NAVER),
         staging(" ", "Java URL 공백", "요약", ArticleSource.NAVER)
@@ -231,7 +231,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.stagedCount()).isEqualTo(3);
@@ -247,7 +247,7 @@ class ArticleCollectServiceTest {
     Interest interest = interest("개발");
     given(interestKeywordRepository.findAll()).willReturn(
         List.of(interestKeyword(interest, "java")));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging("https://news.example.com/java", "Java 첫 번째 기사", "요약", ArticleSource.NAVER),
         staging("https://news.example.com/java", "Java 두 번째 기사", "요약", ArticleSource.NAVER)
     ));
@@ -258,7 +258,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.stagedCount()).isEqualTo(2);
@@ -274,7 +274,7 @@ class ArticleCollectServiceTest {
     Interest interest = interest("개발");
     given(interestKeywordRepository.findAll()).willReturn(
         List.of(interestKeyword(interest, "java")));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging("https://news.example.com/java", "Java 기사", "요약", ArticleSource.NAVER)
     ));
     given(articleRepository.findAllBySourceUrlIn(anyCollection())).willReturn(List.of());
@@ -284,7 +284,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.articleInterestLinkedCount()).isEqualTo(1);
@@ -306,7 +306,7 @@ class ArticleCollectServiceTest {
     Article existingArticle = article("https://news.example.com/java", "Java 기사", "요약");
     given(interestKeywordRepository.findAll()).willReturn(
         List.of(interestKeyword(interest, "java")));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging(existingArticle.getSourceUrl(), "Java 기사", "요약", ArticleSource.NAVER)
     ));
     given(articleRepository.findAllBySourceUrlIn(anyCollection())).willReturn(
@@ -315,7 +315,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.savedCount()).isZero();
@@ -333,7 +333,7 @@ class ArticleCollectServiceTest {
     Article existingArticle = article("https://news.example.com/java", "Java 기사", "요약");
     given(interestKeywordRepository.findAll()).willReturn(
         List.of(interestKeyword(interest, "java")));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging(existingArticle.getSourceUrl(), "Java 기사", "요약", ArticleSource.NAVER)
     ));
     given(articleRepository.findAllBySourceUrlIn(anyCollection())).willReturn(
@@ -342,7 +342,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.articleInterestLinkedCount()).isZero();
@@ -359,7 +359,7 @@ class ArticleCollectServiceTest {
         interestKeyword(interest, "AI"),
         interestKeyword(interest, "인공지능")
     ));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging("https://news.example.com/ai", "AI와 인공지능 기사", "요약", ArticleSource.NAVER)
     ));
     given(articleRepository.findAllBySourceUrlIn(anyCollection())).willReturn(List.of());
@@ -369,7 +369,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.articleInterestLinkedCount()).isEqualTo(1);
@@ -383,7 +383,7 @@ class ArticleCollectServiceTest {
     Interest interest = interest("개발");
     given(interestKeywordRepository.findAll()).willReturn(
         List.of(interestKeyword(interest, "  Java  ")));
-    given(stagingRepository.findAllByJobExecutionId(JOB_EXECUTION_ID)).willReturn(List.of(
+    given(stagingRepository.findAllByJobInstanceId(JOB_INSTANCE_ID)).willReturn(List.of(
         staging("https://news.example.com/java", "java news", "요약", ArticleSource.NAVER)
     ));
     given(articleRepository.findAllBySourceUrlIn(anyCollection())).willReturn(List.of());
@@ -393,7 +393,7 @@ class ArticleCollectServiceTest {
 
     // when
     ArticleSaveAndInterestLinkStepResultDto result =
-        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_EXECUTION_ID);
+        articleCollectService.saveStagedArticlesAndLinkInterests(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.articleInterestLinkedCount()).isEqualTo(1);
@@ -401,18 +401,18 @@ class ArticleCollectServiceTest {
   }
 
   @Test
-  @DisplayName("성공 - cleanupStaging은 jobExecutionId 기준으로 staging 데이터를 삭제한다")
-  void cleanupStaging_success_deleteByJobExecutionId() {
+  @DisplayName("성공 - cleanupStaging은 JobInstanceId 기준으로 staging 데이터를 삭제한다")
+  void cleanupStaging_success_deleteByJobInstanceId() {
     // given
-    given(stagingRepository.deleteByJobExecutionId(JOB_EXECUTION_ID)).willReturn(3L);
+    given(stagingRepository.deleteByJobInstanceId(JOB_INSTANCE_ID)).willReturn(3L);
 
     // when
     ArticleCollectStagingCleanupResultDto result =
-        articleCollectService.cleanupStaging(JOB_EXECUTION_ID);
+        articleCollectService.cleanupStaging(JOB_INSTANCE_ID);
 
     // then
     assertThat(result.deletedCount()).isEqualTo(3L);
-    then(stagingRepository).should().deleteByJobExecutionId(JOB_EXECUTION_ID);
+    then(stagingRepository).should().deleteByJobInstanceId(JOB_INSTANCE_ID);
   }
 
   private ArticleCollectService service(
@@ -451,7 +451,7 @@ class ArticleCollectServiceTest {
       String summary,
       ArticleSource source
   ) {
-    return new ArticleCollectStaging(JOB_EXECUTION_ID,
+    return new ArticleCollectStaging(JOB_INSTANCE_ID,
         collected(sourceUrl, title, summary, source));
   }
 
