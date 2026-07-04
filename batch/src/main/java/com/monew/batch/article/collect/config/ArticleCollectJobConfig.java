@@ -140,7 +140,7 @@ public class ArticleCollectJobConfig {
 
           ArticleCollectResultDto finalResult = toFinalResult(context,
               result.articleInterestLinkedCount());
-          log.info("Article collect job finished before cleanup. result={}", finalResult);
+          log.info("[collect article] 기사 수집 Job 완료. result={}", finalResult);
           return RepeatStatus.FINISHED;
         }, transactionManager)
         .build();
@@ -159,7 +159,8 @@ public class ArticleCollectJobConfig {
           ArticleCollectStagingCleanupResultDto result =
               executeDbStepWithRetry("articleCollectStagingCleanupStep",
                   () -> articleCollectService.cleanupStaging(jobInstanceId(chunkContext)));
-          log.info("Article collect staging cleanup finished. result={}", result);
+
+          log.info("[collect article] staging db cleanup 완료. result={}", result);
           return RepeatStatus.FINISHED;
         }, transactionManager)
         .build();
