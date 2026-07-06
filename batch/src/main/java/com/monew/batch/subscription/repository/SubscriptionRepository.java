@@ -1,9 +1,9 @@
 package com.monew.batch.subscription.repository;
 
+import com.monew.batch.subscription.entity.Subscription;
 import java.util.List;
 import java.util.UUID;
-
-import com.monew.batch.subscription.entity.Subscription;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +14,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
             select s.user.id
             from Subscription s
             where s.interest.id = :interestId
+            order by s.id
             """)
-    List<UUID> findUserIdsByInterestId(@Param("interestId") UUID interestId);
+    List<UUID> findUserIdsByInterestId(
+            @Param("interestId") UUID interestId,
+            Pageable pageable
+    );
 }
