@@ -314,10 +314,7 @@ public class ArticleCollectService {
       List<InterestKeyword> interestKeywords) {
     int savedCount = 0;
     Set<ArticleInterestId> seenIds = new LinkedHashSet<>();
-
-    // 우리주석 시작
     List<InterestMatchedArticleEvent.InterestMatchData> matchedInterests = new ArrayList<>();
-    // 우리주석 끝
 
     for (Article article : articles) {
       for (Interest interest : matchInterests(article.getTitle(), article.getSummary(),
@@ -327,21 +324,18 @@ public class ArticleCollectService {
           articleInterestRepository.save(new ArticleInterest(article, interest));
           savedCount++;
 
-          // 우리주석 시작
           matchedInterests.add(new InterestMatchedArticleEvent.InterestMatchData(
+                  article.getId(),
                   interest.getId(),
                   interest.getName()
           ));
-          // 우리주석 끝
         }
       }
     }
 
-    // 우리주석 시작
     if (!matchedInterests.isEmpty()) {
       batchEventPublisher.publish(new InterestMatchedArticleEvent(matchedInterests));
     }
-    // 우리주석 끝
 
     return savedCount;
   }

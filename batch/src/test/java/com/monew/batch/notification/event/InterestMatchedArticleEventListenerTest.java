@@ -45,24 +45,33 @@ class InterestMatchedArticleEventListenerTest {
     private ArgumentCaptor<List<Notification>> notificationsCaptor;
 
     @Test
-    @DisplayName("관심사 매칭 이벤트 처리 성공 - 관심사별 기사 수를 묶어서 구독자에게 알림을 저장한다")
+    @DisplayName("관심사 매칭 이벤트 처리 성공 - 관심사별 중복 제거된 기사 수로 구독자에게 알림을 저장한다")
     void handle_success_groupsByInterestAndCreatesNotifications() {
         // Given
+        UUID firstArticleId = UUID.randomUUID();
+        UUID secondArticleId = UUID.randomUUID();
+        UUID thirdArticleId = UUID.randomUUID();
+
         UUID aiInterestId = UUID.randomUUID();
         UUID javaInterestId = UUID.randomUUID();
+
         UUID firstUserId = UUID.randomUUID();
         UUID secondUserId = UUID.randomUUID();
+
         User firstUser = mock(User.class);
         User secondUser = mock(User.class);
 
         InterestMatchedArticleEvent event = new InterestMatchedArticleEvent(List.of(
-                new InterestMatchedArticleEvent.InterestMatchData(aiInterestId, "인공지능"),
-                new InterestMatchedArticleEvent.InterestMatchData(aiInterestId, "인공지능"),
-                new InterestMatchedArticleEvent.InterestMatchData(javaInterestId, "자바")
+                new InterestMatchedArticleEvent.InterestMatchData(firstArticleId, aiInterestId, "인공지능"),
+                new InterestMatchedArticleEvent.InterestMatchData(firstArticleId, aiInterestId, "인공지능"),
+                new InterestMatchedArticleEvent.InterestMatchData(secondArticleId, aiInterestId, "인공지능"),
+                new InterestMatchedArticleEvent.InterestMatchData(thirdArticleId, javaInterestId, "자바")
         ));
 
-        when(subscriptionRepository.findUserIdsByInterestId(aiInterestId)).thenReturn(List.of(firstUserId, secondUserId));
-        when(subscriptionRepository.findUserIdsByInterestId(javaInterestId)).thenReturn(List.of(firstUserId));
+        when(subscriptionRepository.findUserIdsByInterestId(aiInterestId))
+                .thenReturn(List.of(firstUserId, secondUserId));
+        when(subscriptionRepository.findUserIdsByInterestId(javaInterestId))
+                .thenReturn(List.of(firstUserId));
         when(entityManager.getReference(User.class, firstUserId)).thenReturn(firstUser);
         when(entityManager.getReference(User.class, secondUserId)).thenReturn(secondUser);
 
@@ -83,9 +92,9 @@ class InterestMatchedArticleEventListenerTest {
         assertThat(notifications)
                 .extracting(Notification::getContent)
                 .containsExactly(
-                        "인공지능 관심사와 관련된 기사가 2건 등록되었습니다.",
-                        "인공지능 관심사와 관련된 기사가 2건 등록되었습니다.",
-                        "자바 관심사와 관련된 기사가 1건 등록되었습니다."
+                        "인공지능와 관련된 기사가 2건 등록되었습니다.",
+                        "인공지능와 관련된 기사가 2건 등록되었습니다.",
+                        "자바와 관련된 기사가 1건 등록되었습니다."
                 );
         assertThat(notifications)
                 .extracting(Notification::getUser)
@@ -135,16 +144,20 @@ class InterestMatchedArticleEventListenerTest {
     }
 
     @Test
-    @DisplayName("관심사 매칭 이벤트 처리 성공 - null 데이터와 interestId 없는 데이터는 제외한다")
+    @DisplayName("관심사 매칭 이벤트 처리 성공 - null 데이터와 articleId 또는 interestId 없는 데이터는 제외한다")
     void handle_filtersInvalidInterestData() {
         // Given
+        UUID articleId = UUID.randomUUID();
         UUID interestId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+
         User user = mock(User.class);
+
         InterestMatchedArticleEvent event = new InterestMatchedArticleEvent(Arrays.asList(
                 null,
-                new InterestMatchedArticleEvent.InterestMatchData(null, "무효"),
-                new InterestMatchedArticleEvent.InterestMatchData(interestId, "백엔드")
+                new InterestMatchedArticleEvent.InterestMatchData(null, interestId, "무효"),
+                new InterestMatchedArticleEvent.InterestMatchData(articleId, null, "무효"),
+                new InterestMatchedArticleEvent.InterestMatchData(articleId, interestId, "백엔드")
         ));
 
         when(subscriptionRepository.findUserIdsByInterestId(interestId)).thenReturn(List.of(userId));
@@ -158,17 +171,22 @@ class InterestMatchedArticleEventListenerTest {
         List<Notification> notifications = notificationsCaptor.getValue();
 
         assertThat(notifications).hasSize(1);
+        assertThat(notifications.get(0).getResourceType()).isEqualTo(NotificationResourceType.INTEREST);
         assertThat(notifications.get(0).getResourceId()).isEqualTo(interestId);
-        assertThat(notifications.get(0).getContent()).isEqualTo("백엔드 관심사와 관련된 기사가 1건 등록되었습니다.");
+        assertThat(notifications.get(0).getContent())
+                .isEqualTo("백엔드와 관련된 기사가 1건 등록되었습니다.");
+        assertThat(notifications.get(0).getUser()).isEqualTo(user);
     }
 
     @Test
     @DisplayName("관심사 매칭 이벤트 처리 생략 - 구독자가 없으면 알림을 저장하지 않는다")
     void handle_doesNotSave_whenNoSubscriber() {
         // Given
+        UUID articleId = UUID.randomUUID();
         UUID interestId = UUID.randomUUID();
+
         InterestMatchedArticleEvent event = new InterestMatchedArticleEvent(List.of(
-                new InterestMatchedArticleEvent.InterestMatchData(interestId, "인공지능")
+                new InterestMatchedArticleEvent.InterestMatchData(articleId, interestId, "인공지능")
         ));
         when(subscriptionRepository.findUserIdsByInterestId(interestId)).thenReturn(List.of());
 
@@ -177,5 +195,66 @@ class InterestMatchedArticleEventListenerTest {
 
         // Then
         verify(notificationRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("관심사 매칭 이벤트 처리 성공 - 같은 관심사에 같은 기사가 중복되어도 1건으로 카운트한다")
+    void handle_countsDuplicatedArticleOnlyOnceInSameInterest() {
+        // Given
+        UUID articleId = UUID.randomUUID();
+        UUID interestId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        User user = mock(User.class);
+
+        InterestMatchedArticleEvent event = new InterestMatchedArticleEvent(List.of(
+                new InterestMatchedArticleEvent.InterestMatchData(articleId, interestId, "백엔드"),
+                new InterestMatchedArticleEvent.InterestMatchData(articleId, interestId, "백엔드")
+        ));
+
+        when(subscriptionRepository.findUserIdsByInterestId(interestId)).thenReturn(List.of(userId));
+        when(entityManager.getReference(User.class, userId)).thenReturn(user);
+
+        // When
+        listener.handle(event);
+
+        // Then
+        verify(notificationRepository).saveAll(notificationsCaptor.capture());
+        List<Notification> notifications = notificationsCaptor.getValue();
+
+        assertThat(notifications).hasSize(1);
+        assertThat(notifications.get(0).getContent())
+                .isEqualTo("백엔드와 관련된 기사가 1건 등록되었습니다.");
+    }
+
+    @Test
+    @DisplayName("관심사 매칭 이벤트 처리 성공 - 같은 관심사에 서로 다른 기사는 각각 카운트한다")
+    void handle_countsDifferentArticlesInSameInterest() {
+        // Given
+        UUID firstArticleId = UUID.randomUUID();
+        UUID secondArticleId = UUID.randomUUID();
+        UUID interestId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        User user = mock(User.class);
+
+        InterestMatchedArticleEvent event = new InterestMatchedArticleEvent(List.of(
+                new InterestMatchedArticleEvent.InterestMatchData(firstArticleId, interestId, "백엔드"),
+                new InterestMatchedArticleEvent.InterestMatchData(secondArticleId, interestId, "백엔드")
+        ));
+
+        when(subscriptionRepository.findUserIdsByInterestId(interestId)).thenReturn(List.of(userId));
+        when(entityManager.getReference(User.class, userId)).thenReturn(user);
+
+        // When
+        listener.handle(event);
+
+        // Then
+        verify(notificationRepository).saveAll(notificationsCaptor.capture());
+        List<Notification> notifications = notificationsCaptor.getValue();
+
+        assertThat(notifications).hasSize(1);
+        assertThat(notifications.get(0).getContent())
+                .isEqualTo("백엔드와 관련된 기사가 2건 등록되었습니다.");
     }
 }
