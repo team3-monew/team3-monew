@@ -110,7 +110,7 @@ public class ArticleController {
   }
 
   @GetMapping("/restore")
-  public List<ArticleRestoreResultDto> restore(
+  public ResponseEntity<ArticleRestoreResultDto> restore(
       @RequestParam
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
       LocalDateTime from,
@@ -118,6 +118,6 @@ public class ArticleController {
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
       LocalDateTime to
   ) {
-    return articleRestoreService.restore(from, to);
+    return ResponseEntity.ok(articleRestoreService.restore(from, to));
   }
 }
