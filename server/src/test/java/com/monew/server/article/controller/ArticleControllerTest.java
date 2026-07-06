@@ -204,7 +204,7 @@ class ArticleControllerTest extends ControllerTestSupport {
                 List.of(firstArticleId, secondArticleId),
                 2
         );
-        given(articleRestoreService.restore(from, to)).willReturn(List.of(response));
+        given(articleRestoreService.restore(from, to)).willReturn(response);
 
         // when
         // then
@@ -213,10 +213,10 @@ class ArticleControllerTest extends ControllerTestSupport {
                         .param("from", "2026-07-01T10:00:00")
                         .param("to", "2026-07-02T00:00:00"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].restoreDate").value("2026-07-02T01:00:00Z"))
-                .andExpect(jsonPath("$[0].restoredArticleIds[0]").value(firstArticleId.toString()))
-                .andExpect(jsonPath("$[0].restoredArticleIds[1]").value(secondArticleId.toString()))
-                .andExpect(jsonPath("$[0].restoredArticleCount").value(2));
+                .andExpect(jsonPath("$.restoreDate").value("2026-07-02T01:00:00Z"))
+                .andExpect(jsonPath("$.restoredArticleIds[0]").value(firstArticleId.toString()))
+                .andExpect(jsonPath("$.restoredArticleIds[1]").value(secondArticleId.toString()))
+                .andExpect(jsonPath("$.restoredArticleCount").value(2));
 
         then(articleRestoreService).should().restore(from, to);
     }
