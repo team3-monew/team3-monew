@@ -24,8 +24,7 @@ logging:
 
 backup:
   enabled: ${BACKUP_ENABLED:true}
-#  cron: ${ARTICLE_BACKUP_CRON:0 30 3 * * *}
-  cron: ${ARTICLE_BACKUP_CRON:0 50 18 * * *}
+  cron: ${ARTICLE_BACKUP_CRON:0 30 3 * * *}
   storage:
     type: ${BACKUP_STORAGE_TYPE:local}
     local:

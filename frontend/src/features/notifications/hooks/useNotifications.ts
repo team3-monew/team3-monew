@@ -10,6 +10,7 @@ import {
   checkAllNotifications,
 } from "@/api/notifications";
 import { normalizeError } from "@/shared/lib/normalizeError";
+import { NOTIFICATIONS_CHANGED } from "@/shared/constants/events";
 
 type Options = {
   userId: UserId;
@@ -25,14 +26,14 @@ type Return = {
 
   refresh: () => Promise<void>;
   fetchMore: () => Promise<void>;
-  confirmOne: (id: NotificationId) => Promise<void>;
-  confirmAll: () => Promise<void>;
+  confirmOne: (id: NotificationId) => Promise<boolean>;
+  confirmAll: () => Promise<boolean>;
 };
 
 export const useNotifications = ({
-  userId,
-  pageSize = 20,
-}: Options): Return => {
+                                   userId,
+                                   pageSize = 20,
+                                 }: Options): Return => {
   const [items, setItems] = useState<NotificationsItem[]>([]);
   const [total, setTotal] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -50,9 +51,19 @@ export const useNotifications = ({
   };
 
   const refresh = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setItems([]);
+      setTotal(0);
+      setHasNext(false);
+      setNextCursor(null);
+      setNextAfter(null);
+      setLoading(false);
+      return;
+    }
+
     setError(null);
     setLoading(true);
+
     try {
       const page = await getNotifications({ limit: pageSize }, userId);
       applyPage(page);
@@ -64,34 +75,41 @@ export const useNotifications = ({
   }, [pageSize, userId]);
 
   const confirmOne = useCallback(
-    async (id: NotificationId) => {
-      // 낙관적 제거 + 실패 시 동기화
-      const snapshot = { items, total };
-      setItems((prev) => prev.filter((n) => n.id !== id));
-      setTotal((t) => Math.max(0, t - 1));
-      try {
-        await checkNotifications(id, userId);
-      } catch (error) {
-        setItems(snapshot.items);
-        setTotal(snapshot.total);
-        setError(normalizeError(error).message);
-      }
-    },
-    [items, total, userId],
+      async (id: NotificationId) => {
+        const snapshot = { items, total };
+
+        setItems((prev) => prev.filter((notification) => notification.id !== id));
+        setTotal((prev) => Math.max(0, prev - 1));
+
+        try {
+          await checkNotifications(id, userId);
+          window.dispatchEvent(new CustomEvent(NOTIFICATIONS_CHANGED));
+          return true;
+        } catch (error) {
+          setItems(snapshot.items);
+          setTotal(snapshot.total);
+          setError(normalizeError(error).message);
+          return false;
+        }
+      },
+      [items, total, userId],
   );
 
   const fetchMore = useCallback(async () => {
     if (!userId || !hasNext || loading) return;
+
     setLoading(true);
+
     try {
       const page = await getNotifications(
-        {
-          limit: pageSize,
-          cursor: nextCursor || undefined,
-          after: nextAfter || undefined,
-        },
-        userId,
+          {
+            limit: pageSize,
+            cursor: nextCursor || undefined,
+            after: nextAfter || undefined,
+          },
+          userId,
       );
+
       setItems((prev) => [...prev, ...page.content]);
       setTotal(page.totalElements);
       setHasNext(page.hasNext);
@@ -106,13 +124,17 @@ export const useNotifications = ({
 
   const confirmAll = useCallback(async () => {
     const snapshot = { items, total, hasNext, nextCursor, nextAfter };
+
     setItems([]);
     setTotal(0);
     setHasNext(false);
     setNextCursor(null);
     setNextAfter(null);
+
     try {
       await checkAllNotifications(userId);
+      window.dispatchEvent(new CustomEvent(NOTIFICATIONS_CHANGED));
+      return true;
     } catch (error) {
       setItems(snapshot.items);
       setTotal(snapshot.total);
@@ -120,6 +142,7 @@ export const useNotifications = ({
       setNextCursor(snapshot.nextCursor);
       setNextAfter(snapshot.nextAfter);
       setError(normalizeError(error).message);
+      return false;
     }
   }, [items, total, hasNext, nextCursor, nextAfter, userId]);
 

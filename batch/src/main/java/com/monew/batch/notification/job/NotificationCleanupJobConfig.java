@@ -1,5 +1,6 @@
 package com.monew.batch.notification.job;
 
+import com.monew.batch.monitoring.BatchJobMetricsListener;
 import com.monew.batch.notification.repository.NotificationRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,11 @@ public class NotificationCleanupJobConfig {
     @Bean
     public Job notificationCleanupJob(
             JobRepository jobRepository,
-            Step notificationCleanupStep
+            Step notificationCleanupStep,
+            BatchJobMetricsListener batchJobMetricsListener
     ) {
         return new JobBuilder("notificationCleanupJob", jobRepository)
+                .listener(batchJobMetricsListener)
                 .start(notificationCleanupStep)
                 .build();
     }

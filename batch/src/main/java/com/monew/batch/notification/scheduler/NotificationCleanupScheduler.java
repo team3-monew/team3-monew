@@ -1,7 +1,9 @@
 package com.monew.batch.notification.scheduler;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,14 +28,21 @@ public class NotificationCleanupScheduler {
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     public void runNotificationCleanupJob() {
         try {
-            jobLauncher.run(
+            JobExecution jobExecution = jobLauncher.run(
                     notificationCleanupJob,
                     new JobParametersBuilder()
                             .addLong("timestamp", System.currentTimeMillis())
                             .toJobParameters()
             );
 
-            log.info("알림 정리 배치 실행 완료");
+            if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
+                log.info("알림 정리 배치 실행 완료 - status={}", jobExecution.getStatus());
+                return;
+            }
+
+            log.error("알림 정리 배치 실패 - status={}, exitStatus={}",
+                    jobExecution.getStatus(), jobExecution.getExitStatus());
+
         } catch (Exception e) {
             log.error("알림 정리 배치 실행 실패", e);
         }

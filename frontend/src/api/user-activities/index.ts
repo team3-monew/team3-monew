@@ -5,6 +5,9 @@ import type { UserId } from "@/types/ids";
 export async function getUserActivities(userId: UserId) {
   const { data } = await http.get<T.GetUserActivitiesResponse>(
     `/user-activities/${userId}`,
+    {
+      headers: { "Monew-Request-User-ID": userId },
+    },
   );
   return data;
 }
