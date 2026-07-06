@@ -171,6 +171,7 @@ public class ArticleCollectService {
         saveResult.sourceResults()
     );
 
+    log.info("[collect article] 기사, 관심도 연결 step 완료. result={}", result);
     return result;
   }
 
