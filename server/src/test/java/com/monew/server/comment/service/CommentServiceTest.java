@@ -35,6 +35,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import org.springframework.context.ApplicationEventPublisher;
+import com.monew.server.activity.event.CommentDeletedEvent;
+import com.monew.server.activity.event.CommentLikeCreatedEvent;
+import com.monew.server.activity.event.CommentLikeDeletedEvent;
+import com.monew.server.activity.event.ArticleCommentCountUpdatedEvent;
+
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
 
@@ -43,6 +49,7 @@ class CommentServiceTest {
   @Mock private ArticleRepository articleRepository;
   @Mock private UserRepository userRepository;
   @Mock private NotificationService notificationService;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private CommentService commentService;
 
@@ -226,6 +233,8 @@ class CommentServiceTest {
 
     given(commentLikeRepository.findByCommentIdAndUserId(commentId, userId))
         .willReturn(Optional.of(commentLike));
+    given(commentRepository.findByIdAndDeletedAtIsNull(commentId))
+        .willReturn(Optional.of(comment));
 
     // when
     commentService.removeLike(commentId, userId);
