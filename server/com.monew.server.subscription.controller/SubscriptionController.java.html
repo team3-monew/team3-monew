@@ -19,17 +19,17 @@ public class SubscriptionController {
     @PostMapping
     public ResponseEntity&lt;SubscriptionDto&gt; subscribe(@PathVariable UUID interestId,
                                                      @LoginUser UUID userId) {
-<span class="nc" id="L22">        SubscriptionDto response = subscriptionService.subscribe(userId, interestId);</span>
+<span class="fc" id="L22">        SubscriptionDto response = subscriptionService.subscribe(userId, interestId);</span>
 
-<span class="nc" id="L24">        return ResponseEntity.ok(response);</span>
+<span class="fc" id="L24">        return ResponseEntity.ok(response);</span>
     }
 
     @DeleteMapping
     public ResponseEntity&lt;Void&gt; unsubscribe(@PathVariable UUID interestId,
                                             @LoginUser UUID userId) {
-<span class="nc" id="L30">        subscriptionService.unsubscribe(userId, interestId);</span>
+<span class="fc" id="L30">        subscriptionService.unsubscribe(userId, interestId);</span>
 
-<span class="nc" id="L32">        return ResponseEntity.ok().build();</span>
+<span class="fc" id="L32">        return ResponseEntity.ok().build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

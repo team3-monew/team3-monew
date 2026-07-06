@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-<span class="nc" id="L10">public record SubscriptionDto(</span>
+<span class="fc" id="L10">public record SubscriptionDto(</span>
         UUID id,
         UUID interestId,
         String interestName,
@@ -20,13 +20,13 @@ import java.util.UUID;
             Interest interest,
             List&lt;String&gt; interestKeywords
     ) {
-<span class="nc" id="L23">        return new SubscriptionDto(</span>
-<span class="nc" id="L24">                subscription.getId(),</span>
-<span class="nc" id="L25">                interest.getId(),</span>
-<span class="nc" id="L26">                interest.getName(),</span>
+<span class="fc" id="L23">        return new SubscriptionDto(</span>
+<span class="fc" id="L24">                subscription.getId(),</span>
+<span class="fc" id="L25">                interest.getId(),</span>
+<span class="fc" id="L26">                interest.getName(),</span>
                 interestKeywords,
-<span class="nc" id="L28">                interest.getSubscriberCount(),</span>
-<span class="nc" id="L29">                subscription.getCreatedAt()</span>
+<span class="fc" id="L28">                interest.getSubscriberCount(),</span>
+<span class="fc" id="L29">                subscription.getCreatedAt()</span>
         );
     }
 }

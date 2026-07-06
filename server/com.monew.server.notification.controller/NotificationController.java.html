@@ -3,6 +3,7 @@
 import com.monew.server.common.exception.notification.NotificationErrorCode;
 import com.monew.server.common.exception.notification.NotificationException;
 import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.common.security.LoginUser;
 import com.monew.server.notification.dto.NotificationResponse;
 import com.monew.server.notification.service.NotificationService;
 import java.time.LocalDateTime;
@@ -29,58 +30,58 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity&lt;CursorPageResponse&lt;NotificationResponse&gt;&gt; findUnreadNotifications(
-            @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId,
+            @LoginUser UUID userId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) String after,
             @RequestParam int limit
     ) {
-<span class="fc" id="L37">        CursorPageResponse&lt;NotificationResponse&gt; response =</span>
-<span class="fc" id="L38">                notificationService.findUnreadNotifications(</span>
+<span class="fc" id="L38">        CursorPageResponse&lt;NotificationResponse&gt; response =</span>
+<span class="fc" id="L39">                notificationService.findUnreadNotifications(</span>
                         userId,
                         cursor,
-<span class="fc" id="L41">                        parseAfter(after),</span>
+<span class="fc" id="L42">                        parseAfter(after),</span>
                         limit
                 );
 
-<span class="fc" id="L45">        return ResponseEntity.ok(response);</span>
+<span class="fc" id="L46">        return ResponseEntity.ok(response);</span>
     }
 
     @PatchMapping(&quot;/{notificationId}&quot;)
     public ResponseEntity&lt;Void&gt; confirm(
-            @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId,
+            @LoginUser UUID userId,
             @PathVariable UUID notificationId
     ) {
-<span class="fc" id="L53">        notificationService.confirm(userId, notificationId);</span>
+<span class="fc" id="L54">        notificationService.confirm(userId, notificationId);</span>
 
-<span class="fc" id="L55">        return ResponseEntity.ok().build();</span>
+<span class="fc" id="L56">        return ResponseEntity.ok().build();</span>
     }
 
     @PatchMapping
     public ResponseEntity&lt;Void&gt; confirmAll(
-            @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId
+            @LoginUser UUID userId
     ) {
-<span class="fc" id="L62">        notificationService.confirmAll(userId);</span>
+<span class="fc" id="L63">        notificationService.confirmAll(userId);</span>
 
-<span class="fc" id="L64">        return ResponseEntity.ok().build();</span>
+<span class="fc" id="L65">        return ResponseEntity.ok().build();</span>
     }
 
     private LocalDateTime parseAfter(String after) {
-<span class="pc bpc" id="L68" title="1 of 4 branches missed.">        if (after == null || after.isBlank()) {</span>
-<span class="fc" id="L69">            return null;</span>
+<span class="pc bpc" id="L69" title="1 of 4 branches missed.">        if (after == null || after.isBlank()) {</span>
+<span class="fc" id="L70">            return null;</span>
         }
 
         try {
-<span class="fc" id="L73">            return OffsetDateTime.parse(after)</span>
-<span class="fc" id="L74">                    .atZoneSameInstant(ZoneId.of(&quot;Asia/Seoul&quot;))</span>
-<span class="fc" id="L75">                    .toLocalDateTime();</span>
-<span class="fc" id="L76">        } catch (DateTimeParseException ignored) {</span>
+<span class="fc" id="L74">            return OffsetDateTime.parse(after)</span>
+<span class="fc" id="L75">                    .atZoneSameInstant(ZoneId.of(&quot;Asia/Seoul&quot;))</span>
+<span class="fc" id="L76">                    .toLocalDateTime();</span>
+<span class="fc" id="L77">        } catch (DateTimeParseException ignored) {</span>
             try {
-<span class="fc" id="L78">                return LocalDateTime.parse(after);</span>
-<span class="fc" id="L79">            } catch (DateTimeParseException e) {</span>
-<span class="fc" id="L80">                NotificationException exception =</span>
+<span class="fc" id="L79">                return LocalDateTime.parse(after);</span>
+<span class="fc" id="L80">            } catch (DateTimeParseException e) {</span>
+<span class="fc" id="L81">                NotificationException exception =</span>
                         new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR, e);
-<span class="fc" id="L82">                exception.addDetail(&quot;after&quot;, after);</span>
-<span class="fc" id="L83">                throw exception;</span>
+<span class="fc" id="L83">                exception.addDetail(&quot;after&quot;, after);</span>
+<span class="fc" id="L84">                throw exception;</span>
             }
         }
     }

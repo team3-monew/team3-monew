@@ -4,8 +4,10 @@ import com.monew.batch.article.collect.collector.dto.CollectedArticleDto;
 import com.monew.batch.article.collect.collector.dto.KeywordCollectResultDto;
 import com.monew.batch.article.collect.dto.NaverNewsResponseDto;
 import com.monew.batch.article.config.ArticleCollectProperties;
+import com.monew.batch.article.config.NaverApiProperties;
 import com.monew.batch.article.entity.ArticleSource;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +19,7 @@ import org.springframework.web.client.RestClientResponseException;
 /**
  * 관심사 키워드로 Naver 뉴스 검색 Open API를 호출하는 수집기입니다.
  */
-<span class="nc" id="L20">@Slf4j</span>
+<span class="fc" id="L22">@Slf4j</span>
 @Component
 @RequiredArgsConstructor
 public class NaverNewsCollector implements KeywordBasedArticleCollector {
@@ -26,34 +28,41 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
 
   private final RestClient naverRestClient;
   private final ArticleCollectProperties properties;
+  private final NaverApiProperties naverApiProperties;
+  private final AtomicBoolean missingCredentialLogged = new AtomicBoolean(false);
 
   @Override
   public ArticleSource getSource() {
-<span class="nc" id="L32">    return ArticleSource.NAVER;</span>
+<span class="nc" id="L36">    return ArticleSource.NAVER;</span>
   }
 
   @Override
   public List&lt;CollectedArticleDto&gt; collectByKeyword(String keyword, int limit) {
-<span class="nc" id="L37">    return collectByKeywordResult(keyword, limit).articles();</span>
+<span class="nc" id="L41">    return collectByKeywordResult(keyword, limit).articles();</span>
   }
 
   @Override
   public KeywordCollectResultDto collectByKeywordResult(String keyword, int limit) {
-<span class="nc" id="L42">    int display = Math.min(limit, properties.naverDisplay());</span>
-<span class="nc" id="L43">    NaverNewsResponseDto response = requestWithRetry(keyword, display);</span>
-
-<span class="nc bnc" id="L45" title="All 2 branches missed.">    if (response == null) {</span>
-<span class="nc" id="L46">      return new KeywordCollectResultDto(List.of(), 1, 0, 1);</span>
-    }
-<span class="nc bnc" id="L48" title="All 2 branches missed.">    if (response.items() == null) {</span>
-<span class="nc" id="L49">      return new KeywordCollectResultDto(List.of(), 1, 1, 0);</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">    if (isCredentialMissing()) {</span>
+<span class="fc" id="L47">      logMissingCredentialOnce();</span>
+<span class="fc" id="L48">      return new KeywordCollectResultDto(List.of(), 0, 0, 0);</span>
     }
 
-<span class="nc" id="L52">    List&lt;CollectedArticleDto&gt; articles = response.items().stream()</span>
-<span class="nc" id="L53">        .map(CollectedArticleDto::from)</span>
-<span class="nc bnc" id="L54" title="All 4 branches missed.">        .filter(article -&gt; article.sourceUrl() != null &amp;&amp; !article.sourceUrl().isBlank())</span>
-<span class="nc" id="L55">        .toList();</span>
-<span class="nc" id="L56">    return new KeywordCollectResultDto(articles, 1, 1, 0);</span>
+<span class="fc" id="L51">    int display = Math.min(limit, properties.naverDisplay());</span>
+<span class="fc" id="L52">    NaverNewsResponseDto response = requestWithRetry(keyword, display);</span>
+
+<span class="fc bfc" id="L54" title="All 2 branches covered.">    if (response == null) {</span>
+<span class="fc" id="L55">      return new KeywordCollectResultDto(List.of(), 1, 0, 1);</span>
+    }
+<span class="fc bfc" id="L57" title="All 2 branches covered.">    if (response.items() == null) {</span>
+<span class="fc" id="L58">      return new KeywordCollectResultDto(List.of(), 1, 1, 0);</span>
+    }
+
+<span class="fc" id="L61">    List&lt;CollectedArticleDto&gt; articles = response.items().stream()</span>
+<span class="fc" id="L62">        .map(CollectedArticleDto::from)</span>
+<span class="fc bfc" id="L63" title="All 4 branches covered.">        .filter(article -&gt; article.sourceUrl() != null &amp;&amp; !article.sourceUrl().isBlank())</span>
+<span class="fc" id="L64">        .toList();</span>
+<span class="fc" id="L65">    return new KeywordCollectResultDto(articles, 1, 1, 0);</span>
   }
 
   /**
@@ -61,72 +70,86 @@ public class NaverNewsCollector implements KeywordBasedArticleCollector {
    * 최종 실패하면 null을 반환해서 전체 배치가 멈추지 않도록 합니다.
    */
   private NaverNewsResponseDto requestWithRetry(String keyword, int display) {
-<span class="nc" id="L64">    int maxAttempts = Math.max(1, properties.retryMaxAttempts());</span>
+<span class="fc" id="L73">    int maxAttempts = Math.max(1, properties.retryMaxAttempts());</span>
 
-<span class="nc bnc" id="L66" title="All 2 branches missed.">    for (int attempt = 1; attempt &lt;= maxAttempts; attempt++) {</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">    for (int attempt = 1; attempt &lt;= maxAttempts; attempt++) {</span>
       try {
         // 성공이면 뉴스 100개 가져옴
-<span class="nc" id="L69">        return request(keyword, display);</span>
-<span class="nc" id="L70">      } catch (RestClientResponseException ex) {</span>
-<span class="nc bnc" id="L71" title="All 4 branches missed.">        if (!shouldRetry(ex) || attempt == maxAttempts) {</span>
-<span class="nc" id="L72">          log.warn(&quot;Naver news collect failed. keyword={}, status={}, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L73">              keyword, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
-<span class="nc" id="L74">          return null;</span>
+<span class="fc" id="L78">        return request(keyword, display);</span>
+<span class="fc" id="L79">      } catch (RestClientResponseException ex) {</span>
+<span class="fc bfc" id="L80" title="All 4 branches covered.">        if (!shouldRetry(ex) || attempt == maxAttempts) {</span>
+<span class="fc" id="L81">          log.warn(&quot;[collect article] 네이버 뉴스 기사 수집 실패. keyword={}, status={}, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L82">              keyword, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
+<span class="fc" id="L83">          return null;</span>
         }
 
-<span class="nc" id="L77">        log.warn(&quot;Retryable Naver response. keyword={}, status={}, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L78">            keyword, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
-<span class="nc" id="L79">      } catch (ResourceAccessException ex) {</span>
-<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (attempt == maxAttempts) {</span>
-<span class="nc" id="L81">          log.warn(&quot;Naver news collect failed. keyword={}, status=NETWORK, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L82">              keyword, attempt, ex.getMessage());</span>
-<span class="nc" id="L83">          return null;</span>
+<span class="fc" id="L86">        log.warn(&quot;[collect article] 네이버 API 재요청 가능. keyword={}, status={}, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L87">            keyword, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
+<span class="fc" id="L88">      } catch (ResourceAccessException ex) {</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        if (attempt == maxAttempts) {</span>
+<span class="fc" id="L90">          log.warn(&quot;[collect article] 네이버 뉴스 기사 수집 실패. keyword={}, status=NETWORK, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L91">              keyword, attempt, ex.getMessage());</span>
+<span class="fc" id="L92">          return null;</span>
         }
 
-<span class="nc" id="L86">        log.warn(&quot;Retryable Naver network error. keyword={}, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L87">            keyword, attempt, ex.getMessage());</span>
-<span class="nc" id="L88">      }</span>
+<span class="fc" id="L95">        log.warn(&quot;[collect article] 재시도 가능한 네이버 네트워크 에러. keyword={}, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L96">            keyword, attempt, ex.getMessage());</span>
+<span class="fc" id="L97">      }</span>
 
-<span class="nc" id="L90">      sleepBeforeRetry(attempt);</span>
+<span class="fc" id="L99">      sleepBeforeRetry(attempt);</span>
     }
 
-<span class="nc" id="L93">    return null;</span>
+<span class="nc" id="L102">    return null;</span>
   }
 
   /**
    * 실제 Naver 뉴스 검색 API를 호출합니다.
    */
   private NaverNewsResponseDto request(String keyword, int display) {
-<span class="nc" id="L100">    return naverRestClient.get()</span>
-<span class="nc" id="L101">        .uri(uriBuilder -&gt; uriBuilder</span>
-<span class="nc" id="L102">            .path(NEWS_SEARCH_PATH)</span>
-<span class="nc" id="L103">            .queryParam(&quot;query&quot;, keyword)</span>
-<span class="nc" id="L104">            .queryParam(&quot;display&quot;, display)</span>
-<span class="nc" id="L105">            .queryParam(&quot;start&quot;, 1)</span>
-<span class="nc" id="L106">            .queryParam(&quot;sort&quot;, &quot;date&quot;)</span>
-<span class="nc" id="L107">            .build())</span>
-<span class="nc" id="L108">        .retrieve()</span>
-<span class="nc" id="L109">        .body(NaverNewsResponseDto.class);</span>
+<span class="fc" id="L109">    return naverRestClient.get()</span>
+<span class="fc" id="L110">        .uri(uriBuilder -&gt; uriBuilder</span>
+<span class="fc" id="L111">            .path(NEWS_SEARCH_PATH)</span>
+<span class="fc" id="L112">            .queryParam(&quot;query&quot;, keyword)</span>
+<span class="fc" id="L113">            .queryParam(&quot;display&quot;, display)</span>
+<span class="fc" id="L114">            .queryParam(&quot;start&quot;, 1)</span>
+<span class="fc" id="L115">            .queryParam(&quot;sort&quot;, &quot;date&quot;)</span>
+<span class="fc" id="L116">            .build())</span>
+<span class="fc" id="L117">        .retrieve()</span>
+<span class="fc" id="L118">        .body(NaverNewsResponseDto.class);</span>
   }
 
   private boolean shouldRetry(RestClientResponseException ex) {
-<span class="nc" id="L113">    int status = ex.getStatusCode().value();</span>
-<span class="nc bnc" id="L114" title="All 4 branches missed.">    return status == 429 || status &gt;= 500;</span>
+<span class="fc" id="L122">    int status = ex.getStatusCode().value();</span>
+<span class="pc bpc" id="L123" title="1 of 4 branches missed.">    return status == 429 || status &gt;= 500;</span>
   }
+
+  private boolean isCredentialMissing() {
+<span class="pc bpc" id="L127" title="1 of 4 branches missed.">    return isBlank(naverApiProperties.clientId()) || isBlank(naverApiProperties.clientSecret());</span>
+  }
+
+  private boolean isBlank(String value) {
+<span class="pc bpc" id="L131" title="1 of 4 branches missed.">    return value == null || value.isBlank();</span>
+  }
+
+  private void logMissingCredentialOnce() {
+<span class="pc bpc" id="L135" title="1 of 2 branches missed.">    if (missingCredentialLogged.compareAndSet(false, true)) {</span>
+<span class="fc" id="L136">      log.warn(&quot;[collect article] Naver API 자격 증명 실패로 네이버 기사 수집 skip&quot;);</span>
+    }
+<span class="fc" id="L138">  }</span>
 
   private void sleepBeforeRetry(int failedAttempt) {
     // 재시도할수록 기다리는시간 점점 늘림
-<span class="nc" id="L119">    long baseDelay = properties.retryInitialDelayMillis() * (1L &lt;&lt; Math.max(0, failedAttempt - 1));</span>
+<span class="fc" id="L142">    long baseDelay = properties.retryInitialDelayMillis() * (1L &lt;&lt; Math.max(0, failedAttempt - 1));</span>
     // 최대 대기 시간 넘지 않게 자름
-<span class="nc" id="L121">    long cappedDelay = Math.min(baseDelay, properties.retryMaxDelayMillis());</span>
+<span class="fc" id="L144">    long cappedDelay = Math.min(baseDelay, properties.retryMaxDelayMillis());</span>
     // 대기 시간에 약간의 랜덤 값 더함(여러 서버나 배치가 동시에 몰리는 것 방지)
-<span class="nc" id="L123">    long jitter = ThreadLocalRandom.current().nextLong(0, Math.max(1L, cappedDelay / 5L + 1L));</span>
+<span class="fc" id="L146">    long jitter = ThreadLocalRandom.current().nextLong(0, Math.max(1L, cappedDelay / 5L + 1L));</span>
 
     try {
-<span class="nc" id="L126">      Thread.sleep(cappedDelay + jitter);</span>
-<span class="nc" id="L127">    } catch (InterruptedException ex) {</span>
-<span class="nc" id="L128">      Thread.currentThread().interrupt();</span>
-<span class="nc" id="L129">    }</span>
-<span class="nc" id="L130">  }</span>
+<span class="fc" id="L149">      Thread.sleep(cappedDelay + jitter);</span>
+<span class="nc" id="L150">    } catch (InterruptedException ex) {</span>
+<span class="nc" id="L151">      Thread.currentThread().interrupt();</span>
+<span class="fc" id="L152">    }</span>
+<span class="fc" id="L153">  }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -9,8 +9,10 @@ import com.monew.batch.user.entity.User;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -29,58 +31,64 @@ public class InterestMatchedArticleEventListener {
     @EventListener
     @Transactional
     public void handle(InterestMatchedArticleEvent event) {
-<span class="fc bfc" id="L32" title="All 6 branches covered.">        if (event == null || event.interests() == null || event.interests().isEmpty()) {</span>
-<span class="fc" id="L33">            return;</span>
+<span class="fc bfc" id="L34" title="All 6 branches covered.">        if (event == null || event.interests() == null || event.interests().isEmpty()) {</span>
+<span class="fc" id="L35">            return;</span>
         }
 
-<span class="fc" id="L36">        Map&lt;UUID, Long&gt; articleCountsByInterestId = event.interests().stream()</span>
-<span class="fc bfc" id="L37" title="All 4 branches covered.">                .filter(interest -&gt; interest != null &amp;&amp; interest.interestId() != null)</span>
-<span class="fc" id="L38">                .collect(Collectors.groupingBy(</span>
-                        InterestMatchedArticleEvent.InterestMatchData::interestId,
-                        LinkedHashMap::new,
-<span class="fc" id="L41">                        Collectors.counting()</span>
-                ));
+<span class="fc" id="L38">        Map&lt;UUID, Set&lt;UUID&gt;&gt; articleIdsByInterestId = new LinkedHashMap&lt;&gt;();</span>
 
-<span class="fc" id="L44">        Map&lt;UUID, String&gt; interestNamesByInterestId = event.interests().stream()</span>
-<span class="fc bfc" id="L45" title="All 4 branches covered.">                .filter(interest -&gt; interest != null &amp;&amp; interest.interestId() != null)</span>
-<span class="fc" id="L46">                .collect(Collectors.toMap(</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        for (InterestMatchedArticleEvent.InterestMatchData match : event.interests()) {</span>
+<span class="fc bfc" id="L41" title="All 6 branches covered.">            if (match == null || match.articleId() == null || match.interestId() == null) {</span>
+<span class="fc" id="L42">                continue;</span>
+            }
+
+<span class="fc" id="L45">            articleIdsByInterestId</span>
+<span class="fc" id="L46">                    .computeIfAbsent(match.interestId(), ignored -&gt; new LinkedHashSet&lt;&gt;())</span>
+<span class="fc" id="L47">                    .add(match.articleId());</span>
+<span class="fc" id="L48">        }</span>
+
+<span class="fc" id="L50">        Map&lt;UUID, String&gt; interestNamesByInterestId = event.interests().stream()</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">                .filter(match -&gt; match != null</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">                        &amp;&amp; match.articleId() != null</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">                        &amp;&amp; match.interestId() != null)</span>
+<span class="fc" id="L54">                .collect(Collectors.toMap(</span>
                         InterestMatchedArticleEvent.InterestMatchData::interestId,
                         InterestMatchedArticleEvent.InterestMatchData::interestName,
-<span class="fc" id="L49">                        (first, ignored) -&gt; first,</span>
+<span class="fc" id="L57">                        (first, ignored) -&gt; first,</span>
                         LinkedHashMap::new
                 ));
 
-<span class="fc" id="L53">        List&lt;Notification&gt; notifications = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L61">        List&lt;Notification&gt; notifications = new ArrayList&lt;&gt;();</span>
 
-<span class="fc bfc" id="L55" title="All 2 branches covered.">        for (Map.Entry&lt;UUID, Long&gt; entry : articleCountsByInterestId.entrySet()) {</span>
-<span class="fc" id="L56">            UUID interestId = entry.getKey();</span>
-<span class="fc" id="L57">            int articleCount = entry.getValue().intValue();</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        for (Map.Entry&lt;UUID, Set&lt;UUID&gt;&gt; entry : articleIdsByInterestId.entrySet()) {</span>
+<span class="fc" id="L64">            UUID interestId = entry.getKey();</span>
+<span class="fc" id="L65">            int articleCount = entry.getValue().size();</span>
 
-<span class="pc bpc" id="L59" title="1 of 2 branches missed.">            if (articleCount &lt;= 0) {</span>
-<span class="nc" id="L60">                continue;</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">            if (articleCount &lt;= 0) {</span>
+<span class="nc" id="L68">                continue;</span>
             }
 
-<span class="fc" id="L63">            List&lt;UUID&gt; subscriberIds = subscriptionRepository.findUserIdsByInterestId(interestId);</span>
+<span class="fc" id="L71">            List&lt;UUID&gt; subscriberIds = subscriptionRepository.findUserIdsByInterestId(interestId);</span>
 
-<span class="fc bfc" id="L65" title="All 2 branches covered.">            for (UUID subscriberId : subscriberIds) {</span>
-<span class="fc" id="L66">                User userReference = entityManager.getReference(User.class, subscriberId);</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">            for (UUID subscriberId : subscriberIds) {</span>
+<span class="fc" id="L74">                User userReference = entityManager.getReference(User.class, subscriberId);</span>
 
-<span class="fc" id="L68">                notifications.add(Notification.builder()</span>
-<span class="fc" id="L69">                        .user(userReference)</span>
-<span class="fc" id="L70">                        .content(createContent(interestNamesByInterestId.get(interestId), articleCount))</span>
-<span class="fc" id="L71">                        .resourceType(NotificationResourceType.INTEREST)</span>
-<span class="fc" id="L72">                        .resourceId(interestId)</span>
-<span class="fc" id="L73">                        .build());</span>
-<span class="fc" id="L74">            }</span>
-<span class="fc" id="L75">        }</span>
+<span class="fc" id="L76">                notifications.add(Notification.builder()</span>
+<span class="fc" id="L77">                        .user(userReference)</span>
+<span class="fc" id="L78">                        .content(createContent(interestNamesByInterestId.get(interestId), articleCount))</span>
+<span class="fc" id="L79">                        .resourceType(NotificationResourceType.INTEREST)</span>
+<span class="fc" id="L80">                        .resourceId(interestId)</span>
+<span class="fc" id="L81">                        .build());</span>
+<span class="fc" id="L82">            }</span>
+<span class="fc" id="L83">        }</span>
 
-<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (!notifications.isEmpty()) {</span>
-<span class="fc" id="L78">            notificationRepository.saveAll(notifications);</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (!notifications.isEmpty()) {</span>
+<span class="fc" id="L86">            notificationRepository.saveAll(notifications);</span>
         }
-<span class="fc" id="L80">    }</span>
+<span class="fc" id="L88">    }</span>
 
     private String createContent(String interestName, int articleCount) {
-<span class="fc" id="L83">        return interestName + &quot; 관심사와 관련된 기사가 &quot; + articleCount + &quot;건 등록되었습니다.&quot;;</span>
+<span class="fc" id="L91">        return interestName + &quot;와 관련된 기사가 &quot; + articleCount + &quot;건 등록되었습니다.&quot;;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

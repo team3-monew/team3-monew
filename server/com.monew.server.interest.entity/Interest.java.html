@@ -28,44 +28,44 @@ public class Interest extends BaseCreatedEntity {
     @Column(name = &quot;normalized_name&quot;, nullable = false, length = 50)
     private String normalizedName;
 
-<span class="nc" id="L31">    @Column(name = &quot;subscriber_count&quot;, nullable = false)</span>
+<span class="fc" id="L31">    @Column(name = &quot;subscriber_count&quot;, nullable = false)</span>
     private long subscriberCount = 0L;
 
     @Column(name = &quot;updated_at&quot;)
     private LocalDateTime updatedAt;
 
-<span class="nc" id="L37">    public Interest(String name) {</span>
-<span class="nc" id="L38">        this.name = name;</span>
-<span class="nc" id="L39">        this.normalizedName = normalizeName(name);</span>
-<span class="nc" id="L40">        this.subscriberCount = 0L;</span>
-<span class="nc" id="L41">        this.updatedAt = LocalDateTime.now();</span>
-<span class="nc" id="L42">    }</span>
+<span class="fc" id="L37">    public Interest(String name) {</span>
+<span class="fc" id="L38">        this.name = name;</span>
+<span class="fc" id="L39">        this.normalizedName = normalizeName(name);</span>
+<span class="fc" id="L40">        this.subscriberCount = 0L;</span>
+<span class="fc" id="L41">        this.updatedAt = LocalDateTime.now();</span>
+<span class="fc" id="L42">    }</span>
 
     // 성능 개선: 비교/검색용 이름 정규화
     public static String normalizeName(String name) {
-<span class="nc bnc" id="L46" title="All 2 branches missed.">        if (name == null) {</span>
-<span class="nc" id="L47">            return &quot;&quot;;</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        if (name == null) {</span>
+<span class="fc" id="L47">            return &quot;&quot;;</span>
         }
-<span class="nc" id="L49">        return name.trim()</span>
-<span class="nc" id="L50">                .toLowerCase(Locale.ROOT)</span>
-<span class="nc" id="L51">                .replaceAll(&quot;\\s+&quot;, &quot;&quot;);</span>
+<span class="fc" id="L49">        return name.trim()</span>
+<span class="fc" id="L50">                .toLowerCase(Locale.ROOT)</span>
+<span class="fc" id="L51">                .replaceAll(&quot;\\s+&quot;, &quot;&quot;);</span>
     }
 
     public void increaseSubscriberCount() {
-<span class="nc" id="L55">        this.subscriberCount++;</span>
-<span class="nc" id="L56">    }</span>
+<span class="fc" id="L55">        this.subscriberCount++;</span>
+<span class="fc" id="L56">    }</span>
 
     public void decreaseSubscriberCount() {
-<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (this.subscriberCount &lt;= 0) {</span>
-<span class="nc" id="L60">            this.subscriberCount = 0;</span>
-<span class="nc" id="L61">            return;</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        if (this.subscriberCount &lt;= 0) {</span>
+<span class="fc" id="L60">            this.subscriberCount = 0;</span>
+<span class="fc" id="L61">            return;</span>
         }
-<span class="nc" id="L63">        this.subscriberCount--;</span>
-<span class="nc" id="L64">    }</span>
+<span class="fc" id="L63">        this.subscriberCount--;</span>
+<span class="fc" id="L64">    }</span>
 
     public void markUpdated() {
-<span class="nc" id="L67">        this.updatedAt = LocalDateTime.now();</span>
-<span class="nc" id="L68">    }</span>
+<span class="fc" id="L67">        this.updatedAt = LocalDateTime.now();</span>
+<span class="fc" id="L68">    }</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

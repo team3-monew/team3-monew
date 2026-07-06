@@ -110,7 +110,7 @@ public class ArticleController {
   }
 
   @GetMapping(&quot;/restore&quot;)
-  public List&lt;ArticleRestoreResultDto&gt; restore(
+  public ResponseEntity&lt;ArticleRestoreResultDto&gt; restore(
       @RequestParam
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
       LocalDateTime from,
@@ -118,7 +118,7 @@ public class ArticleController {
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
       LocalDateTime to
   ) {
-<span class="fc" id="L121">    return articleRestoreService.restore(from, to);</span>
+<span class="fc" id="L121">    return ResponseEntity.ok(articleRestoreService.restore(from, to));</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

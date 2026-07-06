@@ -5,7 +5,7 @@ import com.monew.batch.article.entity.ArticleSource;
 /**
  * Naver/RSS 수집 Step 하나의 실행 결과를 담는 DTO입니다.
  */
-<span class="nc" id="L8">public record ArticleCollectStepResultDto(</span>
+<span class="fc" id="L8">public record ArticleCollectStepResultDto(</span>
     ArticleSource source,   // 기사 출처
     int requestCount,   // 요청 수
     int successCount,   //성공 수
@@ -17,7 +17,7 @@ import com.monew.batch.article.entity.ArticleSource;
 ) {
 
   public static ArticleCollectStepResultDto empty(ArticleSource source) {
-<span class="nc" id="L20">    return new ArticleCollectStepResultDto(source, 0, 0, 0, 0, 0, 0, 0);</span>
+<span class="fc" id="L20">    return new ArticleCollectStepResultDto(source, 0, 0, 0, 0, 0, 0, 0);</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

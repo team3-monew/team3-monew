@@ -26,26 +26,26 @@ public class InterestController {
     @PostMapping
     public ResponseEntity&lt;InterestDto&gt; register(
             @Valid @RequestBody InterestRegisterRequest request) {
-<span class="nc" id="L29">        InterestDto response = interestService.register(request);</span>
+<span class="fc" id="L29">        InterestDto response = interestService.register(request);</span>
 
-<span class="nc" id="L31">        return ResponseEntity</span>
-<span class="nc" id="L32">                .status(HttpStatus.CREATED)</span>
-<span class="nc" id="L33">                .body(response);</span>
+<span class="fc" id="L31">        return ResponseEntity</span>
+<span class="fc" id="L32">                .status(HttpStatus.CREATED)</span>
+<span class="fc" id="L33">                .body(response);</span>
     }
 
     @PatchMapping(&quot;/{interestId}&quot;)
     public ResponseEntity&lt;InterestDto&gt; update(
             @PathVariable UUID interestId,
             @Valid @RequestBody InterestUpdateRequest request) {
-<span class="nc" id="L40">        InterestDto response = interestService.update(interestId, request);</span>
-<span class="nc" id="L41">        return ResponseEntity.ok(response);</span>
+<span class="fc" id="L40">        InterestDto response = interestService.update(interestId, request);</span>
+<span class="fc" id="L41">        return ResponseEntity.ok(response);</span>
     }
 
     @DeleteMapping(&quot;/{interestId}&quot;)
     public ResponseEntity&lt;Void&gt; delete(@PathVariable UUID interestId) {
-<span class="nc" id="L46">        interestService.delete(interestId);</span>
+<span class="fc" id="L46">        interestService.delete(interestId);</span>
 
-<span class="nc" id="L48">        return ResponseEntity.noContent().build();</span>
+<span class="fc" id="L48">        return ResponseEntity.noContent().build();</span>
     }
 
     @GetMapping
@@ -60,7 +60,7 @@ public class InterestController {
             @RequestParam int limit,
             @LoginUser UUID userId
     ) {
-<span class="nc" id="L63">        CursorPageResponse&lt;InterestDto&gt; response = interestService.getInterests(</span>
+<span class="fc" id="L63">        CursorPageResponse&lt;InterestDto&gt; response = interestService.getInterests(</span>
                 keyword,
                 orderBy,
                 direction,
@@ -70,7 +70,7 @@ public class InterestController {
                 userId
         );
 
-<span class="nc" id="L73">        return ResponseEntity.ok(response);</span>
+<span class="fc" id="L73">        return ResponseEntity.ok(response);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -5,7 +5,7 @@ import com.monew.server.interest.entity.Interest;
 import java.util.List;
 import java.util.UUID;
 
-<span class="nc" id="L8">public record InterestDto(</span>
+<span class="fc" id="L8">public record InterestDto(</span>
         UUID id,
         String name,
         List&lt;String&gt; keywords,
@@ -17,11 +17,11 @@ import java.util.UUID;
             List&lt;String&gt; keywords,
             boolean subscribedByMe
     ) {
-<span class="nc" id="L20">        return new InterestDto(</span>
-<span class="nc" id="L21">                interest.getId(),</span>
-<span class="nc" id="L22">                interest.getName(),</span>
+<span class="fc" id="L20">        return new InterestDto(</span>
+<span class="fc" id="L21">                interest.getId(),</span>
+<span class="fc" id="L22">                interest.getName(),</span>
                 keywords,
-<span class="nc" id="L24">                interest.getSubscriberCount(),</span>
+<span class="fc" id="L24">                interest.getSubscriberCount(),</span>
                 subscribedByMe
         );
     }

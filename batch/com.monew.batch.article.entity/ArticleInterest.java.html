@@ -37,10 +37,10 @@ public class ArticleInterest extends BaseCreatedEntity {
   /**
    * Article과 Interest를 받아 복합키까지 함께 구성합니다.
    */
-<span class="nc" id="L40">  public ArticleInterest(Article article, Interest interest) {</span>
-<span class="nc" id="L41">    this.article = article;</span>
-<span class="nc" id="L42">    this.interest = interest;</span>
-<span class="nc" id="L43">    this.id = new ArticleInterestId(article.getId(), interest.getId());</span>
-<span class="nc" id="L44">  }</span>
+<span class="fc" id="L40">  public ArticleInterest(Article article, Interest interest) {</span>
+<span class="fc" id="L41">    this.article = article;</span>
+<span class="fc" id="L42">    this.interest = interest;</span>
+<span class="fc" id="L43">    this.id = new ArticleInterestId(article.getId(), interest.getId());</span>
+<span class="fc" id="L44">  }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -46,8 +46,8 @@ public class YeonhapRssArticleCollector extends AbstractRssArticleCollector {
   @Override
   public RssCollectResultDto collectLatestResult(int limit) {
 <span class="fc" id="L48">    List&lt;String&gt; urls = rssProperties.yeonhap().urls();</span>
-<span class="pc bpc" id="L49" title="2 of 4 branches missed.">    if (urls == null || urls.isEmpty()) {</span>
-<span class="nc" id="L50">      return RssCollectResultDto.empty();</span>
+<span class="pc bpc" id="L49" title="1 of 4 branches missed.">    if (urls == null || urls.isEmpty()) {</span>
+<span class="fc" id="L50">      return RssCollectResultDto.empty();</span>
     }
 
 <span class="fc" id="L53">    Map&lt;String, CollectedArticleDto&gt; articlesByUrl = new LinkedHashMap&lt;&gt;();</span>

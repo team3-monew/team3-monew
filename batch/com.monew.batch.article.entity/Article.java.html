@@ -56,23 +56,23 @@ public class Article extends BaseTimeEntity {
    * 외부 API에서 변환된 CollectedArticle 값을 실제 저장 Entity로 만들 때 사용합니다.
    */
   public Article(ArticleSource source, String sourceUrl, String title, LocalDateTime publishDate,
-<span class="nc" id="L59">      String summary) {</span>
-<span class="nc" id="L60">    this.source = source;</span>
-<span class="nc" id="L61">    this.sourceUrl = sourceUrl;</span>
-<span class="nc" id="L62">    this.title = title;</span>
-<span class="nc" id="L63">    this.publishDate = publishDate;</span>
-<span class="nc" id="L64">    this.summary = summary;</span>
-<span class="nc" id="L65">    this.commentCount = 0L;</span>
-<span class="nc" id="L66">    this.viewCount = 0L;</span>
-<span class="nc" id="L67">  }</span>
+<span class="fc" id="L59">      String summary) {</span>
+<span class="fc" id="L60">    this.source = source;</span>
+<span class="fc" id="L61">    this.sourceUrl = sourceUrl;</span>
+<span class="fc" id="L62">    this.title = title;</span>
+<span class="fc" id="L63">    this.publishDate = publishDate;</span>
+<span class="fc" id="L64">    this.summary = summary;</span>
+<span class="fc" id="L65">    this.commentCount = 0L;</span>
+<span class="fc" id="L66">    this.viewCount = 0L;</span>
+<span class="fc" id="L67">  }</span>
 
   public static Article from(CollectedArticleDto collectedArticleDto){
-<span class="nc" id="L70">    return new Article(</span>
-<span class="nc" id="L71">        collectedArticleDto.source(),</span>
-<span class="nc" id="L72">        collectedArticleDto.sourceUrl(),</span>
-<span class="nc" id="L73">        collectedArticleDto.title(),</span>
-<span class="nc" id="L74">        collectedArticleDto.publishDate(),</span>
-<span class="nc" id="L75">        collectedArticleDto.summary()</span>
+<span class="fc" id="L70">    return new Article(</span>
+<span class="fc" id="L71">        collectedArticleDto.source(),</span>
+<span class="fc" id="L72">        collectedArticleDto.sourceUrl(),</span>
+<span class="fc" id="L73">        collectedArticleDto.title(),</span>
+<span class="fc" id="L74">        collectedArticleDto.publishDate(),</span>
+<span class="fc" id="L75">        collectedArticleDto.summary()</span>
     );
   }
 

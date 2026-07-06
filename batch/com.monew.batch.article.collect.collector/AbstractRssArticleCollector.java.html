@@ -30,15 +30,15 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
 
   @Override
   public RssCollectResultDto collectLatestResult(int limit) {
-<span class="nc" id="L33">    return collectFeed(getFeedUrl(), limit);</span>
+<span class="fc" id="L33">    return collectFeed(getFeedUrl(), limit);</span>
   }
 
   protected abstract String getFeedUrl();
 
   protected RssCollectResultDto collectFeed(String feedUrl, int limit) {
-<span class="pc bpc" id="L39" title="2 of 4 branches missed.">    if (feedUrl == null || feedUrl.isBlank()) {</span>
-<span class="nc" id="L40">      log.info(&quot;Skip RSS collect because feed URL is empty. source={}&quot;, getSource());</span>
-<span class="nc" id="L41">      return RssCollectResultDto.empty();</span>
+<span class="pc bpc" id="L39" title="1 of 4 branches missed.">    if (feedUrl == null || feedUrl.isBlank()) {</span>
+<span class="fc" id="L40">      log.info(&quot;Skip RSS collect because feed URL is empty. source={}&quot;, getSource());</span>
+<span class="fc" id="L41">      return RssCollectResultDto.empty();</span>
     }
 
 <span class="fc" id="L44">    String xml = requestWithRetry(feedUrl);</span>
@@ -49,10 +49,10 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
     try {
 <span class="fc" id="L50">      List&lt;CollectedArticleDto&gt; articles = parseItems(xml, Math.min(limit, properties.rssLimit()));</span>
 <span class="fc" id="L51">      return new RssCollectResultDto(articles, 1, 1, 0);</span>
-<span class="nc" id="L52">    } catch (Exception ex) {</span>
-<span class="nc" id="L53">      log.warn(&quot;RSS parse failed. source={}, url={}, message={}&quot;, getSource(), feedUrl,</span>
-<span class="nc" id="L54">          ex.getMessage());</span>
-<span class="nc" id="L55">      return new RssCollectResultDto(List.of(), 1, 0, 1);</span>
+<span class="fc" id="L52">    } catch (Exception ex) {</span>
+<span class="fc" id="L53">      log.warn(&quot;RSS parse failed. source={}, url={}, message={}&quot;, getSource(), feedUrl,</span>
+<span class="fc" id="L54">          ex.getMessage());</span>
+<span class="fc" id="L55">      return new RssCollectResultDto(List.of(), 1, 0, 1);</span>
     }
   }
 
@@ -81,26 +81,26 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
 <span class="fc" id="L81">            feedUrl, attempt);</span>
 <span class="fc" id="L82">        return xml;</span>
 <span class="fc" id="L83">      } catch (RestClientResponseException ex) {</span>
-<span class="pc bpc" id="L84" title="2 of 4 branches missed.">        if (!shouldRetry(ex) || attempt == maxAttempts) {</span>
+<span class="fc bfc" id="L84" title="All 4 branches covered.">        if (!shouldRetry(ex) || attempt == maxAttempts) {</span>
 <span class="fc" id="L85">          log.warn(&quot;RSS collect failed. source={}, url={}, status={}, attempt={}, message={}&quot;,</span>
 <span class="fc" id="L86">              getSource(), feedUrl, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
 <span class="fc" id="L87">          return null;</span>
         }
 
-<span class="nc" id="L90">        log.warn(&quot;Retryable RSS response. source={}, url={}, status={}, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L91">            getSource(), feedUrl, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
-<span class="nc" id="L92">      } catch (ResourceAccessException ex) {</span>
-<span class="nc bnc" id="L93" title="All 2 branches missed.">        if (attempt == maxAttempts) {</span>
-<span class="nc" id="L94">          log.warn(&quot;RSS collect failed. source={}, url={}, status=NETWORK, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L95">              getSource(), feedUrl, attempt, ex.getMessage());</span>
-<span class="nc" id="L96">          return null;</span>
+<span class="fc" id="L90">        log.warn(&quot;Retryable RSS response. source={}, url={}, status={}, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L91">            getSource(), feedUrl, ex.getStatusCode().value(), attempt, ex.getMessage());</span>
+<span class="fc" id="L92">      } catch (ResourceAccessException ex) {</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (attempt == maxAttempts) {</span>
+<span class="fc" id="L94">          log.warn(&quot;RSS collect failed. source={}, url={}, status=NETWORK, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L95">              getSource(), feedUrl, attempt, ex.getMessage());</span>
+<span class="fc" id="L96">          return null;</span>
         }
 
-<span class="nc" id="L99">        log.warn(&quot;Retryable RSS network error. source={}, url={}, attempt={}, message={}&quot;,</span>
-<span class="nc" id="L100">            getSource(), feedUrl, attempt, ex.getMessage());</span>
-<span class="nc" id="L101">      }</span>
+<span class="fc" id="L99">        log.warn(&quot;Retryable RSS network error. source={}, url={}, attempt={}, message={}&quot;,</span>
+<span class="fc" id="L100">            getSource(), feedUrl, attempt, ex.getMessage());</span>
+<span class="fc" id="L101">      }</span>
 
-<span class="nc" id="L103">      sleepBeforeRetry(attempt);</span>
+<span class="fc" id="L103">      sleepBeforeRetry(attempt);</span>
     }
 
 <span class="nc" id="L106">    return null;</span>
@@ -108,20 +108,20 @@ public abstract class AbstractRssArticleCollector implements FeedBasedArticleCol
 
   private boolean shouldRetry(RestClientResponseException ex) {
 <span class="fc" id="L110">    int status = ex.getStatusCode().value();</span>
-<span class="pc bpc" id="L111" title="2 of 4 branches missed.">    return status == 429 || status &gt;= 500;</span>
+<span class="fc bfc" id="L111" title="All 4 branches covered.">    return status == 429 || status &gt;= 500;</span>
   }
 
   private void sleepBeforeRetry(int failedAttempt) {
-<span class="nc" id="L115">    long baseDelay = properties.retryInitialDelayMillis() * (1L &lt;&lt; Math.max(0, failedAttempt - 1));</span>
-<span class="nc" id="L116">    long cappedDelay = Math.min(baseDelay, properties.retryMaxDelayMillis());</span>
-<span class="nc" id="L117">    long jitter = ThreadLocalRandom.current().nextLong(0, Math.max(1L, cappedDelay / 5L + 1L));</span>
+<span class="fc" id="L115">    long baseDelay = properties.retryInitialDelayMillis() * (1L &lt;&lt; Math.max(0, failedAttempt - 1));</span>
+<span class="fc" id="L116">    long cappedDelay = Math.min(baseDelay, properties.retryMaxDelayMillis());</span>
+<span class="fc" id="L117">    long jitter = ThreadLocalRandom.current().nextLong(0, Math.max(1L, cappedDelay / 5L + 1L));</span>
 
     try {
-<span class="nc" id="L120">      Thread.sleep(cappedDelay + jitter);</span>
+<span class="fc" id="L120">      Thread.sleep(cappedDelay + jitter);</span>
 <span class="nc" id="L121">    } catch (InterruptedException ex) {</span>
 <span class="nc" id="L122">      Thread.currentThread().interrupt();</span>
-<span class="nc" id="L123">    }</span>
-<span class="nc" id="L124">  }</span>
+<span class="fc" id="L123">    }</span>
+<span class="fc" id="L124">  }</span>
 
   protected List&lt;CollectedArticleDto&gt; parseItems(String xml, int limit) throws Exception {
 <span class="fc" id="L127">    SyndFeed feed = new SyndFeedInput().build(new StringReader(xml));</span>

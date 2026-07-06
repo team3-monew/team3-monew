@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommentQueryRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">server</a> &gt; <a href="index.source.html" class="el_package">com.monew.server.comment.repository.querydsl</a> &gt; <span class="el_source">CommentQueryRepositoryImpl.java</span></div><h1>CommentQueryRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.monew.server.comment.repository.querydsl;
+
+import static com.monew.server.comment.entity.QComment.comment;
+import static com.monew.server.user.entity.QUser.user;
+import com.monew.server.comment.entity.Comment;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
+
+@Repository
+@RequiredArgsConstructor
+public class CommentQueryRepositoryImpl implements CommentQueryRepository {
+
+  private final JPAQueryFactory queryFactory;
+
+  @Override
+  public List&lt;Comment&gt; findCommentsByArticleValueCursor(
+      UUID articleId, LocalDateTime lastCreatedAt, UUID lastId, String direction, Pageable pageable
+  ) {
+<span class="nc" id="L25">    boolean asc = isAsc(direction);</span>
+
+    // [변경] 기존 CASE WHEN 혼합 정렬 → sortBy별로 별도 쿼리 메서드로 분리
+    // (JPQL에서 타입 혼합 파라미터 때문에 발생하던 InvalidDataAccessResourceUsageException 원인 제거)
+<span class="nc" id="L29">    return queryFactory</span>
+<span class="nc" id="L30">        .selectFrom(comment)</span>
+<span class="nc" id="L31">        .join(comment.user, user).fetchJoin() // [유지] N+1 방지</span>
+<span class="nc" id="L32">        .where(</span>
+<span class="nc" id="L33">            comment.article.id.eq(articleId),</span>
+<span class="nc" id="L34">            comment.deletedAt.isNull(),</span>
+<span class="nc" id="L35">            createdAtCursorCondition(lastCreatedAt, lastId, asc)</span>
+        )
+<span class="nc" id="L37">        .orderBy(</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">            asc ? comment.createdAt.asc() : comment.createdAt.desc(),</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">            asc ? comment.id.asc() : comment.id.desc() // tie-breaker</span>
+        )
+<span class="nc" id="L41">        .limit(pageable.getPageSize())</span>
+<span class="nc" id="L42">        .fetch();</span>
+  }
+
+  @Override
+  public List&lt;Comment&gt; findCommentsByArticleLikeCursor(
+      UUID articleId, Long lastLikeCount, UUID lastId, String direction, Pageable pageable
+  ) {
+<span class="nc" id="L49">    boolean asc = isAsc(direction);</span>
+
+<span class="nc" id="L51">    return queryFactory</span>
+<span class="nc" id="L52">        .selectFrom(comment)</span>
+<span class="nc" id="L53">        .join(comment.user, user).fetchJoin()</span>
+<span class="nc" id="L54">        .where(</span>
+<span class="nc" id="L55">            comment.article.id.eq(articleId),</span>
+<span class="nc" id="L56">            comment.deletedAt.isNull(),</span>
+<span class="nc" id="L57">            likeCountCursorCondition(lastLikeCount, lastId, asc)</span>
+        )
+<span class="nc" id="L59">        .orderBy(</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">            asc ? comment.likeCount.asc() : comment.likeCount.desc(),</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">            asc ? comment.id.asc() : comment.id.desc()</span>
+        )
+<span class="nc" id="L63">        .limit(pageable.getPageSize())</span>
+<span class="nc" id="L64">        .fetch();</span>
+  }
+
+  // [변경] null이면 where절에서 자동 제외 → 최초 조회(cursor 없음)에서
+  // LocalDateTime/Long 타입 추론이 꼬이던 문제가 원천적으로 발생하지 않음
+  private BooleanExpression createdAtCursorCondition(LocalDateTime lastCreatedAt, UUID lastId, boolean asc) {
+<span class="fc bfc" id="L70" title="All 2 branches covered.">    if (lastCreatedAt == null) {</span>
+<span class="fc" id="L71">      return null;</span>
+    }
+<span class="fc bfc" id="L73" title="All 2 branches covered.">    return asc</span>
+<span class="fc" id="L74">        ? comment.createdAt.gt(lastCreatedAt)</span>
+<span class="fc" id="L75">        .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.gt(lastId)))</span>
+<span class="fc" id="L76">        : comment.createdAt.lt(lastCreatedAt)</span>
+<span class="fc" id="L77">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.lt(lastId)));</span>
+  }
+
+  private BooleanExpression likeCountCursorCondition(Long lastLikeCount, UUID lastId, boolean asc) {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">    if (lastLikeCount == null) {</span>
+<span class="fc" id="L82">      return null;</span>
+    }
+<span class="fc bfc" id="L84" title="All 2 branches covered.">    return asc</span>
+<span class="fc" id="L85">        ? comment.likeCount.gt(lastLikeCount)</span>
+<span class="fc" id="L86">        .or(comment.likeCount.eq(lastLikeCount).and(comment.id.gt(lastId)))</span>
+<span class="fc" id="L87">        : comment.likeCount.lt(lastLikeCount)</span>
+<span class="fc" id="L88">            .or(comment.likeCount.eq(lastLikeCount).and(comment.id.lt(lastId)));</span>
+  }
+
+  private boolean isAsc(String direction) {
+<span class="fc" id="L92">    return &quot;ASC&quot;.equalsIgnoreCase(direction);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

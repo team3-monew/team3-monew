@@ -41,78 +41,78 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional
     public SubscriptionDto subscribe(UUID userId, UUID interestId) {
-<span class="nc" id="L44">        Interest interest = getInterest(interestId);</span>
+<span class="fc" id="L44">        Interest interest = getInterest(interestId);</span>
 
         // event publisher 용 코드
-<span class="nc" id="L47">        Optional&lt;Subscription&gt; existingSubscription =</span>
-<span class="nc" id="L48">            subscriptionRepository.findByUser_IdAndInterest_Id(userId, interestId);</span>
+<span class="fc" id="L47">        Optional&lt;Subscription&gt; existingSubscription =</span>
+<span class="fc" id="L48">            subscriptionRepository.findByUser_IdAndInterest_Id(userId, interestId);</span>
 
-<span class="nc" id="L50">        boolean created = existingSubscription.isEmpty();</span>
+<span class="fc" id="L50">        boolean created = existingSubscription.isEmpty();</span>
         //
 
-<span class="nc" id="L53">        Subscription subscription = subscriptionRepository</span>
-<span class="nc" id="L54">                .findByUser_IdAndInterest_Id(userId, interestId)</span>
-<span class="nc" id="L55">                .orElseGet(() -&gt; createSubscription(userId, interest));</span>
+<span class="fc" id="L53">        Subscription subscription = subscriptionRepository</span>
+<span class="fc" id="L54">                .findByUser_IdAndInterest_Id(userId, interestId)</span>
+<span class="fc" id="L55">                .orElseGet(() -&gt; createSubscription(userId, interest));</span>
 
-<span class="nc" id="L57">        List&lt;String&gt; keywords = interestKeywordRepository.findAllByInterestId(interestId).stream()</span>
-<span class="nc" id="L58">                .map(InterestKeyword::getKeyword)</span>
-<span class="nc" id="L59">                .toList();</span>
+<span class="fc" id="L57">        List&lt;String&gt; keywords = interestKeywordRepository.findAllByInterestId(interestId).stream()</span>
+<span class="fc" id="L58">                .map(InterestKeyword::getKeyword)</span>
+<span class="fc" id="L59">                .toList();</span>
 
         // event publisher 삽입
-<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (created) {</span>
-<span class="nc" id="L63">            eventPublisher.publishEvent(</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (created) {</span>
+<span class="fc" id="L63">            eventPublisher.publishEvent(</span>
                 new SubscriptionCreatedEvent(
                     userId,
-<span class="nc" id="L66">                    subscription.getId(),</span>
-<span class="nc" id="L67">                    interest.getId(),</span>
-<span class="nc" id="L68">                    interest.getName(),</span>
+<span class="fc" id="L66">                    subscription.getId(),</span>
+<span class="fc" id="L67">                    interest.getId(),</span>
+<span class="fc" id="L68">                    interest.getName(),</span>
                     keywords,
-<span class="nc" id="L70">                    interest.getSubscriberCount(),</span>
-<span class="nc" id="L71">                    subscription.getCreatedAt()</span>
+<span class="fc" id="L70">                    interest.getSubscriberCount(),</span>
+<span class="fc" id="L71">                    subscription.getCreatedAt()</span>
                 )
             );
         }
 
-<span class="nc" id="L76">        return SubscriptionDto.of(subscription, interest, keywords);</span>
+<span class="fc" id="L76">        return SubscriptionDto.of(subscription, interest, keywords);</span>
     }
 
     @Override
     @Transactional
     public void unsubscribe(UUID userId, UUID interestId) {
-<span class="nc" id="L82">        Interest interest = getInterest(interestId);</span>
+<span class="fc" id="L82">        Interest interest = getInterest(interestId);</span>
 
-<span class="nc" id="L84">        subscriptionRepository.findByUser_IdAndInterest_Id(userId, interestId)</span>
-<span class="nc" id="L85">                .ifPresent(subscription -&gt; {</span>
+<span class="fc" id="L84">        subscriptionRepository.findByUser_IdAndInterest_Id(userId, interestId)</span>
+<span class="fc" id="L85">                .ifPresent(subscription -&gt; {</span>
 
                     // event publisher용
-<span class="nc" id="L88">                    UUID subscriptionId = subscription.getId();</span>
+<span class="fc" id="L88">                    UUID subscriptionId = subscription.getId();</span>
 
-<span class="nc" id="L90">                    subscriptionRepository.delete(subscription);</span>
-<span class="nc" id="L91">                    interest.decreaseSubscriberCount();</span>
+<span class="fc" id="L90">                    subscriptionRepository.delete(subscription);</span>
+<span class="fc" id="L91">                    interest.decreaseSubscriberCount();</span>
 
                     // event publisher 삽입
-<span class="nc" id="L94">                    eventPublisher.publishEvent(</span>
+<span class="fc" id="L94">                    eventPublisher.publishEvent(</span>
                         new SubscriptionDeletedEvent(
                             userId,
                             subscriptionId
                         )
                     );
-<span class="nc" id="L100">                });</span>
-<span class="nc" id="L101">    }</span>
+<span class="fc" id="L100">                });</span>
+<span class="fc" id="L101">    }</span>
 
     private Subscription createSubscription(UUID userId, Interest interest) {
-<span class="nc" id="L104">        User user = userRepository.getReferenceById(userId);</span>
+<span class="fc" id="L104">        User user = userRepository.getReferenceById(userId);</span>
 
-<span class="nc" id="L106">        Subscription subscription = new Subscription(user, interest);</span>
-<span class="nc" id="L107">        Subscription savedSubscription = subscriptionRepository.save(subscription);</span>
+<span class="fc" id="L106">        Subscription subscription = new Subscription(user, interest);</span>
+<span class="fc" id="L107">        Subscription savedSubscription = subscriptionRepository.save(subscription);</span>
 
-<span class="nc" id="L109">        interest.increaseSubscriberCount();</span>
-<span class="nc" id="L110">        return savedSubscription;</span>
+<span class="fc" id="L109">        interest.increaseSubscriberCount();</span>
+<span class="fc" id="L110">        return savedSubscription;</span>
     }
 
     private Interest getInterest(UUID interestId) {
-<span class="nc" id="L114">        return interestRepository.findById(interestId)</span>
-<span class="nc" id="L115">                .orElseThrow(() -&gt; new BaseException(InterestErrorCode.INTEREST_NOT_FOUND));</span>
+<span class="fc" id="L114">        return interestRepository.findById(interestId)</span>
+<span class="fc" id="L115">                .orElseThrow(() -&gt; new BaseException(InterestErrorCode.INTEREST_NOT_FOUND));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
