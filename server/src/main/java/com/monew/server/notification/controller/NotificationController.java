@@ -3,6 +3,7 @@ package com.monew.server.notification.controller;
 import com.monew.server.common.exception.notification.NotificationErrorCode;
 import com.monew.server.common.exception.notification.NotificationException;
 import com.monew.server.common.response.CursorPageResponse;
+import com.monew.server.common.security.LoginUser;
 import com.monew.server.notification.dto.NotificationResponse;
 import com.monew.server.notification.service.NotificationService;
 import java.time.LocalDateTime;
@@ -29,7 +30,7 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<CursorPageResponse<NotificationResponse>> findUnreadNotifications(
-            @RequestHeader("Monew-Request-User-ID") UUID userId,
+            @LoginUser UUID userId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) String after,
             @RequestParam int limit
@@ -47,7 +48,7 @@ public class NotificationController {
 
     @PatchMapping("/{notificationId}")
     public ResponseEntity<Void> confirm(
-            @RequestHeader("Monew-Request-User-ID") UUID userId,
+            @LoginUser UUID userId,
             @PathVariable UUID notificationId
     ) {
         notificationService.confirm(userId, notificationId);
@@ -57,7 +58,7 @@ public class NotificationController {
 
     @PatchMapping
     public ResponseEntity<Void> confirmAll(
-            @RequestHeader("Monew-Request-User-ID") UUID userId
+            @LoginUser UUID userId
     ) {
         notificationService.confirmAll(userId);
 

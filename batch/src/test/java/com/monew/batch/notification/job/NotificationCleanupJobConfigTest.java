@@ -3,6 +3,7 @@ package com.monew.batch.notification.job;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import com.monew.batch.monitoring.BatchJobMetricsListener;
 import com.monew.batch.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,11 +21,13 @@ class NotificationCleanupJobConfigTest {
         NotificationRepository notificationRepository = mock(NotificationRepository.class);
         JobRepository jobRepository = mock(JobRepository.class);
         PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+        BatchJobMetricsListener batchJobMetricsListener = mock(BatchJobMetricsListener.class);
+
         NotificationCleanupJobConfig config = new NotificationCleanupJobConfig(notificationRepository);
 
         // When
         Step step = config.notificationCleanupStep(jobRepository, transactionManager);
-        Job job = config.notificationCleanupJob(jobRepository, step);
+        Job job = config.notificationCleanupJob(jobRepository, step, batchJobMetricsListener);
 
         // Then
         assertThat(step.getName()).isEqualTo("notificationCleanupStep");

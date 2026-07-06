@@ -43,7 +43,7 @@ public class ArticleRestoreServiceImpl implements ArticleRestoreService {
 
   @Override
   @Transactional
-  public List<ArticleRestoreResultDto> restore(LocalDateTime from, LocalDateTime to) {
+  public ArticleRestoreResultDto restore(LocalDateTime from, LocalDateTime to) {
     validateDateRange(from, to);
 
     List<LocalDate> restoreDates = restoreDates(from, to);  // 복구 날짜 리스트 추출
@@ -73,11 +73,11 @@ public class ArticleRestoreServiceImpl implements ArticleRestoreService {
         .map(Article::getId)
         .toList();
 
-    return List.of(new ArticleRestoreResultDto(
+    return new ArticleRestoreResultDto(
         Instant.now(),
         restoredArticleIds,
         restoredArticleIds.size()
-    ));
+    );
   }
 
   private void validateDateRange(LocalDateTime from, LocalDateTime to) {

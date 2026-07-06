@@ -28,6 +28,8 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationQueryRepository notificationQueryRepository;
     private final UserRepository userRepository;
 
+    private static final int MAX_LIMIT = 50;
+
     @Override
     public CursorPageResponse<NotificationResponse> findUnreadNotifications(
             UUID userId,
@@ -139,7 +141,7 @@ public class NotificationServiceImpl implements NotificationService {
         validateRequired("resourceType", resourceType);
         validateRequired("resourceId", resourceId);
 
-        User receiver = userRepository.findById(receiverUserId)
+        User receiver = userRepository.findByIdAndDeletedAtIsNull(receiverUserId)
                 .orElseThrow(() -> {
                     BaseException exception = new BaseException(UserErrorCode.USER_NOT_FOUND);
                     exception.addDetail("receiverUserId", receiverUserId);
@@ -159,7 +161,7 @@ public class NotificationServiceImpl implements NotificationService {
     private void validateUserExists(UUID userId) {
         validateRequired("userId", userId);
 
-        if (!userRepository.existsById(userId)) {
+        if (!userRepository.existsByIdAndDeletedAtIsNull(userId)) {
             BaseException exception = new BaseException(UserErrorCode.USER_NOT_FOUND);
             exception.addDetail("userId", userId);
             throw exception;
@@ -167,7 +169,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private void validateLimit(int limit) {
-        if (limit <= 0) {
+        if (limit <= 0 || limit > MAX_LIMIT) {
             NotificationException exception =
                     new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
             exception.addDetail("limit", limit);
