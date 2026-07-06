@@ -6,18 +6,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.never;
+import static org.mockito.BDDMockito.then;
 
+import com.monew.server.activity.event.ArticleCommentCountUpdatedEvent;
+import com.monew.server.activity.event.CommentCreatedEvent;
+import com.monew.server.activity.event.CommentUpdatedEvent;
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.entity.ArticleSource;
 import com.monew.server.article.repository.ArticleRepository;
+import com.monew.server.comment.dto.CommentCreateRequest;
+import com.monew.server.comment.dto.CommentUpdateRequest;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
 import com.monew.server.comment.repository.CommentRepository;
 import com.monew.server.common.exception.BaseException;
 import com.monew.server.common.exception.CommonErrorCode;
+import com.monew.server.common.exception.article.ArticleErrorCode;
+import com.monew.server.common.exception.user.UserErrorCode;
 import com.monew.server.notification.service.NotificationService;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
@@ -32,14 +39,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import org.springframework.context.ApplicationEventPublisher;
-import com.monew.server.activity.event.CommentDeletedEvent;
-import com.monew.server.activity.event.CommentLikeCreatedEvent;
-import com.monew.server.activity.event.CommentLikeDeletedEvent;
-import com.monew.server.activity.event.ArticleCommentCountUpdatedEvent;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
@@ -52,6 +54,137 @@ class CommentServiceTest {
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private CommentService commentService;
+
+
+  @Test
+  @DisplayName("댓글 등록 성공 - 유효한 요청이면 댓글을 저장하고 카운트 증가 및 이벤트를 발행한다")
+  void createComment_success() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID articleId = UUID.randomUUID();
+    User user = user(userId);
+    Article article = article(articleId);
+    CommentCreateRequest request = new CommentCreateRequest(articleId, "새 댓글");
+
+    given(articleRepository.findByIdAndDeletedAtIsNull(articleId))
+        .willReturn(Optional.of(article));
+    given(userRepository.findByIdAndDeletedAtIsNull(userId))
+        .willReturn(Optional.of(user));
+    given(commentRepository.save(any(Comment.class)))
+        .willAnswer(invocation -> invocation.getArgument(0));
+
+    // when
+    Comment result = commentService.createComment(request, userId);
+
+    // then
+    assertThat(result.getContent()).isEqualTo("새 댓글");
+    assertThat(result.getUser()).isEqualTo(user);
+    assertThat(result.getArticle()).isEqualTo(article);
+
+    then(commentRepository).should().save(any(Comment.class));
+    then(articleRepository).should().increaseCommentCount(articleId);
+    then(eventPublisher).should().publishEvent(any(CommentCreatedEvent.class));
+    then(eventPublisher).should().publishEvent(any(ArticleCommentCountUpdatedEvent.class));
+  }
+
+
+  @Test
+  @DisplayName("댓글 등록 실패 - 기사가 없으면 기사 없음 예외가 발생하고 이벤트는 발행되지 않는다")
+  void createComment_fail_articleNotFound() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID articleId = UUID.randomUUID();
+    CommentCreateRequest request = new CommentCreateRequest(articleId, "새 댓글");
+
+    given(articleRepository.findByIdAndDeletedAtIsNull(articleId))
+        .willReturn(Optional.empty());
+
+    // when & then
+    assertThatThrownBy(() -> commentService.createComment(request, userId))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(ArticleErrorCode.ARTICLE_NOT_FOUND);
+
+    then(userRepository).should(never()).findByIdAndDeletedAtIsNull(any());
+    then(commentRepository).should(never()).save(any());
+    then(eventPublisher).should(never()).publishEvent(any());
+  }
+
+
+  @Test
+  @DisplayName("댓글 등록 실패 - 사용자가 없으면 사용자 없음 예외가 발생하고 이벤트는 발행되지 않는다")
+  void createComment_fail_userNotFound() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID articleId = UUID.randomUUID();
+    Article article = article(articleId);
+    CommentCreateRequest request = new CommentCreateRequest(articleId, "새 댓글");
+
+    given(articleRepository.findByIdAndDeletedAtIsNull(articleId))
+        .willReturn(Optional.of(article));
+    given(userRepository.findByIdAndDeletedAtIsNull(userId))
+        .willReturn(Optional.empty());
+
+    // when & then
+    assertThatThrownBy(() -> commentService.createComment(request, userId))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+
+    then(commentRepository).should(never()).save(any());
+    then(articleRepository).should(never()).increaseCommentCount(any());
+    then(eventPublisher).should(never()).publishEvent(any());
+  }
+
+
+  @Test
+  @DisplayName("댓글 수정 성공 - 본인 댓글이면 내용을 수정하고 이벤트를 발행한다")
+  void updateComment_success() {
+    // given
+    UUID userId = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+    User user = user(userId);
+    Article article = article(UUID.randomUUID());
+    Comment comment = comment(commentId, article, user, "원래 내용");
+    CommentUpdateRequest request = new CommentUpdateRequest("수정된 내용");
+
+    given(commentRepository.findByIdAndDeletedAtIsNull(commentId))
+        .willReturn(Optional.of(comment));
+
+    // when
+    Comment result = commentService.updateComment(commentId, userId, request);
+
+    // then
+    assertThat(result.getContent()).isEqualTo("수정된 내용");
+    then(eventPublisher).should().publishEvent(any(CommentUpdatedEvent.class));
+  }
+
+
+  @Test
+  @DisplayName("댓글 수정 실패 - 본인이 작성한 댓글이 아니면 권한 없음 예외가 발생하고 이벤트는 발행되지 않는다")
+  void updateComment_fail_notOwner() {
+    // given
+    UUID ownerId = UUID.randomUUID();
+    UUID otherUserId = UUID.randomUUID();
+    UUID commentId = UUID.randomUUID();
+    User owner = user(ownerId);
+    Article article = article(UUID.randomUUID());
+    Comment comment = comment(commentId, article, owner, "원래 내용");
+    CommentUpdateRequest request = new CommentUpdateRequest("수정 시도");
+
+    given(commentRepository.findByIdAndDeletedAtIsNull(commentId))
+        .willReturn(Optional.of(comment));
+
+    // when & then
+    assertThatThrownBy(() -> commentService.updateComment(commentId, otherUserId, request))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(CommonErrorCode.FORBIDDEN);
+
+    assertThat(comment.getContent()).isEqualTo("원래 내용"); // 내용이 변경되지 않았는지 확인
+    then(eventPublisher).should(never()).publishEvent(any());
+  }
+
 
   @Test
   @DisplayName("댓글 삭제 성공 - 기사가 논리 삭제된 상태여도 댓글은 삭제된다")
