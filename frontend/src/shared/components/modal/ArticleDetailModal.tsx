@@ -62,16 +62,14 @@ export default function ArticleDetailModal({
 
   const { userId } = useAuthInfo();
 
-  useEffect(() => {
-    if (articleId) {
-      getArticle(articleId, userId).then((res) => {
-        setArticle(res);
-        if (!res.viewedByMe) {
-          addArticleView(articleId, userId);
-        }
-      });
-    }
-  }, [articleId, userId]);
+useEffect(() => {
+  if (articleId) {
+    getArticle(articleId, userId).then((res) => {
+      setArticle(res);
+      addArticleView(articleId, userId);
+    });
+  }
+}, [articleId, userId]);
 
   const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
