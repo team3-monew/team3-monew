@@ -8,6 +8,11 @@ spring:
   profiles:
     active: dev
 
+  datasource:
+    hikari:
+      # DB 세션 시간대를 KST로 고정 — server와 동일 정책 (CURRENT_TIMESTAMP 기록 일관성)
+      connection-init-sql: SET TIME ZONE 'Asia/Seoul'
+
   batch:
     job:
       enabled: false

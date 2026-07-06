@@ -9,6 +9,10 @@ services:
       POSTGRES_DB: monew
       POSTGRES_USER: monew_user
       POSTGRES_PASSWORD: monew1234
+      # DB가 직접 찍는 CURRENT_TIMESTAMP(comment_likes/article_views insert 등)도 KST로 통일
+      # 주의: 이미 만들어진 볼륨에는 적용 안 됨 → docs/db/migration-2026-07-timezone-kst.sql 참고
+      TZ: Asia/Seoul
+      PGTZ: Asia/Seoul
     ports:
       - "5432:5432"
     volumes:

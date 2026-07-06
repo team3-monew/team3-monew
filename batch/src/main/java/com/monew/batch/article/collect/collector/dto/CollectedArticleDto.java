@@ -21,6 +21,11 @@ public record CollectedArticleDto(
     LocalDateTime publishDate,    // 뉴스 발행 날짜
     String summary      // 뉴스 내용 요약
 ) {
+
+  // 발행일 저장 기준 시간대. JVM/DB 어디서 돌아도 소스(네이버 +0900, RSS GMT 등)와 무관하게
+  // 항상 KST 벽시계로 통일해서 저장해야 정렬/날짜필터가 일관됨
+  private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Seoul");
+
   public static CollectedArticleDto from(NaverNewsItemResponseDto item){
     return new CollectedArticleDto(
         ArticleSource.NAVER,
@@ -59,9 +64,11 @@ public record CollectedArticleDto(
    */
   private static LocalDateTime parsePubDate(String pubDate) {
     if (pubDate == null || pubDate.isBlank()) {
-      return LocalDateTime.now();
+      return LocalDateTime.now(STORAGE_ZONE);
     }
-    return ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME).toLocalDateTime();
+    return ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME)
+        .withZoneSameInstant(STORAGE_ZONE)
+        .toLocalDateTime();
   }
 
   /**
@@ -71,9 +78,9 @@ public record CollectedArticleDto(
   private static LocalDateTime toLocalDateTime(SyndEntry entry) {
     Date date = entry.getPublishedDate() != null ? entry.getPublishedDate() : entry.getUpdatedDate();
     if (date == null) {
-      return LocalDateTime.now();
+      return LocalDateTime.now(STORAGE_ZONE);
     }
-    return LocalDateTime.ofInstant(Instant.ofEpochMilli(date.getTime()), ZoneId.systemDefault());
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(date.getTime()), STORAGE_ZONE);
   }
 
   /**
