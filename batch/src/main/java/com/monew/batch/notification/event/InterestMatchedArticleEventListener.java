@@ -9,8 +9,10 @@ import com.monew.batch.user.entity.User;
 import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -33,16 +35,22 @@ public class InterestMatchedArticleEventListener {
             return;
         }
 
-        Map<UUID, Long> articleCountsByInterestId = event.interests().stream()
-                .filter(interest -> interest != null && interest.interestId() != null)
-                .collect(Collectors.groupingBy(
-                        InterestMatchedArticleEvent.InterestMatchData::interestId,
-                        LinkedHashMap::new,
-                        Collectors.counting()
-                ));
+        Map<UUID, Set<UUID>> articleIdsByInterestId = new LinkedHashMap<>();
+
+        for (InterestMatchedArticleEvent.InterestMatchData match : event.interests()) {
+            if (match == null || match.articleId() == null || match.interestId() == null) {
+                continue;
+            }
+
+            articleIdsByInterestId
+                    .computeIfAbsent(match.interestId(), ignored -> new LinkedHashSet<>())
+                    .add(match.articleId());
+        }
 
         Map<UUID, String> interestNamesByInterestId = event.interests().stream()
-                .filter(interest -> interest != null && interest.interestId() != null)
+                .filter(match -> match != null
+                        && match.articleId() != null
+                        && match.interestId() != null)
                 .collect(Collectors.toMap(
                         InterestMatchedArticleEvent.InterestMatchData::interestId,
                         InterestMatchedArticleEvent.InterestMatchData::interestName,
@@ -52,9 +60,9 @@ public class InterestMatchedArticleEventListener {
 
         List<Notification> notifications = new ArrayList<>();
 
-        for (Map.Entry<UUID, Long> entry : articleCountsByInterestId.entrySet()) {
+        for (Map.Entry<UUID, Set<UUID>> entry : articleIdsByInterestId.entrySet()) {
             UUID interestId = entry.getKey();
-            int articleCount = entry.getValue().intValue();
+            int articleCount = entry.getValue().size();
 
             if (articleCount <= 0) {
                 continue;
@@ -80,6 +88,6 @@ public class InterestMatchedArticleEventListener {
     }
 
     private String createContent(String interestName, int articleCount) {
-        return interestName + " 관심사와 관련된 기사가 " + articleCount + "건 등록되었습니다.";
+        return interestName + "와 관련된 기사가 " + articleCount + "건 등록되었습니다.";
     }
 }

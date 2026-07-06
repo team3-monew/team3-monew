@@ -58,7 +58,7 @@ public class InterestServiceImpl implements InterestService {
 
         List<String> keywords = normalizeKeywords(request.keywords());
 
-        interestKeywordRepository.deleteByInterest(interest);
+        interestKeywordRepository.deleteByInterestId(interestId);
 
         List<InterestKeyword> newKeywords = keywords.stream()
                 .map(keyword -> new InterestKeyword(interest, keyword))

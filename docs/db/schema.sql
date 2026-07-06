@@ -115,7 +115,7 @@ WHERE deleted_at IS NULL;
 
 CREATE TABLE article_collect_staging (
     id UUID NOT NULL,
-    job_execution_id BIGINT NOT NULL,
+    job_instance_id BIGINT NOT NULL,
     source VARCHAR(20) NOT NULL,
     source_url TEXT NOT NULL,
     title VARCHAR(500) NOT NULL,
@@ -124,13 +124,13 @@ CREATE TABLE article_collect_staging (
     created_at TIMESTAMP NOT NULL,
 
     CONSTRAINT pk_article_collect_staging PRIMARY KEY (id),
-    CONSTRAINT uk_article_collect_staging_job_url UNIQUE (job_execution_id, source_url),
+    CONSTRAINT uk_article_collect_staging_job_url UNIQUE (job_instance_id, source_url),
     CONSTRAINT chk_article_collect_staging_source
         CHECK (source IN ('NAVER', 'HANKYUNG', 'CHOSUN', 'YEONHAP'))
 );
 
-CREATE INDEX idx_article_collect_staging_job_execution_id
-ON article_collect_staging (job_execution_id);
+CREATE INDEX idx_article_collect_staging_job_instance_id
+ON article_collect_staging (job_instance_id);
 
 
 CREATE TABLE article_interests (

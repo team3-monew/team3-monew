@@ -43,7 +43,7 @@ export default function EditNicknameModal({
 
     try {
       setIsSubmitting(true);
-      const updatedUser = await updateUser(user.id, { nickname });
+      const updatedUser = await updateUser(user.id, { nickname }, user.id);
       authSession.write(updatedUser);
 
       onUpdated?.({ userId: user.id, nickname, updatedUser });
