@@ -46,13 +46,13 @@ export default function ArticleModal({
         <Input
           label="날짜"
           value={fromDate}
-          placeholder="2025.01.01 부터"
+          placeholder="YYYY.MM.DD"
           onChange={(e) => setFromDate(e.target.value)}
           className="mb-2"
         />
         <Input
           value={toDate}
-          placeholder="2025.01.01 까지"
+          placeholder="YYYY.MM.DD"
           onChange={(e) => setToDate(e.target.value)}
           className="mb-12"
         />
