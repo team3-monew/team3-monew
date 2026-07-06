@@ -328,7 +328,7 @@ export default function ArticleDetailModal({
           </div>
           <div className="flex items-center gap-2.5 mb-2">
             <Input
-              placeholder="2025.01.01 부터"
+              placeholder="댓글을 입력하세요."
               className="flex-1"
               value={writtenComment}
               onChange={(e) => setWrittenComment(e.target.value)}
