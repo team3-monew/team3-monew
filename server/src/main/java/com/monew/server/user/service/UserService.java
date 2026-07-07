@@ -100,12 +100,8 @@ public class UserService {
         User user = userRepository.findByIdAndDeletedAtIsNull(targetUserId)
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
-        user.delete(); // 논리 삭제
-
-        // event publisher 삽입
-        eventPublisher.publishEvent(
-            new UserDeletedEvent(user.getId())
-        );
+        user.delete(); // 논리 삭제 — 요구사항상 관련 정보는 '유지'(복구 가능).
+        // Mongo 활동내역 삭제는 물리삭제 시에만 (직접 hardDelete / 1일 뒤 배치). 여기선 발행하지 않음.
     }
 
     @Transactional
@@ -116,6 +112,12 @@ public class UserService {
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
         userRepository.delete(user); // 물리 삭제 (연관 데이터는 DB FK CASCADE)
+
+        // Mongo user_activities 정리 — PG는 FK CASCADE로 지워지지만 Mongo는 이벤트로 삭제해야 함.
+        // (논리삭제를 거친 뒤 물리삭제되는 경우엔 이미 삭제돼 있어 멱등)
+        eventPublisher.publishEvent(
+            new UserDeletedEvent(user.getId())
+        );
     }
 
     // 본인 확인 — 요청자(헤더)와 대상(경로)이 일치해야 함
