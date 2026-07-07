@@ -6,6 +6,11 @@ build/
 # PR 드래프트 (로컬 전용, 레포 미포함)
 docs/pr-drafts/
 
+# 비용 토글 스크립트 + env 예시 (로컬 전용)
+scripts/aws-off.sh
+scripts/aws-on.sh
+.env.example
+
 # IntelliJ
 .idea/
 *.iml
