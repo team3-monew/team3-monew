@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserCleaner.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.user</a> &gt; <span class="el_source">UserCleaner.java</span></div><h1>UserCleaner.java</h1><pre class="source lang-java linenums">package com.monew.batch.user;
+
+import com.monew.batch.user.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 사용자 물리삭제 로직.
+ * 요구사항: 물리 삭제 시 관련 정보도 모두 삭제 → PostgreSQL(FK CASCADE) + MongoDB 활동내역까지.
+ * 배치는 in-process 이벤트로 server의 Mongo 리스너를 부를 수 없어 Mongo를 직접 삭제한다.
+ */
+<span class="fc" id="L20">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class UserCleaner {
+
+    static final String USER_ACTIVITIES_COLLECTION = &quot;user_activities&quot;;
+
+    private final UserRepository userRepository;
+    private final MongoTemplate mongoTemplate;
+
+    @Transactional
+    public void cleanup(LocalDateTime threshold) {
+        // 물리삭제 대상 ID 확보 (삭제 '전에' — Mongo 활동내역도 같은 ID로 지워야 하므로)
+<span class="fc" id="L33">        List&lt;UUID&gt; targetIds = userRepository.findIdsByDeletedAtBefore(threshold);</span>
+<span class="fc bfc" id="L34" title="All 2 branches covered.">        if (targetIds.isEmpty()) {</span>
+<span class="fc" id="L35">            log.info(&quot;[userCleanup] 물리 삭제 대상 없음, 기준={} 이전&quot;, threshold);</span>
+<span class="fc" id="L36">            return;</span>
+        }
+
+        // 1) Mongo 활동내역 삭제 먼저 (실패 시 유저는 PG에 남아 다음 회차 재시도 — 유령 활동내역 방지)
+        //    user_activities._id = userId(String)
+<span class="fc" id="L41">        List&lt;String&gt; idStrings = targetIds.stream().map(UUID::toString).toList();</span>
+<span class="fc" id="L42">        long mongoDeleted = mongoTemplate.remove(</span>
+<span class="fc" id="L43">            Query.query(Criteria.where(&quot;_id&quot;).in(idStrings)), USER_ACTIVITIES_COLLECTION</span>
+<span class="fc" id="L44">        ).getDeletedCount();</span>
+
+        // 2) PostgreSQL 물리 삭제 (연관 데이터는 FK ON DELETE CASCADE로 함께 삭제)
+<span class="fc" id="L47">        int pgDeleted = userRepository.deleteAllByIdIn(targetIds);</span>
+
+<span class="fc" id="L49">        log.info(&quot;[userCleanup] 물리삭제 PG={}, Mongo활동내역={}, 기준={} 이전&quot;, pgDeleted, mongoDeleted, threshold);</span>
+<span class="fc" id="L50">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

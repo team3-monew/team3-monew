@@ -100,29 +100,31 @@ public class UserService {
 <span class="fc" id="L100">        User user = userRepository.findByIdAndDeletedAtIsNull(targetUserId)</span>
 <span class="fc" id="L101">                .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
 
-<span class="fc" id="L103">        user.delete(); // 논리 삭제</span>
-
-        // event publisher 삽입
-<span class="fc" id="L106">        eventPublisher.publishEvent(</span>
-<span class="fc" id="L107">            new UserDeletedEvent(user.getId())</span>
-        );
-<span class="fc" id="L109">    }</span>
+<span class="fc" id="L103">        user.delete(); // 논리 삭제 — 요구사항상 관련 정보는 '유지'(복구 가능).</span>
+        // Mongo 활동내역 삭제는 물리삭제 시에만 (직접 hardDelete / 1일 뒤 배치). 여기선 발행하지 않음.
+<span class="fc" id="L105">    }</span>
 
     @Transactional
     public void hardDelete(UUID targetUserId, UUID requesterId) {
-<span class="fc" id="L113">        validateSelf(targetUserId, requesterId);</span>
+<span class="fc" id="L109">        validateSelf(targetUserId, requesterId);</span>
 
-<span class="fc" id="L115">        User user = userRepository.findById(targetUserId)</span>
-<span class="fc" id="L116">                .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
+<span class="fc" id="L111">        User user = userRepository.findById(targetUserId)</span>
+<span class="fc" id="L112">                .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
 
-<span class="fc" id="L118">        userRepository.delete(user); // 물리 삭제 (연관 데이터는 DB FK CASCADE)</span>
-<span class="fc" id="L119">    }</span>
+<span class="fc" id="L114">        userRepository.delete(user); // 물리 삭제 (연관 데이터는 DB FK CASCADE)</span>
+
+        // Mongo user_activities 정리 — PG는 FK CASCADE로 지워지지만 Mongo는 이벤트로 삭제해야 함.
+        // (논리삭제를 거친 뒤 물리삭제되는 경우엔 이미 삭제돼 있어 멱등)
+<span class="fc" id="L118">        eventPublisher.publishEvent(</span>
+<span class="fc" id="L119">            new UserDeletedEvent(user.getId())</span>
+        );
+<span class="fc" id="L121">    }</span>
 
     // 본인 확인 — 요청자(헤더)와 대상(경로)이 일치해야 함
     private void validateSelf(UUID targetUserId, UUID requesterId) {
-<span class="fc bfc" id="L123" title="All 2 branches covered.">        if (!targetUserId.equals(requesterId)) {</span>
-<span class="fc" id="L124">            throw new BaseException(UserErrorCode.USER_ACCESS_DENIED);</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        if (!targetUserId.equals(requesterId)) {</span>
+<span class="fc" id="L126">            throw new BaseException(UserErrorCode.USER_ACCESS_DENIED);</span>
         }
-<span class="fc" id="L126">    }</span>
+<span class="fc" id="L128">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

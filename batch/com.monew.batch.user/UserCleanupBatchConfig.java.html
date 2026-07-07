@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserCleanupBatchConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">batch</a> &gt; <a href="index.source.html" class="el_package">com.monew.batch.user</a> &gt; <span class="el_source">UserCleanupBatchConfig.java</span></div><h1>UserCleanupBatchConfig.java</h1><pre class="source lang-java linenums">package com.monew.batch.user;
 
 import com.monew.batch.monitoring.BatchJobMetricsListener;
-import com.monew.batch.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -19,16 +17,16 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * 사용자 물리삭제 배치.
- * 논리삭제(deleted_at) 후 일정 기간(기본 1일) 경과한 사용자를 물리 삭제
+ * 논리삭제(deleted_at) 후 일정 기간(기본 1일) 경과한 사용자를 물리 삭제.
+ * 실제 삭제 로직(PostgreSQL + Mongo 활동내역)은 {@link UserCleaner} 참고.
  */
-<span class="nc" id="L24">@Slf4j</span>
 @Configuration
 @RequiredArgsConstructor
 public class UserCleanupBatchConfig {
 
     public static final String JOB_NAME = &quot;userCleanupJob&quot;;
 
-    private final UserRepository userRepository;
+    private final UserCleaner userCleaner;
 
     @Value(&quot;${monew.batch.user-retention-days:1}&quot;)
     private long retentionDays;
@@ -36,27 +34,25 @@ public class UserCleanupBatchConfig {
     @Bean
     public Job userCleanupJob(JobRepository jobRepository, Step userCleanupStep,
         BatchJobMetricsListener batchJobMetricsListener) {
-<span class="nc" id="L39">        return new JobBuilder(JOB_NAME, jobRepository)</span>
+<span class="nc" id="L37">        return new JobBuilder(JOB_NAME, jobRepository)</span>
                 // Job 종료 시 공통 실행/성공/실패/소요시간 메트릭을 기록합니다.
-<span class="nc" id="L41">                .listener(batchJobMetricsListener)</span>
-<span class="nc" id="L42">                .start(userCleanupStep)</span>
-<span class="nc" id="L43">                .build();</span>
+<span class="nc" id="L39">                .listener(batchJobMetricsListener)</span>
+<span class="nc" id="L40">                .start(userCleanupStep)</span>
+<span class="nc" id="L41">                .build();</span>
     }
 
     @Bean
     public Step userCleanupStep(JobRepository jobRepository, PlatformTransactionManager txManager) {
-<span class="nc" id="L48">        return new StepBuilder(&quot;userCleanupStep&quot;, jobRepository)</span>
-<span class="nc" id="L49">                .tasklet(userCleanupTasklet(), txManager)</span>
-<span class="nc" id="L50">                .build();</span>
+<span class="nc" id="L46">        return new StepBuilder(&quot;userCleanupStep&quot;, jobRepository)</span>
+<span class="nc" id="L47">                .tasklet(userCleanupTasklet(), txManager)</span>
+<span class="nc" id="L48">                .build();</span>
     }
 
     @Bean
     public Tasklet userCleanupTasklet() {
-<span class="nc" id="L55">        return (contribution, chunkContext) -&gt; {</span>
-<span class="nc" id="L56">            LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);</span>
-<span class="nc" id="L57">            int deleted = userRepository.deleteAllByDeletedAtBefore(threshold);</span>
-<span class="nc" id="L58">            log.info(&quot;[userCleanup] 물리 삭제 사용자 수={}, 기준={} 이전&quot;, deleted, threshold);</span>
-<span class="nc" id="L59">            return RepeatStatus.FINISHED;</span>
+<span class="nc" id="L53">        return (contribution, chunkContext) -&gt; {</span>
+<span class="nc" id="L54">            userCleaner.cleanup(LocalDateTime.now().minusDays(retentionDays));</span>
+<span class="nc" id="L55">            return RepeatStatus.FINISHED;</span>
         };
     }
 }
