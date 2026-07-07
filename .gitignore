@@ -3,6 +3,9 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# PR 드래프트 (로컬 전용, 레포 미포함)
+docs/pr-drafts/
+
 # IntelliJ
 .idea/
 *.iml
