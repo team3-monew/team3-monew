@@ -17,12 +17,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
 public class InterestMatchedArticleEventListener {
+
+    private static final int NOTIFICATION_CHUNK_SIZE = 500;
 
     private final SubscriptionRepository subscriptionRepository;
     private final NotificationRepository notificationRepository;
@@ -58,8 +61,6 @@ public class InterestMatchedArticleEventListener {
                         LinkedHashMap::new
                 ));
 
-        List<Notification> notifications = new ArrayList<>();
-
         for (Map.Entry<UUID, Set<UUID>> entry : articleIdsByInterestId.entrySet()) {
             UUID interestId = entry.getKey();
             int articleCount = entry.getValue().size();
@@ -68,22 +69,44 @@ public class InterestMatchedArticleEventListener {
                 continue;
             }
 
-            List<UUID> subscriberIds = subscriptionRepository.findUserIdsByInterestId(interestId);
+            String content = createContent(interestNamesByInterestId.get(interestId), articleCount);
+            saveNotificationsByChunk(interestId, content);
+        }
+    }
+
+    private void saveNotificationsByChunk(UUID interestId, String content) {
+        int page = 0;
+
+        while (true) {
+            List<UUID> subscriberIds = subscriptionRepository.findUserIdsByInterestId(
+                    interestId,
+                    PageRequest.of(page, NOTIFICATION_CHUNK_SIZE)
+            );
+
+            if (subscriberIds.isEmpty()) {
+                break;
+            }
+
+            List<Notification> notifications = new ArrayList<>(subscriberIds.size());
 
             for (UUID subscriberId : subscriberIds) {
                 User userReference = entityManager.getReference(User.class, subscriberId);
 
                 notifications.add(Notification.builder()
                         .user(userReference)
-                        .content(createContent(interestNamesByInterestId.get(interestId), articleCount))
+                        .content(content)
                         .resourceType(NotificationResourceType.INTEREST)
                         .resourceId(interestId)
                         .build());
             }
-        }
 
-        if (!notifications.isEmpty()) {
             notificationRepository.saveAll(notifications);
+
+            if (subscriberIds.size() < NOTIFICATION_CHUNK_SIZE) {
+                break;
+            }
+
+            page++;
         }
     }
 
