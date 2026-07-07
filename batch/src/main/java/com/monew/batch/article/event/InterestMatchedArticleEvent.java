@@ -8,6 +8,7 @@ public record InterestMatchedArticleEvent(
 ) {
 
     public record InterestMatchData(
+            UUID articleId,
             UUID interestId,
             String interestName
     ) {

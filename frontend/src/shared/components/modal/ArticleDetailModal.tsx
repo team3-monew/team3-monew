@@ -62,16 +62,14 @@ export default function ArticleDetailModal({
 
   const { userId } = useAuthInfo();
 
-  useEffect(() => {
-    if (articleId) {
-      getArticle(articleId, userId).then((res) => {
-        setArticle(res);
-        if (!res.viewedByMe) {
-          addArticleView(articleId, userId);
-        }
-      });
-    }
-  }, [articleId, userId]);
+useEffect(() => {
+  if (articleId) {
+    getArticle(articleId, userId).then((res) => {
+      setArticle(res);
+      addArticleView(articleId, userId);
+    });
+  }
+}, [articleId, userId]);
 
   const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
@@ -221,7 +219,7 @@ export default function ArticleDetailModal({
   };
 
   const handleAddComment = async (content: string) => {
-    if (!article || !content.trim()) return;
+    if (!article || !userId || !content.trim()) return;
 
     try {
       const params = {
@@ -229,7 +227,7 @@ export default function ArticleDetailModal({
         userId,
         content: content.trim(),
       };
-      await createComment(params);
+      await createComment(params, userId);
 
       setWrittenComment("");
       await fetchInitialData();
@@ -245,7 +243,9 @@ export default function ArticleDetailModal({
       message: "정말 삭제하시겠습니까?",
       onConfirm: async () => {
         try {
-          await deleteComment(commentId);
+          if (!userId) return;
+
+          await deleteComment(commentId, userId);
           toast.success("댓글이 삭제되었습니다.");
           await fetchInitialData();
         } catch (error) {
@@ -326,7 +326,7 @@ export default function ArticleDetailModal({
           </div>
           <div className="flex items-center gap-2.5 mb-2">
             <Input
-              placeholder="2025.01.01 부터"
+              placeholder="댓글을 입력하세요."
               className="flex-1"
               value={writtenComment}
               onChange={(e) => setWrittenComment(e.target.value)}
