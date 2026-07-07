@@ -22,3 +22,8 @@ dependencies {
 tasks.named('bootJar') {
     archiveFileName = 'batch.jar'
 }
+
+test {
+    useJUnitPlatform()
+    systemProperty 'user.timezone', 'Asia/Seoul'
+}
