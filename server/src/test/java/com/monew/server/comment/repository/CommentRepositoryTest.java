@@ -101,6 +101,29 @@ class CommentRepositoryTest extends RepositoryTestSupport {
     assertThat(result.get(0).getId()).isEqualTo(high.getId()); // 좋아요 많은 게 먼저
   }
 
+  @Test
+  @DisplayName("좋아요 순 커서 조회 성공 - 좋아요 수가 같으면 날짜순으로 정렬된다")
+  void findCommentsByArticleLikeCursor_success_tieBreakByCreatedAt() throws InterruptedException {
+    // given
+    User user = userRepository.save(new User("tiebreak@monew.com", "테스터", "hashed-pw"));
+    Article article = articleRepository.save(article("https://news.monew.test/tiebreak"));
+
+    // 좋아요 수는 똑같이 0으로 둔 채, 저장 순서만 다르게
+    Comment first = commentRepository.save(commentOf(article, user, "먼저 쓴 댓글"));
+    Thread.sleep(10);
+    Comment second = commentRepository.save(commentOf(article, user, "나중에 쓴 댓글"));
+
+    // when
+    List<Comment> result = commentRepository.findCommentsByArticleLikeCursor(
+        article.getId(), null, null, "DESC", PageRequest.of(0, 10));
+
+    // then
+    // 좋아요 수가 둘 다 0으로 동점이므로, DESC 방향에서는 날짜 기준 내림차순(최신이 먼저)이어야 함
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).getId()).isEqualTo(second.getId());
+    assertThat(result.get(1).getId()).isEqualTo(first.getId());
+  }
+
 
   @Test
   @DisplayName("좋아요 수 원자적 증감 성공 - increaseLikeCount 호출 시 정확히 1 증가한다")
