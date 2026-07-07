@@ -27,12 +27,12 @@ public class LocalArticleBackupStorage implements ArticleBackupStorage {
 <span class="fc" id="L27">    Path rootPath = backupProperties.storage().local().rootPath().normalize();</span>
 <span class="fc" id="L28">    Path targetPath = rootPath.resolve(key).normalize();</span>
 
-<span class="pc bpc" id="L30" title="1 of 2 branches missed.">    if (!targetPath.startsWith(rootPath)) {</span>
-<span class="nc" id="L31">      ArticleBackupException exception =</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">    if (!targetPath.startsWith(rootPath)) {</span>
+<span class="fc" id="L31">      ArticleBackupException exception =</span>
           new ArticleBackupException(ArticleBackupErrorCode.INVALID_LOCAL_BACKUP_KEY);
-<span class="nc" id="L33">      exception.addDetail(&quot;key&quot;, key);</span>
+<span class="fc" id="L33">      exception.addDetail(&quot;key&quot;, key);</span>
 
-<span class="nc" id="L35">      throw exception;</span>
+<span class="fc" id="L35">      throw exception;</span>
     }
 
     try {

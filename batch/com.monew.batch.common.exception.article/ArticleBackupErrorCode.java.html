@@ -5,18 +5,18 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
-<span class="nc" id="L8">@Getter</span>
+<span class="fc" id="L8">@Getter</span>
 @RequiredArgsConstructor
 public enum ArticleBackupErrorCode implements ErrorCode {
 
-<span class="nc" id="L12">  INVALID_LOCAL_BACKUP_KEY(HttpStatus.BAD_REQUEST, &quot;로컬 백업 파일 경로가 올바르지 않습니다.&quot;),</span>
-<span class="nc" id="L13">  LOCAL_BACKUP_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;로컬 백업 파일 저장에 실패했습니다.&quot;),</span>
+<span class="fc" id="L12">  INVALID_LOCAL_BACKUP_KEY(HttpStatus.BAD_REQUEST, &quot;로컬 백업 파일 경로가 올바르지 않습니다.&quot;),</span>
+<span class="fc" id="L13">  LOCAL_BACKUP_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;로컬 백업 파일 저장에 실패했습니다.&quot;),</span>
 
-<span class="nc" id="L15">  S3_BUCKET_REQUIRED(HttpStatus.BAD_REQUEST, &quot;S3 백업 버킷 설정이 필요합니다.&quot;),</span>
-<span class="nc" id="L16">  S3_BACKUP_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;S3 백업 파일 업로드에 실패했습니다.&quot;),</span>
+<span class="fc" id="L15">  S3_BUCKET_REQUIRED(HttpStatus.BAD_REQUEST, &quot;S3 백업 버킷 설정이 필요합니다.&quot;),</span>
+<span class="fc" id="L16">  S3_BACKUP_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;S3 백업 파일 업로드에 실패했습니다.&quot;),</span>
 
-<span class="nc" id="L18">  BACKUP_JSON_SERIALIZE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;기사 백업 JSON 변환에 실패했습니다.&quot;),</span>
-<span class="nc" id="L19">  BACKUP_HISTORY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, &quot;기사 백업 이력을 찾을 수 없습니다.&quot;);</span>
+<span class="fc" id="L18">  BACKUP_JSON_SERIALIZE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, &quot;기사 백업 JSON 변환에 실패했습니다.&quot;),</span>
+<span class="fc" id="L19">  BACKUP_HISTORY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, &quot;기사 백업 이력을 찾을 수 없습니다.&quot;);</span>
 
   private final HttpStatus status;
   private final String message;

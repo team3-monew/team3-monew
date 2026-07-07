@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 기사 백업 JSON 에 저장할 데이터 구조입니다.
  */
-<span class="nc" id="L10">public record ArticleBackupDto(</span>
+<span class="fc" id="L10">public record ArticleBackupDto(</span>
     ArticleSource source,   // 기사 출처
     String sourceUrl,
     String title,
@@ -24,17 +24,17 @@ import java.time.LocalDateTime;
    * Article Entity 를 백업 JSON 용 DTO 로 변환합니다.
    */
   public static ArticleBackupDto from(Article article) {
-<span class="nc" id="L27">    return new ArticleBackupDto(</span>
-<span class="nc" id="L28">        article.getSource(),</span>
-<span class="nc" id="L29">        article.getSourceUrl(),</span>
-<span class="nc" id="L30">        article.getTitle(),</span>
-<span class="nc" id="L31">        article.getPublishDate(),</span>
-<span class="nc" id="L32">        article.getSummary(),</span>
-<span class="nc" id="L33">        article.getCommentCount(),</span>
-<span class="nc" id="L34">        article.getViewCount(),</span>
-<span class="nc" id="L35">        article.getCreatedAt(),</span>
-<span class="nc" id="L36">        article.getUpdatedAt(),</span>
-<span class="nc" id="L37">        article.getDeletedAt()</span>
+<span class="fc" id="L27">    return new ArticleBackupDto(</span>
+<span class="fc" id="L28">        article.getSource(),</span>
+<span class="fc" id="L29">        article.getSourceUrl(),</span>
+<span class="fc" id="L30">        article.getTitle(),</span>
+<span class="fc" id="L31">        article.getPublishDate(),</span>
+<span class="fc" id="L32">        article.getSummary(),</span>
+<span class="fc" id="L33">        article.getCommentCount(),</span>
+<span class="fc" id="L34">        article.getViewCount(),</span>
+<span class="fc" id="L35">        article.getCreatedAt(),</span>
+<span class="fc" id="L36">        article.getUpdatedAt(),</span>
+<span class="fc" id="L37">        article.getDeletedAt()</span>
     );
   }
 }

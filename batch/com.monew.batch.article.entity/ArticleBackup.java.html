@@ -42,39 +42,39 @@ public class ArticleBackup extends BaseCreatedEntity {
    * 새 백업 이력을 RUNNING 상태로 생성합니다.
    */
   public static ArticleBackup running(LocalDate backupDate, String s3Bucket, String s3ObjectKey) {
-<span class="nc" id="L45">    ArticleBackup articleBackup = new ArticleBackup();</span>
-<span class="nc" id="L46">    articleBackup.backupDate = backupDate;</span>
-<span class="nc" id="L47">    articleBackup.s3Bucket = s3Bucket;</span>
-<span class="nc" id="L48">    articleBackup.s3ObjectKey = s3ObjectKey;</span>
-<span class="nc" id="L49">    articleBackup.articleCount = 0L;</span>
-<span class="nc" id="L50">    articleBackup.status = ArticleBackupStatus.RUNNING;</span>
-<span class="nc" id="L51">    return articleBackup;</span>
+<span class="fc" id="L45">    ArticleBackup articleBackup = new ArticleBackup();</span>
+<span class="fc" id="L46">    articleBackup.backupDate = backupDate;</span>
+<span class="fc" id="L47">    articleBackup.s3Bucket = s3Bucket;</span>
+<span class="fc" id="L48">    articleBackup.s3ObjectKey = s3ObjectKey;</span>
+<span class="fc" id="L49">    articleBackup.articleCount = 0L;</span>
+<span class="fc" id="L50">    articleBackup.status = ArticleBackupStatus.RUNNING;</span>
+<span class="fc" id="L51">    return articleBackup;</span>
   }
 
   /**
    * 기존 날짜의 백업을 재실행할 때 이력을 RUNNING 상태로 초기화합니다.
    */
   public void start(String s3Bucket, String s3ObjectKey) {
-<span class="nc" id="L58">    this.s3Bucket = s3Bucket;</span>
-<span class="nc" id="L59">    this.s3ObjectKey = s3ObjectKey;</span>
-<span class="nc" id="L60">    this.articleCount = 0L;</span>
-<span class="nc" id="L61">    this.status = ArticleBackupStatus.RUNNING;</span>
-<span class="nc" id="L62">  }</span>
+<span class="fc" id="L58">    this.s3Bucket = s3Bucket;</span>
+<span class="fc" id="L59">    this.s3ObjectKey = s3ObjectKey;</span>
+<span class="fc" id="L60">    this.articleCount = 0L;</span>
+<span class="fc" id="L61">    this.status = ArticleBackupStatus.RUNNING;</span>
+<span class="fc" id="L62">  }</span>
 
   /**
    * 업로드 성공 후 백업 기사 수와 SUCCESS 상태를 기록합니다.
    */
   public void succeed(long articleCount) {
-<span class="nc" id="L68">    this.articleCount = articleCount;</span>
-<span class="nc" id="L69">    this.status = ArticleBackupStatus.SUCCESS;</span>
-<span class="nc" id="L70">  }</span>
+<span class="fc" id="L68">    this.articleCount = articleCount;</span>
+<span class="fc" id="L69">    this.status = ArticleBackupStatus.SUCCESS;</span>
+<span class="fc" id="L70">  }</span>
 
   /**
    * 백업 처리 중 실패가 발생했음을 기록합니다.
    */
   public void fail() {
-<span class="nc" id="L76">    this.status = ArticleBackupStatus.FAILED;</span>
-<span class="nc" id="L77">  }</span>
+<span class="fc" id="L76">    this.status = ArticleBackupStatus.FAILED;</span>
+<span class="fc" id="L77">  }</span>
 
   @PrePersist
   void prePersist() {

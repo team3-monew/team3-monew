@@ -21,47 +21,54 @@ import org.springframework.web.util.HtmlUtils;
     LocalDateTime publishDate,    // 뉴스 발행 날짜
     String summary      // 뉴스 내용 요약
 ) {
+
+  // 발행일 저장 기준 시간대. JVM/DB 어디서 돌아도 소스(네이버 +0900, RSS GMT 등)와 무관하게
+  // 항상 KST 벽시계로 통일해서 저장해야 정렬/날짜필터가 일관됨
+<span class="fc" id="L27">  private static final ZoneId STORAGE_ZONE = ZoneId.of(&quot;Asia/Seoul&quot;);</span>
+
   public static CollectedArticleDto from(NaverNewsItemResponseDto item){
-<span class="fc" id="L25">    return new CollectedArticleDto(</span>
+<span class="fc" id="L30">    return new CollectedArticleDto(</span>
         ArticleSource.NAVER,
-<span class="fc bfc" id="L27" title="All 2 branches covered.">        item.originallink() != null ? item.originallink(): item.link(),</span>
-<span class="fc" id="L28">        cleanHtmlText(item.title()),</span>
-<span class="fc" id="L29">        parsePubDate(item.pubDate()),</span>
-<span class="fc" id="L30">        cleanHtmlText(item.description())</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        item.originallink() != null ? item.originallink(): item.link(),</span>
+<span class="fc" id="L33">        cleanHtmlText(item.title()),</span>
+<span class="fc" id="L34">        parsePubDate(item.pubDate()),</span>
+<span class="fc" id="L35">        cleanHtmlText(item.description())</span>
     );
   }
 
   public static CollectedArticleDto from(SyndEntry entry, ArticleSource source){
-<span class="fc" id="L35">    String sourceUrl = cleanHtmlText(entry.getLink());</span>
-<span class="fc" id="L36">    String title = cleanHtmlText(entry.getTitle());</span>
-<span class="fc bfc" id="L37" title="All 4 branches covered.">    if (sourceUrl.isBlank() || title.isBlank()) {</span>
-<span class="fc" id="L38">      return null;</span>
+<span class="fc" id="L40">    String sourceUrl = cleanHtmlText(entry.getLink());</span>
+<span class="fc" id="L41">    String title = cleanHtmlText(entry.getTitle());</span>
+<span class="fc bfc" id="L42" title="All 4 branches covered.">    if (sourceUrl.isBlank() || title.isBlank()) {</span>
+<span class="fc" id="L43">      return null;</span>
     }
 
-<span class="fc" id="L41">    return new CollectedArticleDto(</span>
+<span class="fc" id="L46">    return new CollectedArticleDto(</span>
         source,
         sourceUrl,
         title,
-<span class="fc" id="L45">        toLocalDateTime(entry),</span>
-<span class="fc" id="L46">        cleanHtmlText(descriptionOf(entry))</span>
+<span class="fc" id="L50">        toLocalDateTime(entry),</span>
+<span class="fc" id="L51">        cleanHtmlText(descriptionOf(entry))</span>
     );
   }
 
   private static String cleanHtmlText(String value) {
-<span class="pc bpc" id="L51" title="1 of 2 branches missed.">    if (value == null) {</span>
-<span class="nc" id="L52">      return &quot;&quot;;</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">    if (value == null) {</span>
+<span class="nc" id="L57">      return &quot;&quot;;</span>
     }
-<span class="fc" id="L54">    return HtmlUtils.htmlUnescape(value.replaceAll(&quot;&lt;[^&gt;]*&gt;&quot;, &quot;&quot;)).trim();</span>
+<span class="fc" id="L59">    return HtmlUtils.htmlUnescape(value.replaceAll(&quot;&lt;[^&gt;]*&gt;&quot;, &quot;&quot;)).trim();</span>
   }
 
   /**
    * Naver pubDate 문자열을 DB 저장용 LocalDateTime으로 변환합니다.
    */
   private static LocalDateTime parsePubDate(String pubDate) {
-<span class="pc bpc" id="L61" title="2 of 4 branches missed.">    if (pubDate == null || pubDate.isBlank()) {</span>
-<span class="nc" id="L62">      return LocalDateTime.now();</span>
+<span class="pc bpc" id="L66" title="2 of 4 branches missed.">    if (pubDate == null || pubDate.isBlank()) {</span>
+<span class="nc" id="L67">      return LocalDateTime.now(STORAGE_ZONE);</span>
     }
-<span class="fc" id="L64">    return ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME).toLocalDateTime();</span>
+<span class="fc" id="L69">    return ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME)</span>
+<span class="fc" id="L70">        .withZoneSameInstant(STORAGE_ZONE)</span>
+<span class="fc" id="L71">        .toLocalDateTime();</span>
   }
 
   /**
@@ -69,11 +76,11 @@ import org.springframework.web.util.HtmlUtils;
    * 날짜가 없으면 배치 전체를 멈추지 않고 현재 시각을 사용합니다.
    */
   private static LocalDateTime toLocalDateTime(SyndEntry entry) {
-<span class="fc bfc" id="L72" title="All 2 branches covered.">    Date date = entry.getPublishedDate() != null ? entry.getPublishedDate() : entry.getUpdatedDate();</span>
-<span class="pc bpc" id="L73" title="1 of 2 branches missed.">    if (date == null) {</span>
-<span class="nc" id="L74">      return LocalDateTime.now();</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">    Date date = entry.getPublishedDate() != null ? entry.getPublishedDate() : entry.getUpdatedDate();</span>
+<span class="pc bpc" id="L80" title="1 of 2 branches missed.">    if (date == null) {</span>
+<span class="nc" id="L81">      return LocalDateTime.now(STORAGE_ZONE);</span>
     }
-<span class="fc" id="L76">    return LocalDateTime.ofInstant(Instant.ofEpochMilli(date.getTime()), ZoneId.systemDefault());</span>
+<span class="fc" id="L83">    return LocalDateTime.ofInstant(Instant.ofEpochMilli(date.getTime()), STORAGE_ZONE);</span>
   }
 
   /**
@@ -81,8 +88,8 @@ import org.springframework.web.util.HtmlUtils;
    * description이 없으면 빈 문자열을 반환해 summary가 null이 되지 않게 합니다.
    */
   private static String descriptionOf(SyndEntry entry) {
-<span class="fc" id="L84">    SyndContent description = entry.getDescription();</span>
-<span class="fc bfc" id="L85" title="All 2 branches covered.">    return description == null ? &quot;&quot; : description.getValue();</span>
+<span class="fc" id="L91">    SyndContent description = entry.getDescription();</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">    return description == null ? &quot;&quot; : description.getValue();</span>
   }
 
 }

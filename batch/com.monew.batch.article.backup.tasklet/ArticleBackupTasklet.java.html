@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /**
  * JobParameter 의 targetDate 를 파싱한 뒤 ArticleBackupService 에 실제 백업 처리를 위임합니다.
  */
-<span class="nc" id="L18">@Slf4j</span>
+<span class="fc" id="L18">@Slf4j</span>
 @Component
 @RequiredArgsConstructor
 public class ArticleBackupTasklet implements Tasklet {
@@ -25,24 +25,24 @@ public class ArticleBackupTasklet implements Tasklet {
 
   @Override
   public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-<span class="nc" id="L28">    String targetDateValue = chunkContext.getStepContext()</span>
-<span class="nc" id="L29">        .getJobParameters()</span>
-<span class="nc" id="L30">        .get(&quot;targetDate&quot;)</span>
-<span class="nc" id="L31">        .toString();</span>
-<span class="nc" id="L32">    LocalDate targetDate = LocalDate.parse(targetDateValue);</span>
+<span class="fc" id="L28">    String targetDateValue = chunkContext.getStepContext()</span>
+<span class="fc" id="L29">        .getJobParameters()</span>
+<span class="fc" id="L30">        .get(&quot;targetDate&quot;)</span>
+<span class="fc" id="L31">        .toString();</span>
+<span class="fc" id="L32">    LocalDate targetDate = LocalDate.parse(targetDateValue);</span>
 
-<span class="nc" id="L34">    log.info(&quot;[article backup] 기사 백업 tasklet 시작. 백업 날짜={}&quot;, targetDate);</span>
+<span class="fc" id="L34">    log.info(&quot;[article backup] 기사 백업 tasklet 시작. 백업 날짜={}&quot;, targetDate);</span>
     try {
-<span class="nc" id="L36">      ArticleBackupResultDto result = articleBackupService.backup(targetDate);</span>
+<span class="fc" id="L36">      ArticleBackupResultDto result = articleBackupService.backup(targetDate);</span>
 
       // 마지막 백업 처리 결과를 Actuator Gauge에 반영
-<span class="nc" id="L39">      articleBackupMetrics.recordResult(result);</span>
-<span class="nc" id="L40">    } catch (RuntimeException ex) {</span>
+<span class="fc" id="L39">      articleBackupMetrics.recordResult(result);</span>
+<span class="fc" id="L40">    } catch (RuntimeException ex) {</span>
       // 백업 전용 실패 메트릭 갱신
-<span class="nc" id="L42">      articleBackupMetrics.recordFailure();</span>
-<span class="nc" id="L43">      throw ex;</span>
-<span class="nc" id="L44">    }</span>
-<span class="nc" id="L45">    return RepeatStatus.FINISHED;</span>
+<span class="fc" id="L42">      articleBackupMetrics.recordFailure();</span>
+<span class="fc" id="L43">      throw ex;</span>
+<span class="fc" id="L44">    }</span>
+<span class="fc" id="L45">    return RepeatStatus.FINISHED;</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

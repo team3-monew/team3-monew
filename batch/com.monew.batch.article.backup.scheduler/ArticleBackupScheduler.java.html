@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /**
  * 매일 정해진 시각에 기사 백업 Job 을 실행하는 스케줄러입니다.
  */
-<span class="nc" id="L18">@Slf4j</span>
+<span class="fc" id="L18">@Slf4j</span>
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = &quot;backup.enabled&quot;, havingValue = &quot;true&quot;, matchIfMissing = true)
@@ -28,14 +28,14 @@ public class ArticleBackupScheduler {
 
   @Scheduled(cron = &quot;${backup.cron:0 30 3 * * *}&quot;)
   public void backupDaily() throws Exception {
-<span class="nc" id="L31">    LocalDate targetDate = LocalDate.now().minusDays(1);</span>
-<span class="nc" id="L32">    JobParameters jobParameters = new JobParametersBuilder()</span>
-<span class="nc" id="L33">        .addString(&quot;targetDate&quot;, targetDate.toString())</span>
-<span class="nc" id="L34">        .addLong(&quot;timestamp&quot;, System.currentTimeMillis())</span>
-<span class="nc" id="L35">        .toJobParameters();</span>
+<span class="fc" id="L31">    LocalDate targetDate = LocalDate.now().minusDays(1);</span>
+<span class="fc" id="L32">    JobParameters jobParameters = new JobParametersBuilder()</span>
+<span class="fc" id="L33">        .addString(&quot;targetDate&quot;, targetDate.toString())</span>
+<span class="fc" id="L34">        .addLong(&quot;timestamp&quot;, System.currentTimeMillis())</span>
+<span class="fc" id="L35">        .toJobParameters();</span>
 
-<span class="nc" id="L37">    log.info(&quot;[article backup] 기사 백업 job 시작. 백업 날짜={}, parameters={}&quot;, targetDate, jobParameters);</span>
-<span class="nc" id="L38">    jobLauncher.run(articleBackupJob, jobParameters);</span>
-<span class="nc" id="L39">  }</span>
+<span class="fc" id="L37">    log.info(&quot;[article backup] 기사 백업 job 시작. 백업 날짜={}, parameters={}&quot;, targetDate, jobParameters);</span>
+<span class="fc" id="L38">    jobLauncher.run(articleBackupJob, jobParameters);</span>
+<span class="fc" id="L39">  }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

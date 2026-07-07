@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 /**
  * 운영 환경에서 사용할 S3 백업 저장소입니다.
  */
-<span class="nc" id="L17">@Slf4j</span>
+<span class="fc" id="L17">@Slf4j</span>
 @Component
 @ConditionalOnProperty(name = &quot;backup.storage.type&quot;, havingValue = &quot;s3&quot;)
 public class S3ArticleBackupStorage implements ArticleBackupStorage {
@@ -26,40 +26,40 @@ public class S3ArticleBackupStorage implements ArticleBackupStorage {
    * 설정된 AWS region 으로 S3Client 를 생성합니다.
    * 인증 정보는 AWS SDK 기본 credential provider chain 을 따릅니다.
    */
-<span class="nc" id="L29">  public S3ArticleBackupStorage(BackupProperties backupProperties) {</span>
-<span class="nc" id="L30">    this.backupProperties = backupProperties;</span>
-<span class="nc" id="L31">    this.s3Client = S3Client.builder()</span>
-<span class="nc" id="L32">        .region(Region.of(backupProperties.storage().s3().region()))</span>
-<span class="nc" id="L33">        .build();</span>
-<span class="nc" id="L34">  }</span>
+<span class="fc" id="L29">  public S3ArticleBackupStorage(BackupProperties backupProperties) {</span>
+<span class="fc" id="L30">    this.backupProperties = backupProperties;</span>
+<span class="fc" id="L31">    this.s3Client = S3Client.builder()</span>
+<span class="fc" id="L32">        .region(Region.of(backupProperties.storage().s3().region()))</span>
+<span class="fc" id="L33">        .build();</span>
+<span class="fc" id="L34">  }</span>
 
   @Override
   public void upload(String key, byte[] data) {
-<span class="nc" id="L38">    String bucket = backupProperties.storage().s3().bucket();</span>
-<span class="nc bnc" id="L39" title="All 4 branches missed.">    if (bucket == null || bucket.isBlank()) {</span>
-<span class="nc" id="L40">      throw new ArticleBackupException(ArticleBackupErrorCode.S3_BUCKET_REQUIRED);</span>
+<span class="fc" id="L38">    String bucket = backupProperties.storage().s3().bucket();</span>
+<span class="pc bpc" id="L39" title="1 of 4 branches missed.">    if (bucket == null || bucket.isBlank()) {</span>
+<span class="fc" id="L40">      throw new ArticleBackupException(ArticleBackupErrorCode.S3_BUCKET_REQUIRED);</span>
     }
 
     try {
-<span class="nc" id="L44">      PutObjectRequest request = PutObjectRequest.builder()</span>
-<span class="nc" id="L45">          .bucket(bucket)</span>
-<span class="nc" id="L46">          .key(key)</span>
-<span class="nc" id="L47">          .contentType(&quot;application/json&quot;)</span>
-<span class="nc" id="L48">          .build();</span>
-<span class="nc" id="L49">      s3Client.putObject(request, RequestBody.fromBytes(data));</span>
-<span class="nc" id="L50">      log.info(&quot;[article backup] S3에 뉴스 기사 백업. bucket={}, key={}&quot;, bucket, key);</span>
-<span class="nc" id="L51">    } catch (Exception ex) {</span>
-<span class="nc" id="L52">      ArticleBackupException exception =</span>
+<span class="fc" id="L44">      PutObjectRequest request = PutObjectRequest.builder()</span>
+<span class="fc" id="L45">          .bucket(bucket)</span>
+<span class="fc" id="L46">          .key(key)</span>
+<span class="fc" id="L47">          .contentType(&quot;application/json&quot;)</span>
+<span class="fc" id="L48">          .build();</span>
+<span class="fc" id="L49">      s3Client.putObject(request, RequestBody.fromBytes(data));</span>
+<span class="fc" id="L50">      log.info(&quot;[article backup] S3에 뉴스 기사 백업. bucket={}, key={}&quot;, bucket, key);</span>
+<span class="fc" id="L51">    } catch (Exception ex) {</span>
+<span class="fc" id="L52">      ArticleBackupException exception =</span>
           new ArticleBackupException(ArticleBackupErrorCode.S3_BACKUP_UPLOAD_FAILED, ex);
-<span class="nc" id="L54">      exception.addDetail(&quot;bucket&quot;, bucket);</span>
-<span class="nc" id="L55">      exception.addDetail(&quot;key&quot;, key);</span>
-<span class="nc" id="L56">      throw exception;</span>
-<span class="nc" id="L57">    }</span>
-<span class="nc" id="L58">  }</span>
+<span class="fc" id="L54">      exception.addDetail(&quot;bucket&quot;, bucket);</span>
+<span class="fc" id="L55">      exception.addDetail(&quot;key&quot;, key);</span>
+<span class="fc" id="L56">      throw exception;</span>
+<span class="fc" id="L57">    }</span>
+<span class="fc" id="L58">  }</span>
 
   @Override
   public String bucketName() {
-<span class="nc" id="L62">    return backupProperties.storage().s3().bucket();</span>
+<span class="fc" id="L62">    return backupProperties.storage().s3().bucket();</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

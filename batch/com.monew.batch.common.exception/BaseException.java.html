@@ -13,23 +13,23 @@ public class BaseException extends RuntimeException {
   private final Map&lt;String, Object&gt; details;
 
   public BaseException(ErrorCode errorCode) {
-<span class="nc" id="L16">    super(errorCode.getMessage());</span>
-<span class="nc" id="L17">    this.timestamp = Instant.now();</span>
-<span class="nc" id="L18">    this.errorCode = errorCode;</span>
-<span class="nc" id="L19">    this.details = new HashMap&lt;&gt;();</span>
-<span class="nc" id="L20">  }</span>
+<span class="fc" id="L16">    super(errorCode.getMessage());</span>
+<span class="fc" id="L17">    this.timestamp = Instant.now();</span>
+<span class="fc" id="L18">    this.errorCode = errorCode;</span>
+<span class="fc" id="L19">    this.details = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L20">  }</span>
 
   // 원인 예외 포함 생성자
   public BaseException(ErrorCode errorCode, Throwable cause) {
-<span class="nc" id="L24">    super(errorCode.getMessage(), cause);</span>
-<span class="nc" id="L25">    this.timestamp = Instant.now();</span>
-<span class="nc" id="L26">    this.errorCode = errorCode;</span>
-<span class="nc" id="L27">    this.details = new HashMap&lt;&gt;();</span>
-<span class="nc" id="L28">  }</span>
+<span class="fc" id="L24">    super(errorCode.getMessage(), cause);</span>
+<span class="fc" id="L25">    this.timestamp = Instant.now();</span>
+<span class="fc" id="L26">    this.errorCode = errorCode;</span>
+<span class="fc" id="L27">    this.details = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L28">  }</span>
 
   // 상세 정보 추가 (key-value)
   public void addDetail(String key, Object value) {
-<span class="nc" id="L32">    this.details.put(key, value);</span>
-<span class="nc" id="L33">  }</span>
+<span class="fc" id="L32">    this.details.put(key, value);</span>
+<span class="fc" id="L33">  }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
