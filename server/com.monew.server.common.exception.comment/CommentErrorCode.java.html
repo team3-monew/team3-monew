@@ -5,11 +5,11 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
-<span class="nc" id="L8">@Getter</span>
+<span class="fc" id="L8">@Getter</span>
 @RequiredArgsConstructor
 public enum CommentErrorCode implements ErrorCode {
 
-<span class="nc" id="L12">    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, &quot;댓글 정보를 찾을 수 없습니다.&quot;);</span>
+<span class="fc" id="L12">    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, &quot;댓글 정보를 찾을 수 없습니다.&quot;);</span>
 
     private final HttpStatus status;
     private final String message;

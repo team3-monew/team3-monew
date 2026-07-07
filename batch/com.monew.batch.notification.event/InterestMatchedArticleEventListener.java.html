@@ -17,12 +17,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
 public class InterestMatchedArticleEventListener {
+
+    private static final int NOTIFICATION_CHUNK_SIZE = 500;
 
     private final SubscriptionRepository subscriptionRepository;
     private final NotificationRepository notificationRepository;
@@ -31,64 +34,84 @@ public class InterestMatchedArticleEventListener {
     @EventListener
     @Transactional
     public void handle(InterestMatchedArticleEvent event) {
-<span class="fc bfc" id="L34" title="All 6 branches covered.">        if (event == null || event.interests() == null || event.interests().isEmpty()) {</span>
-<span class="fc" id="L35">            return;</span>
+<span class="fc bfc" id="L37" title="All 6 branches covered.">        if (event == null || event.interests() == null || event.interests().isEmpty()) {</span>
+<span class="fc" id="L38">            return;</span>
         }
 
-<span class="fc" id="L38">        Map&lt;UUID, Set&lt;UUID&gt;&gt; articleIdsByInterestId = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L41">        Map&lt;UUID, Set&lt;UUID&gt;&gt; articleIdsByInterestId = new LinkedHashMap&lt;&gt;();</span>
 
-<span class="fc bfc" id="L40" title="All 2 branches covered.">        for (InterestMatchedArticleEvent.InterestMatchData match : event.interests()) {</span>
-<span class="fc bfc" id="L41" title="All 6 branches covered.">            if (match == null || match.articleId() == null || match.interestId() == null) {</span>
-<span class="fc" id="L42">                continue;</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        for (InterestMatchedArticleEvent.InterestMatchData match : event.interests()) {</span>
+<span class="fc bfc" id="L44" title="All 6 branches covered.">            if (match == null || match.articleId() == null || match.interestId() == null) {</span>
+<span class="fc" id="L45">                continue;</span>
             }
 
-<span class="fc" id="L45">            articleIdsByInterestId</span>
-<span class="fc" id="L46">                    .computeIfAbsent(match.interestId(), ignored -&gt; new LinkedHashSet&lt;&gt;())</span>
-<span class="fc" id="L47">                    .add(match.articleId());</span>
-<span class="fc" id="L48">        }</span>
+<span class="fc" id="L48">            articleIdsByInterestId</span>
+<span class="fc" id="L49">                    .computeIfAbsent(match.interestId(), ignored -&gt; new LinkedHashSet&lt;&gt;())</span>
+<span class="fc" id="L50">                    .add(match.articleId());</span>
+<span class="fc" id="L51">        }</span>
 
-<span class="fc" id="L50">        Map&lt;UUID, String&gt; interestNamesByInterestId = event.interests().stream()</span>
-<span class="fc bfc" id="L51" title="All 2 branches covered.">                .filter(match -&gt; match != null</span>
-<span class="fc bfc" id="L52" title="All 2 branches covered.">                        &amp;&amp; match.articleId() != null</span>
-<span class="fc bfc" id="L53" title="All 2 branches covered.">                        &amp;&amp; match.interestId() != null)</span>
-<span class="fc" id="L54">                .collect(Collectors.toMap(</span>
+<span class="fc" id="L53">        Map&lt;UUID, String&gt; interestNamesByInterestId = event.interests().stream()</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">                .filter(match -&gt; match != null</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">                        &amp;&amp; match.articleId() != null</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">                        &amp;&amp; match.interestId() != null)</span>
+<span class="fc" id="L57">                .collect(Collectors.toMap(</span>
                         InterestMatchedArticleEvent.InterestMatchData::interestId,
                         InterestMatchedArticleEvent.InterestMatchData::interestName,
-<span class="fc" id="L57">                        (first, ignored) -&gt; first,</span>
+<span class="fc" id="L60">                        (first, ignored) -&gt; first,</span>
                         LinkedHashMap::new
                 ));
 
-<span class="fc" id="L61">        List&lt;Notification&gt; notifications = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        for (Map.Entry&lt;UUID, Set&lt;UUID&gt;&gt; entry : articleIdsByInterestId.entrySet()) {</span>
+<span class="fc" id="L65">            UUID interestId = entry.getKey();</span>
+<span class="fc" id="L66">            int articleCount = entry.getValue().size();</span>
 
-<span class="fc bfc" id="L63" title="All 2 branches covered.">        for (Map.Entry&lt;UUID, Set&lt;UUID&gt;&gt; entry : articleIdsByInterestId.entrySet()) {</span>
-<span class="fc" id="L64">            UUID interestId = entry.getKey();</span>
-<span class="fc" id="L65">            int articleCount = entry.getValue().size();</span>
-
-<span class="pc bpc" id="L67" title="1 of 2 branches missed.">            if (articleCount &lt;= 0) {</span>
-<span class="nc" id="L68">                continue;</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">            if (articleCount &lt;= 0) {</span>
+<span class="nc" id="L69">                continue;</span>
             }
 
-<span class="fc" id="L71">            List&lt;UUID&gt; subscriberIds = subscriptionRepository.findUserIdsByInterestId(interestId);</span>
+<span class="fc" id="L72">            String content = createContent(interestNamesByInterestId.get(interestId), articleCount);</span>
+<span class="fc" id="L73">            saveNotificationsByChunk(interestId, content);</span>
+<span class="fc" id="L74">        }</span>
+<span class="fc" id="L75">    }</span>
 
-<span class="fc bfc" id="L73" title="All 2 branches covered.">            for (UUID subscriberId : subscriberIds) {</span>
-<span class="fc" id="L74">                User userReference = entityManager.getReference(User.class, subscriberId);</span>
+    private void saveNotificationsByChunk(UUID interestId, String content) {
+<span class="fc" id="L78">        int page = 0;</span>
 
-<span class="fc" id="L76">                notifications.add(Notification.builder()</span>
-<span class="fc" id="L77">                        .user(userReference)</span>
-<span class="fc" id="L78">                        .content(createContent(interestNamesByInterestId.get(interestId), articleCount))</span>
-<span class="fc" id="L79">                        .resourceType(NotificationResourceType.INTEREST)</span>
-<span class="fc" id="L80">                        .resourceId(interestId)</span>
-<span class="fc" id="L81">                        .build());</span>
-<span class="fc" id="L82">            }</span>
-<span class="fc" id="L83">        }</span>
+        while (true) {
+<span class="fc" id="L81">            List&lt;UUID&gt; subscriberIds = subscriptionRepository.findUserIdsByInterestId(</span>
+                    interestId,
+<span class="fc" id="L83">                    PageRequest.of(page, NOTIFICATION_CHUNK_SIZE)</span>
+            );
 
-<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (!notifications.isEmpty()) {</span>
-<span class="fc" id="L86">            notificationRepository.saveAll(notifications);</span>
-        }
-<span class="fc" id="L88">    }</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">            if (subscriberIds.isEmpty()) {</span>
+<span class="fc" id="L87">                break;</span>
+            }
+
+<span class="fc" id="L90">            List&lt;Notification&gt; notifications = new ArrayList&lt;&gt;(subscriberIds.size());</span>
+
+<span class="fc bfc" id="L92" title="All 2 branches covered.">            for (UUID subscriberId : subscriberIds) {</span>
+<span class="fc" id="L93">                User userReference = entityManager.getReference(User.class, subscriberId);</span>
+
+<span class="fc" id="L95">                notifications.add(Notification.builder()</span>
+<span class="fc" id="L96">                        .user(userReference)</span>
+<span class="fc" id="L97">                        .content(content)</span>
+<span class="fc" id="L98">                        .resourceType(NotificationResourceType.INTEREST)</span>
+<span class="fc" id="L99">                        .resourceId(interestId)</span>
+<span class="fc" id="L100">                        .build());</span>
+<span class="fc" id="L101">            }</span>
+
+<span class="fc" id="L103">            notificationRepository.saveAll(notifications);</span>
+
+<span class="fc bfc" id="L105" title="All 2 branches covered.">            if (subscriberIds.size() &lt; NOTIFICATION_CHUNK_SIZE) {</span>
+<span class="fc" id="L106">                break;</span>
+            }
+
+<span class="fc" id="L109">            page++;</span>
+<span class="fc" id="L110">        }</span>
+<span class="fc" id="L111">    }</span>
 
     private String createContent(String interestName, int articleCount) {
-<span class="fc" id="L91">        return interestName + &quot;와 관련된 기사가 &quot; + articleCount + &quot;건 등록되었습니다.&quot;;</span>
+<span class="fc" id="L114">        return interestName + &quot;와 관련된 기사가 &quot; + articleCount + &quot;건 등록되었습니다.&quot;;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

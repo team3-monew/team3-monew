@@ -46,31 +46,31 @@ public class Comment extends BaseTimeEntity {
 
   @PrePersist
   void prePersist() {
-<span class="nc bnc" id="L49" title="All 2 branches missed.">    if (id == null) {</span>
-<span class="nc" id="L50">      id = UUID.randomUUID();</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">    if (id == null) {</span>
+<span class="fc" id="L50">      id = UUID.randomUUID();</span>
     }
 
-<span class="nc" id="L53">    this.likeCount = 0;</span>
-<span class="nc" id="L54">  }</span>
+<span class="fc" id="L53">    this.likeCount = 0;</span>
+<span class="fc" id="L54">  }</span>
 
   @Builder
-<span class="nc" id="L57">  public Comment(Article article, User user, String content) {</span>
-<span class="nc" id="L58">    this.article = article;</span>
-<span class="nc" id="L59">    this.user = user;</span>
-<span class="nc" id="L60">    this.content = content;</span>
-<span class="nc" id="L61">  }</span>
+<span class="fc" id="L57">  public Comment(Article article, User user, String content) {</span>
+<span class="fc" id="L58">    this.article = article;</span>
+<span class="fc" id="L59">    this.user = user;</span>
+<span class="fc" id="L60">    this.content = content;</span>
+<span class="fc" id="L61">  }</span>
 
   //댓글 수정
   public void updateContent(String newContent) {
-<span class="nc" id="L65">    this.content = newContent;</span>
-<span class="nc" id="L66">  }</span>
+<span class="fc" id="L65">    this.content = newContent;</span>
+<span class="fc" id="L66">  }</span>
 
   //논리 삭제
   public void delete() {
     // comments 테이블에는 is_deleted 컬럼 없이 deleted_at만 있으므로
     // 삭제 여부는 deletedAt에 값이 있는지로 판단한다.
-<span class="nc" id="L72">    this.deletedAt = LocalDateTime.now();</span>
-<span class="nc" id="L73">  }</span>
+<span class="fc" id="L72">    this.deletedAt = LocalDateTime.now();</span>
+<span class="fc" id="L73">  }</span>
 
 
   // [변경]

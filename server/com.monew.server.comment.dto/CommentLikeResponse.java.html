@@ -5,7 +5,7 @@ import com.monew.server.comment.entity.CommentLike;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-<span class="nc" id="L8">public record CommentLikeResponse(</span>
+<span class="fc" id="L8">public record CommentLikeResponse(</span>
     UUID id,
     UUID likedBy,
     LocalDateTime createdAt,
@@ -18,17 +18,17 @@ import java.util.UUID;
     LocalDateTime commentCreatedAt
 ) {
   public static CommentLikeResponse of(CommentLike commentLike, Comment comment) {
-<span class="nc" id="L21">    return new CommentLikeResponse(</span>
-<span class="nc" id="L22">        commentLike.getId(),</span>
-<span class="nc" id="L23">        commentLike.getUser().getId(),</span>
-<span class="nc bnc" id="L24" title="All 2 branches missed.">        commentLike.getCreatedAt() != null ? commentLike.getCreatedAt() : LocalDateTime.now(),</span>
-<span class="nc" id="L25">        comment.getId(),</span>
-<span class="nc" id="L26">        comment.getArticle().getId(),</span>
-<span class="nc" id="L27">        comment.getUser().getId(),</span>
-<span class="nc" id="L28">        comment.getUser().getNickname(),</span>
-<span class="nc" id="L29">        comment.getContent(),</span>
-<span class="nc" id="L30">        comment.getLikeCount(),</span>
-<span class="nc" id="L31">        comment.getCreatedAt()</span>
+<span class="fc" id="L21">    return new CommentLikeResponse(</span>
+<span class="fc" id="L22">        commentLike.getId(),</span>
+<span class="fc" id="L23">        commentLike.getUser().getId(),</span>
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">        commentLike.getCreatedAt() != null ? commentLike.getCreatedAt() : LocalDateTime.now(),</span>
+<span class="fc" id="L25">        comment.getId(),</span>
+<span class="fc" id="L26">        comment.getArticle().getId(),</span>
+<span class="fc" id="L27">        comment.getUser().getId(),</span>
+<span class="fc" id="L28">        comment.getUser().getNickname(),</span>
+<span class="fc" id="L29">        comment.getContent(),</span>
+<span class="fc" id="L30">        comment.getLikeCount(),</span>
+<span class="fc" id="L31">        comment.getCreatedAt()</span>
     );
   }
 }

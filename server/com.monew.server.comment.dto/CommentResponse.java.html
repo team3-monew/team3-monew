@@ -4,7 +4,7 @@ import com.monew.server.comment.entity.Comment;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-<span class="nc" id="L7">public record CommentResponse(</span>
+<span class="fc" id="L7">public record CommentResponse(</span>
     UUID id,
     UUID articleId,
     UUID userId,
@@ -17,15 +17,15 @@ import java.util.UUID;
 
   // 엔티티를 DTO로 편하게 변환하기 위한 팩토리 메서드
   public static CommentResponse of (Comment comment, boolean likedByMe) {
-<span class="nc" id="L20">    return new CommentResponse(</span>
-<span class="nc" id="L21">        comment.getId(),</span>
-<span class="nc" id="L22">        comment.getArticle().getId(),</span>
-<span class="nc" id="L23">        comment.getUser().getId(),</span>
-<span class="nc" id="L24">        comment.getUser().getNickname(),</span>
-<span class="nc" id="L25">        comment.getContent(),</span>
-<span class="nc" id="L26">        comment.getLikeCount(),</span>
+<span class="fc" id="L20">    return new CommentResponse(</span>
+<span class="fc" id="L21">        comment.getId(),</span>
+<span class="fc" id="L22">        comment.getArticle().getId(),</span>
+<span class="fc" id="L23">        comment.getUser().getId(),</span>
+<span class="fc" id="L24">        comment.getUser().getNickname(),</span>
+<span class="fc" id="L25">        comment.getContent(),</span>
+<span class="fc" id="L26">        comment.getLikeCount(),</span>
         likedByMe,
-<span class="nc" id="L28">        comment.getCreatedAt()</span>
+<span class="fc" id="L28">        comment.getCreatedAt()</span>
     );
   }
 }

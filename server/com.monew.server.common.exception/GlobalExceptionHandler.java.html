@@ -85,20 +85,20 @@ import java.util.Map;
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity&lt;ErrorResponse&gt; handleMissingRequestParameter(MissingServletRequestParameterException e) {
-<span class="nc" id="L88">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
-<span class="nc" id="L89">        details.put(&quot;parameter&quot;, e.getParameterName());</span>
-<span class="nc" id="L90">        details.put(&quot;parameterType&quot;, e.getParameterType());</span>
+<span class="fc" id="L88">        Map&lt;String, Object&gt; details = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L89">        details.put(&quot;parameter&quot;, e.getParameterName());</span>
+<span class="fc" id="L90">        details.put(&quot;parameterType&quot;, e.getParameterType());</span>
 
-<span class="nc" id="L92">        ErrorResponse response = new ErrorResponse(</span>
-<span class="nc" id="L93">                Instant.now(),</span>
+<span class="fc" id="L92">        ErrorResponse response = new ErrorResponse(</span>
+<span class="fc" id="L93">                Instant.now(),</span>
                 &quot;INVALID_REQUEST&quot;,
                 &quot;잘못된 요청입니다.&quot;,
                 details,
-<span class="nc" id="L97">                e.getClass().getSimpleName(),</span>
+<span class="fc" id="L97">                e.getClass().getSimpleName(),</span>
                 400
         );
 
-<span class="nc" id="L101">        return ResponseEntity.badRequest().body(response);</span>
+<span class="fc" id="L101">        return ResponseEntity.badRequest().body(response);</span>
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)

@@ -41,8 +41,8 @@ public class CommentController {
       @RequestParam(defaultValue = &quot;10&quot;) int limit,
       @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId
   ) {
-<span class="nc" id="L44">    return ResponseEntity</span>
-<span class="nc" id="L45">        .ok(commentService.getComments(articleId, orderBy, direction, cursor, after, limit, userId));</span>
+<span class="fc" id="L44">    return ResponseEntity</span>
+<span class="fc" id="L45">        .ok(commentService.getComments(articleId, orderBy, direction, cursor, after, limit, userId));</span>
   }
 
 
@@ -52,7 +52,7 @@ public class CommentController {
       @Valid @RequestBody CommentCreateRequest request,
       @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId
   ) {
-<span class="nc" id="L55">    return ResponseEntity.ok(commentService.createCommentResponse(request, userId));</span>
+<span class="fc" id="L55">    return ResponseEntity.ok(commentService.createCommentResponse(request, userId));</span>
   }
 
 
@@ -63,7 +63,7 @@ public class CommentController {
       @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId,
       @Valid @RequestBody CommentUpdateRequest request
   ) {
-<span class="nc" id="L66">    return ResponseEntity.ok(commentService.updateCommentResponse(commentId, userId, request));</span>
+<span class="fc" id="L66">    return ResponseEntity.ok(commentService.updateCommentResponse(commentId, userId, request));</span>
   }
 
 
@@ -73,8 +73,8 @@ public class CommentController {
       @PathVariable UUID commentId,
       @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId
   ) {
-<span class="nc" id="L76">    commentService.deleteComment(commentId, userId);</span>
-<span class="nc" id="L77">    return ResponseEntity.noContent().build();</span>
+<span class="fc" id="L76">    commentService.deleteComment(commentId, userId);</span>
+<span class="fc" id="L77">    return ResponseEntity.noContent().build();</span>
   }
 
 
@@ -89,7 +89,7 @@ public class CommentController {
           @PathVariable UUID commentId,
           @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId
   ) {
-<span class="nc" id="L92">    return ResponseEntity.ok(commentService.addLikeAndGetResponse(commentId, userId));</span>
+<span class="fc" id="L92">    return ResponseEntity.ok(commentService.addLikeAndGetResponse(commentId, userId));</span>
   }
 
   // 좋아요 취소 (DELETE)
@@ -98,8 +98,8 @@ public class CommentController {
       @PathVariable UUID commentId,
       @RequestHeader(&quot;Monew-Request-User-ID&quot;) UUID userId
   ) {
-<span class="nc" id="L101">    commentService.removeLike(commentId, userId);</span>
-<span class="nc" id="L102">    return ResponseEntity.noContent().build();</span>
+<span class="fc" id="L101">    commentService.removeLike(commentId, userId);</span>
+<span class="fc" id="L102">    return ResponseEntity.noContent().build();</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

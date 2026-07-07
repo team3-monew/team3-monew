@@ -27,8 +27,8 @@ public class NotificationQueryRepositoryImpl implements NotificationQueryReposit
             LocalDateTime after,
             int limit
     ) {
-<span class="nc" id="L30">        return queryFactory</span>
-<span class="nc" id="L31">                .select(Projections.constructor(</span>
+<span class="fc" id="L30">        return queryFactory</span>
+<span class="fc" id="L31">                .select(Projections.constructor(</span>
                         NotificationResponse.class,
                         notification.id,
                         notification.createdAt,
@@ -36,35 +36,35 @@ public class NotificationQueryRepositoryImpl implements NotificationQueryReposit
                         notification.confirmed,
                         notification.user.id,
                         notification.content,
-<span class="nc" id="L39">                        notification.resourceType.stringValue().lower(),</span>
+<span class="fc" id="L39">                        notification.resourceType.stringValue().lower(),</span>
                         notification.resourceId
                 ))
-<span class="nc" id="L42">                .from(notification)</span>
-<span class="nc" id="L43">                .where(</span>
-<span class="nc" id="L44">                        notification.user.id.eq(userId),</span>
-<span class="nc" id="L45">                        notification.confirmed.isFalse(),</span>
-<span class="nc" id="L46">                        cursorCondition(cursor, after)</span>
+<span class="fc" id="L42">                .from(notification)</span>
+<span class="fc" id="L43">                .where(</span>
+<span class="fc" id="L44">                        notification.user.id.eq(userId),</span>
+<span class="fc" id="L45">                        notification.confirmed.isFalse(),</span>
+<span class="fc" id="L46">                        cursorCondition(cursor, after)</span>
                 )
-<span class="nc" id="L48">                .orderBy(</span>
-<span class="nc" id="L49">                        notification.createdAt.desc(),</span>
-<span class="nc" id="L50">                        notification.id.desc()</span>
+<span class="fc" id="L48">                .orderBy(</span>
+<span class="fc" id="L49">                        notification.createdAt.desc(),</span>
+<span class="fc" id="L50">                        notification.id.desc()</span>
                 )
-<span class="nc" id="L52">                .limit(limit + 1)</span>
-<span class="nc" id="L53">                .fetch();</span>
+<span class="fc" id="L52">                .limit(limit + 1)</span>
+<span class="fc" id="L53">                .fetch();</span>
     }
 
     @Override
     public long countUnreadNotifications(UUID userId) {
-<span class="nc" id="L58">        Long count = queryFactory</span>
-<span class="nc" id="L59">                .select(notification.count())</span>
-<span class="nc" id="L60">                .from(notification)</span>
-<span class="nc" id="L61">                .where(</span>
-<span class="nc" id="L62">                        notification.user.id.eq(userId),</span>
-<span class="nc" id="L63">                        notification.confirmed.isFalse()</span>
+<span class="fc" id="L58">        Long count = queryFactory</span>
+<span class="fc" id="L59">                .select(notification.count())</span>
+<span class="fc" id="L60">                .from(notification)</span>
+<span class="fc" id="L61">                .where(</span>
+<span class="fc" id="L62">                        notification.user.id.eq(userId),</span>
+<span class="fc" id="L63">                        notification.confirmed.isFalse()</span>
                 )
-<span class="nc" id="L65">                .fetchOne();</span>
+<span class="fc" id="L65">                .fetchOne();</span>
 
-<span class="nc bnc" id="L67" title="All 2 branches missed.">        return count == null ? 0L : count;</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">        return count == null ? 0L : count;</span>
     }
 
     private BooleanExpression cursorCondition(String cursor, LocalDateTime after) {

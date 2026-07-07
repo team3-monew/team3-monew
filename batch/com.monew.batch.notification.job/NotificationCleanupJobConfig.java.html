@@ -3,6 +3,8 @@
 import com.monew.batch.monitoring.BatchJobMetricsListener;
 import com.monew.batch.notification.repository.NotificationRepository;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -13,12 +15,15 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.PlatformTransactionManager;
 
-<span class="fc" id="L18">@Slf4j</span>
+<span class="fc" id="L21">@Slf4j</span>
 @Configuration
 @RequiredArgsConstructor
 public class NotificationCleanupJobConfig {
+
+    static final int CLEANUP_CHUNK_SIZE = 500;
 
     private final NotificationRepository notificationRepository;
 
@@ -28,10 +33,10 @@ public class NotificationCleanupJobConfig {
             Step notificationCleanupStep,
             BatchJobMetricsListener batchJobMetricsListener
     ) {
-<span class="fc" id="L31">        return new JobBuilder(&quot;notificationCleanupJob&quot;, jobRepository)</span>
-<span class="fc" id="L32">                .listener(batchJobMetricsListener)</span>
-<span class="fc" id="L33">                .start(notificationCleanupStep)</span>
-<span class="fc" id="L34">                .build();</span>
+<span class="fc" id="L36">        return new JobBuilder(&quot;notificationCleanupJob&quot;, jobRepository)</span>
+<span class="fc" id="L37">                .listener(batchJobMetricsListener)</span>
+<span class="fc" id="L38">                .start(notificationCleanupStep)</span>
+<span class="fc" id="L39">                .build();</span>
     }
 
     @Bean
@@ -39,20 +44,44 @@ public class NotificationCleanupJobConfig {
             JobRepository jobRepository,
             PlatformTransactionManager transactionManager
     ) {
-<span class="fc" id="L42">        return new StepBuilder(&quot;notificationCleanupStep&quot;, jobRepository)</span>
-<span class="fc" id="L43">                .tasklet((contribution, chunkContext) -&gt; {</span>
-<span class="nc" id="L44">                    LocalDateTime threshold = LocalDateTime.now().minusDays(7);</span>
+<span class="fc" id="L47">        return new StepBuilder(&quot;notificationCleanupStep&quot;, jobRepository)</span>
+<span class="fc" id="L48">                .tasklet((contribution, chunkContext) -&gt; {</span>
+<span class="nc" id="L49">                    LocalDateTime threshold = LocalDateTime.now().minusDays(7);</span>
 
-<span class="nc" id="L46">                    int deletedCount = notificationRepository.deleteConfirmedBefore(threshold);</span>
+<span class="nc" id="L51">                    int deletedCount = cleanupConfirmedNotifications(threshold);</span>
 
-<span class="nc" id="L48">                    contribution.incrementWriteCount(deletedCount);</span>
+<span class="nc" id="L53">                    contribution.incrementWriteCount(deletedCount);</span>
 
-<span class="nc" id="L50">                    log.info(&quot;확인 후 7일 지난 알림 삭제 완료 - threshold={}, deletedCount={}&quot;,</span>
-<span class="nc" id="L51">                            threshold, deletedCount);</span>
+<span class="nc" id="L55">                    log.info(&quot;확인 후 7일 지난 알림 삭제 완료 - threshold={}, deletedCount={}&quot;,</span>
+<span class="nc" id="L56">                            threshold, deletedCount);</span>
 
-<span class="nc" id="L53">                    return RepeatStatus.FINISHED;</span>
+<span class="nc" id="L58">                    return RepeatStatus.FINISHED;</span>
                 }, transactionManager)
-<span class="fc" id="L55">                .build();</span>
+<span class="fc" id="L60">                .build();</span>
+    }
+
+    int cleanupConfirmedNotifications(LocalDateTime threshold) {
+<span class="fc" id="L64">        int totalDeletedCount = 0;</span>
+
+        while (true) {
+<span class="fc" id="L67">            List&lt;UUID&gt; ids = notificationRepository.findConfirmedIdsBefore(</span>
+                    threshold,
+<span class="fc" id="L69">                    PageRequest.of(0, CLEANUP_CHUNK_SIZE)</span>
+            );
+
+<span class="fc bfc" id="L72" title="All 2 branches covered.">            if (ids.isEmpty()) {</span>
+<span class="fc" id="L73">                break;</span>
+            }
+
+<span class="fc" id="L76">            int deletedCount = notificationRepository.deleteAllByIdInBulk(ids);</span>
+<span class="fc" id="L77">            totalDeletedCount += deletedCount;</span>
+
+<span class="fc bfc" id="L79" title="All 4 branches covered.">            if (ids.size() &lt; CLEANUP_CHUNK_SIZE || deletedCount == 0) {</span>
+<span class="fc" id="L80">                break;</span>
+            }
+<span class="fc" id="L82">        }</span>
+
+<span class="fc" id="L84">        return totalDeletedCount;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

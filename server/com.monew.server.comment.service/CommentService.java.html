@@ -68,55 +68,55 @@ public class CommentService {
   // 인기 기사에 댓글이 몰릴 때 불필요한 대기가 생김
   @Transactional
   public Comment createComment(CommentCreateRequest request, UUID userId) {
-<span class="nc" id="L71">    Article article = articleRepository.findByIdAndDeletedAtIsNull(request.articleId())</span>
-<span class="nc" id="L72">        .orElseThrow(() -&gt; new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));</span>
-<span class="nc" id="L73">    User user = userRepository.findByIdAndDeletedAtIsNull(userId)</span>
-<span class="nc" id="L74">        .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
+<span class="fc" id="L71">    Article article = articleRepository.findByIdAndDeletedAtIsNull(request.articleId())</span>
+<span class="fc" id="L72">        .orElseThrow(() -&gt; new BaseException(ArticleErrorCode.ARTICLE_NOT_FOUND));</span>
+<span class="fc" id="L73">    User user = userRepository.findByIdAndDeletedAtIsNull(userId)</span>
+<span class="fc" id="L74">        .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
 
-<span class="nc" id="L76">    Comment comment = Comment.builder().article(article)</span>
-<span class="nc" id="L77">        .user(user).content(request.content()).build();</span>
+<span class="fc" id="L76">    Comment comment = Comment.builder().article(article)</span>
+<span class="fc" id="L77">        .user(user).content(request.content()).build();</span>
 
-<span class="nc" id="L79">    Comment savedComment = commentRepository.save(comment);</span>
-<span class="nc" id="L80">    articleRepository.increaseCommentCount(article.getId());</span>
+<span class="fc" id="L79">    Comment savedComment = commentRepository.save(comment);</span>
+<span class="fc" id="L80">    articleRepository.increaseCommentCount(article.getId());</span>
     // event publisher 삽입
-<span class="nc" id="L82">    eventPublisher.publishEvent(new CommentCreatedEvent(</span>
-<span class="nc" id="L83">        user.getId(),</span>
-<span class="nc" id="L84">        savedComment.getId(),</span>
-<span class="nc" id="L85">        article.getId(),</span>
-<span class="nc" id="L86">        article.getTitle(),</span>
-<span class="nc" id="L87">        user.getNickname(),</span>
-<span class="nc" id="L88">        savedComment.getContent(),</span>
-<span class="nc" id="L89">        savedComment.getLikeCount(),</span>
-<span class="nc" id="L90">        savedComment.getCreatedAt()</span>
+<span class="fc" id="L82">    eventPublisher.publishEvent(new CommentCreatedEvent(</span>
+<span class="fc" id="L83">        user.getId(),</span>
+<span class="fc" id="L84">        savedComment.getId(),</span>
+<span class="fc" id="L85">        article.getId(),</span>
+<span class="fc" id="L86">        article.getTitle(),</span>
+<span class="fc" id="L87">        user.getNickname(),</span>
+<span class="fc" id="L88">        savedComment.getContent(),</span>
+<span class="fc" id="L89">        savedComment.getLikeCount(),</span>
+<span class="fc" id="L90">        savedComment.getCreatedAt()</span>
     ));
 
-<span class="nc" id="L93">    eventPublisher.publishEvent(new ArticleCommentCountUpdatedEvent(</span>
-<span class="nc" id="L94">        article.getId(),</span>
-<span class="nc" id="L95">        article.getCommentCount() + 1</span>
+<span class="fc" id="L93">    eventPublisher.publishEvent(new ArticleCommentCountUpdatedEvent(</span>
+<span class="fc" id="L94">        article.getId(),</span>
+<span class="fc" id="L95">        article.getCommentCount() + 1</span>
     ));
 
-<span class="nc" id="L98">    return savedComment;</span>
+<span class="fc" id="L98">    return savedComment;</span>
   }
 
 
   //댓글 수정(본인만 가능)
   @Transactional
   public Comment updateComment(UUID commentId, UUID userId, CommentUpdateRequest request) {
-<span class="nc" id="L105">    Comment comment = getComment(commentId);</span>
-<span class="nc bnc" id="L106" title="All 2 branches missed.">    if (!Objects.equals(comment.getUser().getId(), userId))</span>
-<span class="nc" id="L107">      throw new BaseException(CommonErrorCode.FORBIDDEN);</span>
+<span class="fc" id="L105">    Comment comment = getComment(commentId);</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">    if (!Objects.equals(comment.getUser().getId(), userId))</span>
+<span class="fc" id="L107">      throw new BaseException(CommonErrorCode.FORBIDDEN);</span>
 
-<span class="nc" id="L109">    comment.updateContent(request.content());</span>
+<span class="fc" id="L109">    comment.updateContent(request.content());</span>
 
     // event publisher 삽입
-<span class="nc" id="L112">    eventPublisher.publishEvent(new CommentUpdatedEvent(</span>
-<span class="nc" id="L113">        comment.getUser().getId(),</span>
-<span class="nc" id="L114">        comment.getId(),</span>
-<span class="nc" id="L115">        comment.getContent()</span>
+<span class="fc" id="L112">    eventPublisher.publishEvent(new CommentUpdatedEvent(</span>
+<span class="fc" id="L113">        comment.getUser().getId(),</span>
+<span class="fc" id="L114">        comment.getId(),</span>
+<span class="fc" id="L115">        comment.getContent()</span>
     ));
     //
 
-<span class="nc" id="L119">    return comment;</span>
+<span class="fc" id="L119">    return comment;</span>
   }
 
 
@@ -130,36 +130,36 @@ public class CommentService {
   // 기사가 삭제된 상태에서 호출돼도 예외 없이 안전하게 0 row 처리됨.
   @Transactional
   public void deleteComment(UUID commentId, UUID userId) {
-<span class="nc" id="L133">    Comment comment = getComment(commentId);</span>
+<span class="fc" id="L133">    Comment comment = getComment(commentId);</span>
 
     //이미 삭제된 경우 예외 처리
-<span class="nc bnc" id="L136" title="All 2 branches missed.">    if (comment.getDeletedAt() != null) {</span>
-<span class="nc" id="L137">      throw new BaseException(CommonErrorCode.INVALID_REQUEST);</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">    if (comment.getDeletedAt() != null) {</span>
+<span class="fc" id="L137">      throw new BaseException(CommonErrorCode.INVALID_REQUEST);</span>
     }
 
-<span class="nc bnc" id="L140" title="All 2 branches missed.">    if (!Objects.equals(comment.getUser().getId(), userId))</span>
-<span class="nc" id="L141">      throw new BaseException(CommonErrorCode.FORBIDDEN);</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">    if (!Objects.equals(comment.getUser().getId(), userId))</span>
+<span class="fc" id="L141">      throw new BaseException(CommonErrorCode.FORBIDDEN);</span>
 
     // 삭제전 변수 저장(event publisher용) 및 event publisher 삽입
-<span class="nc" id="L144">    UUID articleId = comment.getArticle().getId();</span>
-<span class="nc" id="L145">    long updatedArticleCommentCount = Math.max(0, comment.getArticle().getCommentCount() - 1);</span>
+<span class="fc" id="L144">    UUID articleId = comment.getArticle().getId();</span>
+<span class="fc" id="L145">    long updatedArticleCommentCount = Math.max(0, comment.getArticle().getCommentCount() - 1);</span>
 
-<span class="nc" id="L147">    comment.delete();</span>
-<span class="nc" id="L148">    int updated = articleRepository.decreaseCommentCount(articleId);</span>
+<span class="fc" id="L147">    comment.delete();</span>
+<span class="fc" id="L148">    int updated = articleRepository.decreaseCommentCount(articleId);</span>
 
-<span class="nc" id="L150">    eventPublisher.publishEvent(new CommentDeletedEvent(</span>
-<span class="nc" id="L151">        comment.getUser().getId(),</span>
-<span class="nc" id="L152">        comment.getId()</span>
+<span class="fc" id="L150">    eventPublisher.publishEvent(new CommentDeletedEvent(</span>
+<span class="fc" id="L151">        comment.getUser().getId(),</span>
+<span class="fc" id="L152">        comment.getId()</span>
     ));
 
 
-<span class="nc bnc" id="L156" title="All 2 branches missed.">    if (updated == 1) {</span>
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">    if (updated == 1) {</span>
 <span class="nc" id="L157">      eventPublisher.publishEvent(new ArticleCommentCountUpdatedEvent(</span>
           articleId,
           updatedArticleCommentCount
       ));
     }
-<span class="nc" id="L162">  }</span>
+<span class="fc" id="L162">  }</span>
 
 
   //댓글 좋아요, 좋아요 취소
@@ -168,49 +168,49 @@ public class CommentService {
   // existsBy 체크 후 save → insertIgnore 기반 원자적 처리로 재작성 (TOCTOU 방지)
   @Transactional
   public CommentLike addLike(UUID commentId, UUID userId) {
-<span class="nc" id="L171">    Comment comment = getComment(commentId);</span>
-<span class="nc" id="L172">    User user = userRepository.findByIdAndDeletedAtIsNull(userId)</span>
-<span class="nc" id="L173">        .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
+<span class="fc" id="L171">    Comment comment = getComment(commentId);</span>
+<span class="fc" id="L172">    User user = userRepository.findByIdAndDeletedAtIsNull(userId)</span>
+<span class="pc" id="L173">        .orElseThrow(() -&gt; new BaseException(UserErrorCode.USER_NOT_FOUND));</span>
 
-<span class="nc" id="L175">    UUID likeId = UUID.randomUUID();</span>
-<span class="nc" id="L176">    int inserted = commentLikeRepository.insertIgnore(likeId, commentId, userId);</span>
-<span class="nc bnc" id="L177" title="All 2 branches missed.">    if (inserted == 0) {</span>
+<span class="fc" id="L175">    UUID likeId = UUID.randomUUID();</span>
+<span class="fc" id="L176">    int inserted = commentLikeRepository.insertIgnore(likeId, commentId, userId);</span>
+<span class="fc bfc" id="L177" title="All 2 branches covered.">    if (inserted == 0) {</span>
       // 영향받은 row가 0건 = UNIQUE(comment_id, user_id) 충돌 = 이미 좋아요 상태
-<span class="nc" id="L179">      throw new BaseException(CommonErrorCode.INVALID_REQUEST);</span>
+<span class="fc" id="L179">      throw new BaseException(CommonErrorCode.INVALID_REQUEST);</span>
     }
 
     // [변경]
     // comment.increaseLikeCount() → 원자적 UPDATE 쿼리 호출
-<span class="nc" id="L184">    commentRepository.increaseLikeCount(commentId);</span>
+<span class="fc" id="L184">    commentRepository.increaseLikeCount(commentId);</span>
 
-<span class="nc" id="L186">    notificationService.createCommentLikeNotification(</span>
-<span class="nc" id="L187">        comment.getUser().getId(),</span>
+<span class="fc" id="L186">    notificationService.createCommentLikeNotification(</span>
+<span class="fc" id="L187">        comment.getUser().getId(),</span>
         userId,
-<span class="nc" id="L189">        comment.getId(),</span>
-<span class="nc" id="L190">        user.getNickname()</span>
+<span class="fc" id="L189">        comment.getId(),</span>
+<span class="fc" id="L190">        user.getNickname()</span>
     );
 
     // insertIgnore는 native insert라 영속성 컨텍스트에 엔티티가 없으므로 재조회
-<span class="nc" id="L194">    CommentLike commentLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)</span>
-<span class="nc" id="L195">        .orElseThrow(() -&gt; new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));</span>
+<span class="fc" id="L194">    CommentLike commentLike = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)</span>
+<span class="pc" id="L195">        .orElseThrow(() -&gt; new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));</span>
     // event publisher 삽입
-<span class="nc" id="L197">    Comment refreshed = getComment(commentId); // db가 업데이트 된 후의 정보 저장</span>
+<span class="fc" id="L197">    Comment refreshed = getComment(commentId); // db가 업데이트 된 후의 정보 저장</span>
 
-<span class="nc" id="L199">    eventPublisher.publishEvent(new CommentLikeCreatedEvent(</span>
-<span class="nc" id="L200">        user.getId(),</span>
-<span class="nc" id="L201">        commentLike.getId(),</span>
-<span class="nc" id="L202">        commentLike.getCreatedAt(),</span>
-<span class="nc" id="L203">        refreshed.getId(),</span>
-<span class="nc" id="L204">        refreshed.getArticle().getId(),</span>
-<span class="nc" id="L205">        refreshed.getArticle().getTitle(),</span>
-<span class="nc" id="L206">        refreshed.getUser().getId(),</span>
-<span class="nc" id="L207">        refreshed.getUser().getNickname(),</span>
-<span class="nc" id="L208">        refreshed.getContent(),</span>
-<span class="nc" id="L209">        refreshed.getLikeCount(),</span>
-<span class="nc" id="L210">        refreshed.getCreatedAt()</span>
+<span class="fc" id="L199">    eventPublisher.publishEvent(new CommentLikeCreatedEvent(</span>
+<span class="fc" id="L200">        user.getId(),</span>
+<span class="fc" id="L201">        commentLike.getId(),</span>
+<span class="fc" id="L202">        commentLike.getCreatedAt(),</span>
+<span class="fc" id="L203">        refreshed.getId(),</span>
+<span class="fc" id="L204">        refreshed.getArticle().getId(),</span>
+<span class="fc" id="L205">        refreshed.getArticle().getTitle(),</span>
+<span class="fc" id="L206">        refreshed.getUser().getId(),</span>
+<span class="fc" id="L207">        refreshed.getUser().getNickname(),</span>
+<span class="fc" id="L208">        refreshed.getContent(),</span>
+<span class="fc" id="L209">        refreshed.getLikeCount(),</span>
+<span class="fc" id="L210">        refreshed.getCreatedAt()</span>
     ));
 
-<span class="nc" id="L213">    return commentLike;</span>
+<span class="fc" id="L213">    return commentLike;</span>
   }
 
 
@@ -219,47 +219,47 @@ public class CommentService {
   // like.getComment().decreaseLikeCount() → 원자적 UPDATE 쿼리 호출
   @Transactional
   public void removeLike(UUID commentId, UUID userId) {
-<span class="nc" id="L222">    CommentLike like = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)</span>
-<span class="nc" id="L223">        .orElseThrow(() -&gt; new BaseException(CommonErrorCode.INVALID_REQUEST));</span>
+<span class="fc" id="L222">    CommentLike like = commentLikeRepository.findByCommentIdAndUserId(commentId, userId)</span>
+<span class="fc" id="L223">        .orElseThrow(() -&gt; new BaseException(CommonErrorCode.INVALID_REQUEST));</span>
 
-<span class="nc" id="L225">    UUID commentLikeId = like.getId(); // event publihser용</span>
+<span class="fc" id="L225">    UUID commentLikeId = like.getId(); // event publihser용</span>
 
-<span class="nc" id="L227">    commentLikeRepository.delete(like);</span>
-<span class="nc" id="L228">    commentRepository.decreaseLikeCount(commentId);</span>
+<span class="fc" id="L227">    commentLikeRepository.delete(like);</span>
+<span class="fc" id="L228">    commentRepository.decreaseLikeCount(commentId);</span>
 
-<span class="nc" id="L230">    Comment refreshed = getComment(commentId); // event publihser용</span>
+<span class="fc" id="L230">    Comment refreshed = getComment(commentId); // event publihser용</span>
 
     // event publisher삽입
-<span class="nc" id="L233">    eventPublisher.publishEvent(new CommentLikeDeletedEvent(</span>
+<span class="fc" id="L233">    eventPublisher.publishEvent(new CommentLikeDeletedEvent(</span>
         userId,
         commentLikeId,
-<span class="nc" id="L236">        refreshed.getId(),</span>
-<span class="nc" id="L237">        refreshed.getLikeCount()</span>
+<span class="fc" id="L236">        refreshed.getId(),</span>
+<span class="fc" id="L237">        refreshed.getLikeCount()</span>
     ));
-<span class="nc" id="L239">  }</span>
+<span class="fc" id="L239">  }</span>
 
 
   //Controller 호출용
   public Comment getComment(UUID commentId) {
-<span class="nc" id="L244">    return commentRepository.findByIdAndDeletedAtIsNull(commentId)</span>
-<span class="nc" id="L245">        .orElseThrow(() -&gt; new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));</span>
+<span class="fc" id="L244">    return commentRepository.findByIdAndDeletedAtIsNull(commentId)</span>
+<span class="fc" id="L245">        .orElseThrow(() -&gt; new BaseException(CommentErrorCode.COMMENT_NOT_FOUND));</span>
   }
 
   public CommentResponse getCommentResponse(UUID commentId, UUID userId) {
-<span class="nc" id="L249">    return CommentResponse.of(getComment(commentId),</span>
-<span class="nc" id="L250">        commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));</span>
+<span class="fc" id="L249">    return CommentResponse.of(getComment(commentId),</span>
+<span class="fc" id="L250">        commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));</span>
   }
 
   @Transactional
   public CommentResponse createCommentResponse(CommentCreateRequest request, UUID userId) {
-<span class="nc" id="L255">    return CommentResponse.of(createComment(request, userId), false);</span>
+<span class="fc" id="L255">    return CommentResponse.of(createComment(request, userId), false);</span>
   }
 
   @Transactional
   public CommentResponse updateCommentResponse(UUID commentId, UUID userId,
       CommentUpdateRequest request) {
-<span class="nc" id="L261">    return CommentResponse.of(updateComment(commentId, userId, request),</span>
-<span class="nc" id="L262">        commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));</span>
+<span class="fc" id="L261">    return CommentResponse.of(updateComment(commentId, userId, request),</span>
+<span class="fc" id="L262">        commentLikeRepository.existsByCommentIdAndUserId(commentId, userId));</span>
   }
 
   // [변경]
@@ -267,9 +267,9 @@ public class CommentService {
   // → commentLike.getComment()는 stale한 likeCount를 들고 있을 수 있어 재조회 필요
   @Transactional
   public CommentLikeResponse addLikeAndGetResponse(UUID commentId, UUID userId) {
-<span class="nc" id="L270">    CommentLike commentLike = addLike(commentId, userId);</span>
-<span class="nc" id="L271">    Comment refreshed = getComment(commentId);</span>
-<span class="nc" id="L272">    return CommentLikeResponse.of(commentLike, refreshed);</span>
+<span class="fc" id="L270">    CommentLike commentLike = addLike(commentId, userId);</span>
+<span class="fc" id="L271">    Comment refreshed = getComment(commentId);</span>
+<span class="fc" id="L272">    return CommentLikeResponse.of(commentLike, refreshed);</span>
   }
 
 
@@ -283,36 +283,36 @@ public class CommentService {
       UUID articleId, CommentSortBy sortBy, String direction, LocalDateTime lastCreatedAt,
       Long lastLikeCount, UUID lastId, int size) {
 
-<span class="nc" id="L286">    Pageable pageable = PageRequest.of(0, size + 1);</span>
+<span class="fc" id="L286">    Pageable pageable = PageRequest.of(0, size + 1);</span>
 
-<span class="nc bnc" id="L288" title="All 2 branches missed.">    List&lt;Comment&gt; comments = switch (sortBy) {</span>
-<span class="nc" id="L289">      case LIKE_COUNT -&gt; commentRepository.findCommentsByArticleLikeCursor(</span>
+<span class="fc bfc" id="L288" title="All 2 branches covered.">    List&lt;Comment&gt; comments = switch (sortBy) {</span>
+<span class="fc" id="L289">      case LIKE_COUNT -&gt; commentRepository.findCommentsByArticleLikeCursor(</span>
           articleId, lastLikeCount, lastId, direction, pageable);
-<span class="nc" id="L291">      case CREATED_AT -&gt; commentRepository.findCommentsByArticleValueCursor(</span>
+<span class="fc" id="L291">      case CREATED_AT -&gt; commentRepository.findCommentsByArticleValueCursor(</span>
           articleId, lastCreatedAt, lastId, direction, pageable);
     };
 
-<span class="nc bnc" id="L295" title="All 2 branches missed.">    boolean hasNext = comments.size() &gt; size;</span>
-<span class="nc bnc" id="L296" title="All 2 branches missed.">    if (hasNext) {</span>
+<span class="pc bpc" id="L295" title="1 of 2 branches missed.">    boolean hasNext = comments.size() &gt; size;</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">    if (hasNext) {</span>
 <span class="nc" id="L297">      comments = comments.subList(0, size);</span>
     }
 
-<span class="nc" id="L300">    String nextCursor = null;</span>
-<span class="nc" id="L301">    LocalDateTime nextAfter = null;</span>
+<span class="fc" id="L300">    String nextCursor = null;</span>
+<span class="fc" id="L301">    LocalDateTime nextAfter = null;</span>
 
-<span class="nc bnc" id="L303" title="All 2 branches missed.">    if (!comments.isEmpty()) {</span>
-<span class="nc" id="L304">      Comment lastComment = comments.get(comments.size() - 1);</span>
+<span class="fc bfc" id="L303" title="All 2 branches covered.">    if (!comments.isEmpty()) {</span>
+<span class="fc" id="L304">      Comment lastComment = comments.get(comments.size() - 1);</span>
 
       // 정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
-<span class="nc bnc" id="L307" title="All 2 branches missed.">      String sortValue = sortBy == CommentSortBy.LIKE_COUNT</span>
+<span class="pc bpc" id="L307" title="1 of 2 branches missed.">      String sortValue = sortBy == CommentSortBy.LIKE_COUNT</span>
 <span class="nc" id="L308">          ? String.valueOf(lastComment.getLikeCount())</span>
-<span class="nc" id="L309">          : lastComment.getCreatedAt().toString();</span>
+<span class="fc" id="L309">          : lastComment.getCreatedAt().toString();</span>
 
-<span class="nc" id="L311">      nextCursor = sortValue + &quot;:&quot; + lastComment.getId().toString();</span>
-<span class="nc" id="L312">      nextAfter = lastComment.getCreatedAt();</span>
+<span class="fc" id="L311">      nextCursor = sortValue + &quot;:&quot; + lastComment.getId().toString();</span>
+<span class="fc" id="L312">      nextAfter = lastComment.getCreatedAt();</span>
     }
 
-<span class="nc" id="L315">    return new CommentSliceResult(comments, nextCursor, nextAfter, hasNext, size);</span>
+<span class="fc" id="L315">    return new CommentSliceResult(comments, nextCursor, nextAfter, hasNext, size);</span>
   }
 
 
@@ -328,65 +328,65 @@ public class CommentService {
     CommentSortBy sortBy;
     CommentSortDirection sortDirection;
     try {
-<span class="nc" id="L331">      sortBy = CommentSortBy.from(orderBy);</span>
-<span class="nc" id="L332">      sortDirection = CommentSortDirection.from(direction);</span>
-<span class="nc" id="L333">    } catch (IllegalArgumentException e) {</span>
-<span class="nc" id="L334">      throw new BaseException(CommonErrorCode.INVALID_REQUEST);</span>
-<span class="nc" id="L335">    }</span>
+<span class="fc" id="L331">      sortBy = CommentSortBy.from(orderBy);</span>
+<span class="fc" id="L332">      sortDirection = CommentSortDirection.from(direction);</span>
+<span class="fc" id="L333">    } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L334">      throw new BaseException(CommonErrorCode.INVALID_REQUEST);</span>
+<span class="fc" id="L335">    }</span>
 
     // [변경]
     // 클라이언트가 큰 값을 보내도 서버가 상한을 강제
-<span class="nc" id="L339">    int safeLimit = Math.min(limit, MAX_LIMIT);</span>
+<span class="fc" id="L339">    int safeLimit = Math.min(limit, MAX_LIMIT);</span>
 
-<span class="nc" id="L341">    UUID lastId = parseLastIdFromCursor(cursor);</span>
+<span class="fc" id="L341">    UUID lastId = parseLastIdFromCursor(cursor);</span>
     Long lastLikeCount =
-<span class="nc bnc" id="L343" title="All 4 branches missed.">        sortBy == CommentSortBy.LIKE_COUNT &amp;&amp; cursor != null ? parseLikeCountFromCursor(cursor)</span>
-<span class="nc" id="L344">            : null;</span>
+<span class="pc bpc" id="L343" title="1 of 4 branches missed.">        sortBy == CommentSortBy.LIKE_COUNT &amp;&amp; cursor != null ? parseLikeCountFromCursor(cursor)</span>
+<span class="fc" id="L344">            : null;</span>
     LocalDateTime lastCreatedAt =
-<span class="nc bnc" id="L346" title="All 4 branches missed.">        sortBy == CommentSortBy.CREATED_AT &amp;&amp; cursor != null ? parseCreatedAtFromCursor(cursor)</span>
-<span class="nc" id="L347">            : after;</span>
+<span class="fc bfc" id="L346" title="All 4 branches covered.">        sortBy == CommentSortBy.CREATED_AT &amp;&amp; cursor != null ? parseCreatedAtFromCursor(cursor)</span>
+<span class="fc" id="L347">            : after;</span>
 
-<span class="nc" id="L349">    long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);</span>
+<span class="fc" id="L349">    long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);</span>
 
-<span class="nc" id="L351">    CommentSliceResult result = getCommentsByArticleCursor(articleId, sortBy, sortDirection.name(),</span>
+<span class="fc" id="L351">    CommentSliceResult result = getCommentsByArticleCursor(articleId, sortBy, sortDirection.name(),</span>
         lastCreatedAt, lastLikeCount, lastId, safeLimit);
 
-<span class="nc" id="L354">    List&lt;CommentResponse&gt; responses = result.content().stream()</span>
-<span class="nc" id="L355">        .map(c -&gt; CommentResponse.of(c,</span>
-<span class="nc" id="L356">            commentLikeRepository.existsByCommentIdAndUserId(c.getId(), userId)))</span>
-<span class="nc" id="L357">        .toList();</span>
+<span class="fc" id="L354">    List&lt;CommentResponse&gt; responses = result.content().stream()</span>
+<span class="fc" id="L355">        .map(c -&gt; CommentResponse.of(c,</span>
+<span class="fc" id="L356">            commentLikeRepository.existsByCommentIdAndUserId(c.getId(), userId)))</span>
+<span class="fc" id="L357">        .toList();</span>
 
-<span class="nc" id="L359">    return new CursorPageResponse&lt;&gt;(responses, result.nextCursor(), result.nextAfter(),</span>
-<span class="nc" id="L360">        result.size(), (int) totalCount, result.hasNext());</span>
+<span class="fc" id="L359">    return new CursorPageResponse&lt;&gt;(responses, result.nextCursor(), result.nextAfter(),</span>
+<span class="fc" id="L360">        result.size(), (int) totalCount, result.hasNext());</span>
   }
 
 
   // 커서 파싱 메서드들
   private UUID parseLastIdFromCursor(String cursor) {
-<span class="nc bnc" id="L366" title="All 4 branches missed.">    if (cursor == null || !cursor.contains(&quot;:&quot;))</span>
-<span class="nc" id="L367">      return null;</span>
+<span class="pc bpc" id="L366" title="1 of 4 branches missed.">    if (cursor == null || !cursor.contains(&quot;:&quot;))</span>
+<span class="fc" id="L367">      return null;</span>
     try {
-<span class="nc" id="L369">      return UUID.fromString(cursor.substring(cursor.lastIndexOf(&quot;:&quot;) + 1));</span>
+<span class="fc" id="L369">      return UUID.fromString(cursor.substring(cursor.lastIndexOf(&quot;:&quot;) + 1));</span>
 <span class="nc" id="L370">    } catch (Exception e) {</span>
 <span class="nc" id="L371">      return null;</span>
     }
   }
 
   private Long parseLikeCountFromCursor(String cursor) {
-<span class="nc bnc" id="L376" title="All 4 branches missed.">    if (cursor == null || !cursor.contains(&quot;:&quot;))</span>
+<span class="pc bpc" id="L376" title="2 of 4 branches missed.">    if (cursor == null || !cursor.contains(&quot;:&quot;))</span>
 <span class="nc" id="L377">      return null;</span>
     try {
-<span class="nc" id="L379">      return Long.parseLong(cursor.substring(0, cursor.lastIndexOf(&quot;:&quot;)));</span>
+<span class="fc" id="L379">      return Long.parseLong(cursor.substring(0, cursor.lastIndexOf(&quot;:&quot;)));</span>
 <span class="nc" id="L380">    } catch (Exception e) {</span>
 <span class="nc" id="L381">      return null;</span>
     }
   }
 
   private LocalDateTime parseCreatedAtFromCursor(String cursor) {
-<span class="nc bnc" id="L386" title="All 4 branches missed.">    if (cursor == null || !cursor.contains(&quot;:&quot;))</span>
+<span class="pc bpc" id="L386" title="2 of 4 branches missed.">    if (cursor == null || !cursor.contains(&quot;:&quot;))</span>
 <span class="nc" id="L387">      return null;</span>
     try {
-<span class="nc" id="L389">      return LocalDateTime.parse(cursor.substring(0, cursor.lastIndexOf(&quot;:&quot;)));</span>
+<span class="fc" id="L389">      return LocalDateTime.parse(cursor.substring(0, cursor.lastIndexOf(&quot;:&quot;)));</span>
 <span class="nc" id="L390">    } catch (Exception e) {</span>
 <span class="nc" id="L391">      return null;</span>
     }
