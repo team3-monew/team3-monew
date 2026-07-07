@@ -2,6 +2,10 @@
 # 빌드 컨텍스트: server/ 디렉토리
 FROM eclipse-temurin:17-jre
 
+# 서비스 기준 시간대 고정 — created_at 등 LocalDateTime이 전부 KST 벽시계로 기록됨
+# (프론트가 오프셋 없는 ISO 문자열을 브라우저 로컬(KST)로 해석하므로 반드시 일치해야 함)
+ENV TZ=Asia/Seoul
+
 WORKDIR /app
 COPY build/libs/server.jar app.jar
 

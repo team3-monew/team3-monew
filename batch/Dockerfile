@@ -3,6 +3,10 @@
 # 실행 시 어떤 잡을 돌릴지 인자로 지정 (예: --spring.batch.job.name=collectJob)
 FROM eclipse-temurin:17-jre
 
+# 서비스 기준 시간대 고정 — created_at 등 LocalDateTime 기록과 @Scheduled cron 해석이 KST가 됨
+# (예: 백업 cron 0 30 3 * * * → 03:30 KST)
+ENV TZ=Asia/Seoul
+
 WORKDIR /app
 COPY build/libs/batch.jar app.jar
 

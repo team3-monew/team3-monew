@@ -36,6 +36,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
 
+    private static final int MAX_LIMIT = 50;
+
     @Mock
     NotificationRepository notificationRepository;
 
@@ -58,7 +60,7 @@ class NotificationServiceTest {
         NotificationResponse second = response(UUID.randomUUID(), userId, LocalDateTime.of(2026, 7, 1, 9, 0));
         NotificationResponse extra = response(UUID.randomUUID(), userId, LocalDateTime.of(2026, 7, 1, 8, 0));
 
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
         given(notificationQueryRepository.findUnreadNotifications(userId, null, null, limit))
                 .willReturn(List.of(first, second, extra));
         given(notificationQueryRepository.countUnreadNotifications(userId)).willReturn(3L);
@@ -84,7 +86,7 @@ class NotificationServiceTest {
         int limit = 10;
         NotificationResponse notification = response(UUID.randomUUID(), userId, LocalDateTime.of(2026, 7, 1, 10, 0));
 
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
         given(notificationQueryRepository.findUnreadNotifications(userId, null, null, limit))
                 .willReturn(List.of(notification));
         given(notificationQueryRepository.countUnreadNotifications(userId)).willReturn(1L);
@@ -115,6 +117,7 @@ class NotificationServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
 
+        then(userRepository).should(never()).existsByIdAndDeletedAtIsNull(any());
         then(notificationQueryRepository).should(never()).findUnreadNotifications(any(), any(), any(), anyInt());
     }
 
@@ -123,7 +126,7 @@ class NotificationServiceTest {
     void findUnreadNotifications_fail_userNotFound() {
         // given
         UUID userId = UUID.randomUUID();
-        given(userRepository.existsById(userId)).willReturn(false);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(false);
 
         // when
         // then
@@ -137,10 +140,10 @@ class NotificationServiceTest {
 
     @Test
     @DisplayName("미확인 알림 조회 실패 - limit이 1 미만이면 잘못된 요청 예외가 발생한다")
-    void findUnreadNotifications_fail_invalidLimit() {
+    void findUnreadNotifications_fail_invalidLimit_underOne() {
         // given
         UUID userId = UUID.randomUUID();
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
 
         // when
         // then
@@ -148,6 +151,25 @@ class NotificationServiceTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+
+        then(notificationQueryRepository).should(never()).findUnreadNotifications(any(), any(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("미확인 알림 조회 실패 - limit이 최대값을 초과하면 잘못된 요청 예외가 발생한다")
+    void findUnreadNotifications_fail_invalidLimit_overMax() {
+        // given
+        UUID userId = UUID.randomUUID();
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
+
+        // when
+        // then
+        assertThatThrownBy(() -> notificationService.findUnreadNotifications(userId, null, null, MAX_LIMIT + 1))
+                .isInstanceOf(BaseException.class)
+                .extracting("errorCode")
+                .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+
+        then(notificationQueryRepository).should(never()).findUnreadNotifications(any(), any(), any(), anyInt());
     }
 
     @Test
@@ -155,7 +177,7 @@ class NotificationServiceTest {
     void findUnreadNotifications_fail_onlyCursor() {
         // given
         UUID userId = UUID.randomUUID();
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
 
         // when
         // then
@@ -163,6 +185,8 @@ class NotificationServiceTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR);
+
+        then(notificationQueryRepository).should(never()).findUnreadNotifications(any(), any(), any(), anyInt());
     }
 
     @Test
@@ -170,7 +194,7 @@ class NotificationServiceTest {
     void findUnreadNotifications_fail_onlyAfter() {
         // given
         UUID userId = UUID.randomUUID();
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
 
         // when
         // then
@@ -178,6 +202,8 @@ class NotificationServiceTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_CURSOR);
+
+        then(notificationQueryRepository).should(never()).findUnreadNotifications(any(), any(), any(), anyInt());
     }
 
     @Test
@@ -188,7 +214,7 @@ class NotificationServiceTest {
         UUID notificationId = UUID.randomUUID();
         Notification notification = notification(user(userId), UUID.randomUUID());
 
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
         given(notificationRepository.findByIdAndUserId(notificationId, userId)).willReturn(Optional.of(notification));
 
         // when
@@ -204,7 +230,7 @@ class NotificationServiceTest {
     void confirm_fail_nullNotificationId() {
         // given
         UUID userId = UUID.randomUUID();
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
 
         // when
         // then
@@ -223,7 +249,7 @@ class NotificationServiceTest {
         UUID userId = UUID.randomUUID();
         UUID notificationId = UUID.randomUUID();
 
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
         given(notificationRepository.findByIdAndUserId(notificationId, userId)).willReturn(Optional.empty());
 
         // when
@@ -239,7 +265,7 @@ class NotificationServiceTest {
     void confirmAll_success() {
         // given
         UUID userId = UUID.randomUUID();
-        given(userRepository.existsById(userId)).willReturn(true);
+        given(userRepository.existsByIdAndDeletedAtIsNull(userId)).willReturn(true);
 
         // when
         notificationService.confirmAll(userId);
@@ -257,7 +283,7 @@ class NotificationServiceTest {
         UUID commentId = UUID.randomUUID();
         User receiver = user(receiverUserId);
 
-        given(userRepository.findById(receiverUserId)).willReturn(Optional.of(receiver));
+        given(userRepository.findByIdAndDeletedAtIsNull(receiverUserId)).willReturn(Optional.of(receiver));
 
         // when
         notificationService.createCommentLikeNotification(receiverUserId, likerUserId, commentId, "좋아요유저");
@@ -285,7 +311,7 @@ class NotificationServiceTest {
         notificationService.createCommentLikeNotification(userId, userId, commentId, "본인");
 
         // then
-        then(userRepository).should(never()).findById(any());
+        then(userRepository).should(never()).findByIdAndDeletedAtIsNull(any());
         then(notificationRepository).should(never()).save(any());
     }
 
@@ -297,7 +323,7 @@ class NotificationServiceTest {
         UUID likerUserId = UUID.randomUUID();
         UUID commentId = UUID.randomUUID();
 
-        given(userRepository.findById(receiverUserId)).willReturn(Optional.empty());
+        given(userRepository.findByIdAndDeletedAtIsNull(receiverUserId)).willReturn(Optional.empty());
 
         // when
         // then
@@ -324,7 +350,8 @@ class NotificationServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
 
-        then(userRepository).should(never()).findById(any());
+        then(userRepository).should(never()).findByIdAndDeletedAtIsNull(any());
+        then(notificationRepository).should(never()).save(any());
     }
 
     @Test
@@ -340,6 +367,9 @@ class NotificationServiceTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(NotificationErrorCode.INVALID_NOTIFICATION_REQUEST);
+
+        then(userRepository).should(never()).findByIdAndDeletedAtIsNull(any());
+        then(notificationRepository).should(never()).save(any());
     }
 
     private NotificationResponse response(UUID notificationId, UUID userId, LocalDateTime createdAt) {

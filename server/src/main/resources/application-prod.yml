@@ -28,6 +28,11 @@ logging:
 management:
   endpoint:
     health:
+      # ALB 헬스체크 전용 그룹 — Mongo(활동내역 전용)를 빼서 Atlas 순단이 전체 다운으로 번지지 않게 함
+      # 배포 후 타깃그룹 경로를 /actuator/health/alb 로 전환해야 적용됨
+      group:
+        alb:
+          include: ping, db
       show-details: when-authorized
 
 backup:
