@@ -315,15 +315,19 @@ class HankyungRssArticleCollectorTest {
     assertThat(result.failureCount()).isEqualTo(1);
   }
 
+  // 프로덕션 코드가 발행일을 KST(Asia/Seoul) 벽시계로 고정 저장하므로 테스트 기대값도 KST 기준
+  // (systemDefault를 쓰면 UTC로 도는 CI 러너에서 기대값이 달라져 깨짐)
+  private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Seoul");
+
   private LocalDateTime localDateTimeFromRfc1123(String value) {
     return ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME)
-        .withZoneSameInstant(ZoneId.systemDefault())
+        .withZoneSameInstant(STORAGE_ZONE)
         .toLocalDateTime();
   }
 
   private LocalDateTime localDateTimeFromOffset(String value) {
     return OffsetDateTime.parse(value)
-        .atZoneSameInstant(ZoneId.systemDefault())
+        .atZoneSameInstant(STORAGE_ZONE)
         .toLocalDateTime();
   }
 

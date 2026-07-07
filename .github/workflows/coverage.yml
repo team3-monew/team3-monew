@@ -54,8 +54,28 @@ jobs:
             server/build/reports/jacoco/test/html
             batch/build/reports/jacoco/test/html
 
-      # 배지 생성 (main push 일 때만) — server/batch CSV 합산 → 전체 커버리지
-      - name: 커버리지 배지 생성
+      # 배지 생성 (main push 일 때만) — server / batch / 전체(합산) 3종
+      - name: 배지 생성 (server)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: server/build/reports/jacoco/test/jacocoTestReport.csv
+          badges-directory: .github/badges
+          coverage-badge-filename: jacoco-server.svg
+          generate-coverage-badge: true
+          generate-branches-badge: false
+
+      - name: 배지 생성 (batch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: batch/build/reports/jacoco/test/jacocoTestReport.csv
+          badges-directory: .github/badges
+          coverage-badge-filename: jacoco-batch.svg
+          generate-coverage-badge: true
+          generate-branches-badge: false
+
+      - name: 배지 생성 (전체 = server + batch 합산)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cicirello/jacoco-badge-generator@v2
         with:
@@ -63,6 +83,7 @@ jobs:
             server/build/reports/jacoco/test/jacocoTestReport.csv
             batch/build/reports/jacoco/test/jacocoTestReport.csv
           badges-directory: .github/badges
+          coverage-badge-filename: jacoco.svg
           generate-coverage-badge: true
           generate-branches-badge: true
 

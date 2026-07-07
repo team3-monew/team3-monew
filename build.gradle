@@ -48,6 +48,7 @@ subprojects {
 
     test {
         useJUnitPlatform()
+        systemProperty 'user.timezone', 'Asia/Seoul'   // 테스트도 프로덕션(TZ=Asia/Seoul)과 동일 KST로 실행 — UTC CI 러너에서 타임존 테스트 깨짐 방지
         finalizedBy jacocoTestReport   // 테스트 실행 후 커버리지 리포트 자동 생성
     }
 
