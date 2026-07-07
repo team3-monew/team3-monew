@@ -187,6 +187,8 @@ class UserServiceTest {
         userService.hardDelete(userId, userId);
 
         then(userRepository).should().delete(user);
+        // Mongo user_activities 정리를 위해 UserDeletedEvent 발행돼야 함 (탈퇴자 개인정보 잔존 방지)
+        then(eventPublisher).should().publishEvent(any(UserDeletedEvent.class));
     }
 
     @Test
@@ -259,15 +261,16 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("논리 삭제 - UserDeletedEvent 발행")
-    void delete_publishesEvent() {
+    @DisplayName("논리 삭제 - 관련 정보 유지(UserDeletedEvent 미발행)")
+    void delete_doesNotPublishEvent() {
         UUID userId = UUID.randomUUID();
         User user = new User("woody@monew.com", "우디", "hashed-pw");
         given(userRepository.findByIdAndDeletedAtIsNull(userId)).willReturn(Optional.of(user));
 
         userService.delete(userId, userId);
 
-        then(eventPublisher).should().publishEvent(any(UserDeletedEvent.class));
+        // 논리삭제는 관련 정보(Mongo 활동내역) '유지' — 삭제 이벤트 발행하지 않음
+        then(eventPublisher).should(never()).publishEvent(any(UserDeletedEvent.class));
     }
 
     @Test
