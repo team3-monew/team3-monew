@@ -62,6 +62,7 @@ jobs:
           jacoco-csv-file: server/build/reports/jacoco/test/jacocoTestReport.csv
           badges-directory: .github/badges
           coverage-badge-filename: jacoco-server.svg
+          coverage-label: server coverage
           generate-coverage-badge: true
           generate-branches-badge: false
 
@@ -72,6 +73,7 @@ jobs:
           jacoco-csv-file: batch/build/reports/jacoco/test/jacocoTestReport.csv
           badges-directory: .github/badges
           coverage-badge-filename: jacoco-batch.svg
+          coverage-label: batch coverage
           generate-coverage-badge: true
           generate-branches-badge: false
 
@@ -84,6 +86,7 @@ jobs:
             batch/build/reports/jacoco/test/jacocoTestReport.csv
           badges-directory: .github/badges
           coverage-badge-filename: jacoco.svg
+          coverage-label: total coverage
           generate-coverage-badge: true
           generate-branches-badge: true
 
