@@ -58,38 +58,41 @@ public class CommentQueryRepositoryImpl implements CommentQueryRepository {
         )
 <span class="fc" id="L59">        .orderBy(</span>
 <span class="pc bpc" id="L60" title="1 of 2 branches missed.">            asc ? comment.likeCount.asc() : comment.likeCount.desc(),</span>
-<span class="pc bpc" id="L61" title="1 of 2 branches missed.">            asc ? comment.id.asc() : comment.id.desc()</span>
+            // [[변경]] 동점자 처리를 id(랜덤 UUID) 대신 createdAt으로 변경
+            // → 좋아요 수가 같으면 같은 방향의 날짜순으로 자연스럽게 정렬됨
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">            asc ? comment.createdAt.asc() : comment.createdAt.desc(),</span>
+<span class="fc" id="L64">            comment.id.asc()</span>
         )
-<span class="fc" id="L63">        .limit(pageable.getPageSize())</span>
-<span class="fc" id="L64">        .fetch();</span>
+<span class="fc" id="L66">        .limit(pageable.getPageSize())</span>
+<span class="fc" id="L67">        .fetch();</span>
   }
 
   // [변경] null이면 where절에서 자동 제외 → 최초 조회(cursor 없음)에서
   // LocalDateTime/Long 타입 추론이 꼬이던 문제가 원천적으로 발생하지 않음
   private BooleanExpression createdAtCursorCondition(LocalDateTime lastCreatedAt, UUID lastId, boolean asc) {
-<span class="fc bfc" id="L70" title="All 2 branches covered.">    if (lastCreatedAt == null) {</span>
-<span class="fc" id="L71">      return null;</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">    if (lastCreatedAt == null) {</span>
+<span class="fc" id="L74">      return null;</span>
     }
-<span class="fc bfc" id="L73" title="All 2 branches covered.">    return asc</span>
-<span class="fc" id="L74">        ? comment.createdAt.gt(lastCreatedAt)</span>
-<span class="fc" id="L75">        .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.gt(lastId)))</span>
-<span class="fc" id="L76">        : comment.createdAt.lt(lastCreatedAt)</span>
-<span class="fc" id="L77">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.lt(lastId)));</span>
+<span class="fc bfc" id="L76" title="All 2 branches covered.">    return asc</span>
+<span class="fc" id="L77">        ? comment.createdAt.gt(lastCreatedAt)</span>
+<span class="fc" id="L78">        .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.gt(lastId)))</span>
+<span class="fc" id="L79">        : comment.createdAt.lt(lastCreatedAt)</span>
+<span class="fc" id="L80">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.lt(lastId)));</span>
   }
 
   private BooleanExpression likeCountCursorCondition(Long lastLikeCount, UUID lastId, boolean asc) {
-<span class="fc bfc" id="L81" title="All 2 branches covered.">    if (lastLikeCount == null) {</span>
-<span class="fc" id="L82">      return null;</span>
+<span class="fc bfc" id="L84" title="All 2 branches covered.">    if (lastLikeCount == null) {</span>
+<span class="fc" id="L85">      return null;</span>
     }
-<span class="fc bfc" id="L84" title="All 2 branches covered.">    return asc</span>
-<span class="fc" id="L85">        ? comment.likeCount.gt(lastLikeCount)</span>
-<span class="fc" id="L86">        .or(comment.likeCount.eq(lastLikeCount).and(comment.id.gt(lastId)))</span>
-<span class="fc" id="L87">        : comment.likeCount.lt(lastLikeCount)</span>
-<span class="fc" id="L88">            .or(comment.likeCount.eq(lastLikeCount).and(comment.id.lt(lastId)));</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">    return asc</span>
+<span class="fc" id="L88">        ? comment.likeCount.gt(lastLikeCount)</span>
+<span class="fc" id="L89">        .or(comment.likeCount.eq(lastLikeCount).and(comment.id.gt(lastId)))</span>
+<span class="fc" id="L90">        : comment.likeCount.lt(lastLikeCount)</span>
+<span class="fc" id="L91">            .or(comment.likeCount.eq(lastLikeCount).and(comment.id.lt(lastId)));</span>
   }
 
   private boolean isAsc(String direction) {
-<span class="fc" id="L92">    return &quot;ASC&quot;.equalsIgnoreCase(direction);</span>
+<span class="fc" id="L95">    return &quot;ASC&quot;.equalsIgnoreCase(direction);</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
