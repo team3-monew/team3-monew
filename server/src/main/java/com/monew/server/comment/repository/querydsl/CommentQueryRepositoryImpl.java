@@ -58,7 +58,10 @@ public class CommentQueryRepositoryImpl implements CommentQueryRepository {
         )
         .orderBy(
             asc ? comment.likeCount.asc() : comment.likeCount.desc(),
-            asc ? comment.id.asc() : comment.id.desc()
+            // [[변경]] 동점자 처리를 id(랜덤 UUID) 대신 createdAt으로 변경
+            // → 좋아요 수가 같으면 같은 방향의 날짜순으로 자연스럽게 정렬됨
+            asc ? comment.createdAt.asc() : comment.createdAt.desc(),
+            comment.id.asc()
         )
         .limit(pageable.getPageSize())
         .fetch();
