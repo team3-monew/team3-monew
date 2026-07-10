@@ -637,22 +637,25 @@ class CommentServiceTest {
     UUID userId = UUID.randomUUID();
 
     given(commentRepository.countByArticleIdAndDeletedAtIsNull(articleId))
-        .willReturn(0L);
+            .willReturn(0L);
     given(commentRepository.findCommentsByArticleLikeCursor(
-        any(), any(), any(), any(), any()))
-        .willReturn(List.of());
+            any(), any(), any(), any(), any(), any()))
+            .willReturn(List.of());
 
     // when
-    // cursor="5:{uuid}" 형태 — parseLikeCountFromCursor, parseLastIdFromCursor 둘 다 실행
+    // cursor="5|{createdAt}|{uuid}" 형태 — parseLikeCountFromCursor, parseCreatedAtFromCursor, parseLastIdFromCursor 전부 실행
     UUID lastId = UUID.randomUUID();
+    LocalDateTime lastCreatedAt = LocalDateTime.of(2026, 7, 1, 10, 0);
+    String cursor = "5|" + lastCreatedAt + "|" + lastId;
+
     commentService.getComments(articleId, "likeCount", "DESC",
-        "5:" + lastId, null, 10, userId);
+            cursor, null, 10, userId);
 
     // then
     then(commentRepository).should().findCommentsByArticleLikeCursor(
-        eq(articleId), eq(5L), eq(lastId), eq("DESC"), any());
+            eq(articleId), eq(5L), eq(lastCreatedAt), eq(lastId), eq("DESC"), any());
     then(commentRepository).should(never()).findCommentsByArticleValueCursor(
-        any(), any(), any(), any(), any());
+            any(), any(), any(), any(), any());
   }
 
   @Test
@@ -673,7 +676,7 @@ class CommentServiceTest {
     // when
     // parseCreatedAtFromCursor가 실제로 날짜 문자열을 파싱하도록 유도
     commentService.getComments(articleId, "createdAt", "DESC",
-        createdAt + ":" + lastId, null, 10, userId);
+        createdAt + "|" + lastId, null, 10, userId);
 
     // then
     then(commentRepository).should().findCommentsByArticleValueCursor(

@@ -19,10 +19,7 @@ public interface CommentQueryRepository {
   );
 
   List<Comment> findCommentsByArticleLikeCursor(
-      UUID articleId,
-      Long lastLikeCount,
-      UUID lastId,
-      String direction,
-      Pageable pageable
-  );
+          UUID articleId, Long lastLikeCount, LocalDateTime lastCreatedAt, UUID lastId,
+          String direction, Pageable pageable);
+
 }
