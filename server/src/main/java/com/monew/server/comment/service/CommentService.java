@@ -1,17 +1,9 @@
 package com.monew.server.comment.service;
 
-import static com.monew.server.comment.dto.CommentSortBy.CREATED_AT;
-import static com.monew.server.comment.dto.CommentSortBy.LIKE_COUNT;
-
+import com.monew.server.activity.event.*;
 import com.monew.server.article.entity.Article;
 import com.monew.server.article.repository.ArticleRepository;
-import com.monew.server.comment.dto.CommentCreateRequest;
-import com.monew.server.comment.dto.CommentLikeResponse;
-import com.monew.server.comment.dto.CommentResponse;
-import com.monew.server.comment.dto.CommentSliceResult;
-import com.monew.server.comment.dto.CommentSortBy;
-import com.monew.server.comment.dto.CommentSortDirection;
-import com.monew.server.comment.dto.CommentUpdateRequest;
+import com.monew.server.comment.dto.*;
 import com.monew.server.comment.entity.Comment;
 import com.monew.server.comment.entity.CommentLike;
 import com.monew.server.comment.repository.CommentLikeRepository;
@@ -22,25 +14,20 @@ import com.monew.server.common.exception.article.ArticleErrorCode;
 import com.monew.server.common.exception.comment.CommentErrorCode;
 import com.monew.server.common.exception.user.UserErrorCode;
 import com.monew.server.common.response.CursorPageResponse;
-import com.monew.server.notification.service.NotificationService; // 추가된 import
+import com.monew.server.notification.service.NotificationService;
 import com.monew.server.user.entity.User;
 import com.monew.server.user.repository.UserRepository;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher; // event publisher 관련 import
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.ApplicationEventPublisher; // event publisher 관련 import
-import com.monew.server.activity.event.ArticleCommentCountUpdatedEvent;
-import com.monew.server.activity.event.CommentCreatedEvent;
-import com.monew.server.activity.event.CommentDeletedEvent;
-import com.monew.server.activity.event.CommentLikeCreatedEvent;
-import com.monew.server.activity.event.CommentLikeDeletedEvent;
-import com.monew.server.activity.event.CommentUpdatedEvent;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +37,8 @@ public class CommentService {
   //[변경]
   // limit 상한 상수 추가 — 커서 페이지네이션에 과도한 값이 들어오는 것 방지
   private static final int MAX_LIMIT = 50;
+  private static final String CURSOR_DELIMITER = "|";
+
 
   private final CommentRepository commentRepository;
   private final CommentLikeRepository commentLikeRepository;
@@ -287,9 +276,9 @@ public class CommentService {
 
     List<Comment> comments = switch (sortBy) {
       case LIKE_COUNT -> commentRepository.findCommentsByArticleLikeCursor(
-          articleId, lastLikeCount, lastId, direction, pageable);
+              articleId, lastLikeCount, lastCreatedAt, lastId, direction, pageable);
       case CREATED_AT -> commentRepository.findCommentsByArticleValueCursor(
-          articleId, lastCreatedAt, lastId, direction, pageable);
+              articleId, lastCreatedAt, lastId, direction, pageable);
     };
 
     boolean hasNext = comments.size() > size;
@@ -303,12 +292,16 @@ public class CommentService {
     if (!comments.isEmpty()) {
       Comment lastComment = comments.get(comments.size() - 1);
 
-      // 정렬 조건이 LIKE면 좋아요 수, 아니면 생성일을 문자열로 바인딩
-      String sortValue = sortBy == CommentSortBy.LIKE_COUNT
-          ? String.valueOf(lastComment.getLikeCount())
-          : lastComment.getCreatedAt().toString();
+      // [변경] LIKE_COUNT는 좋아요수|생성일|id 3단 커서, CREATED_AT은 생성일|id 2단 커서
+      nextCursor = sortBy == CommentSortBy.LIKE_COUNT
+              ? String.join(CURSOR_DELIMITER,
+              String.valueOf(lastComment.getLikeCount()),
+              lastComment.getCreatedAt().toString(),
+              lastComment.getId().toString())
+              : String.join(CURSOR_DELIMITER,
+              lastComment.getCreatedAt().toString(),
+              lastComment.getId().toString());
 
-      nextCursor = sortValue + ":" + lastComment.getId().toString();
       nextAfter = lastComment.getCreatedAt();
     }
 
@@ -342,8 +335,8 @@ public class CommentService {
     Long lastLikeCount =
         sortBy == CommentSortBy.LIKE_COUNT && cursor != null ? parseLikeCountFromCursor(cursor)
             : null;
-    LocalDateTime lastCreatedAt =
-        sortBy == CommentSortBy.CREATED_AT && cursor != null ? parseCreatedAtFromCursor(cursor)
+    LocalDateTime lastCreatedAt = cursor != null
+            ? parseCreatedAtFromCursor(cursor, sortBy)
             : after;
 
     long totalCount = commentRepository.countByArticleIdAndDeletedAtIsNull(articleId);
@@ -363,30 +356,30 @@ public class CommentService {
 
   // 커서 파싱 메서드들
   private UUID parseLastIdFromCursor(String cursor) {
-    if (cursor == null || !cursor.contains(":"))
-      return null;
+    if (cursor == null) return null;
     try {
-      return UUID.fromString(cursor.substring(cursor.lastIndexOf(":") + 1));
+      String[] parts = cursor.split("\\|");
+      return UUID.fromString(parts[parts.length - 1]);
     } catch (Exception e) {
       return null;
     }
   }
 
   private Long parseLikeCountFromCursor(String cursor) {
-    if (cursor == null || !cursor.contains(":"))
-      return null;
+    if (cursor == null) return null;
     try {
-      return Long.parseLong(cursor.substring(0, cursor.lastIndexOf(":")));
+      return Long.parseLong(cursor.split("\\|")[0]);
     } catch (Exception e) {
       return null;
     }
   }
 
-  private LocalDateTime parseCreatedAtFromCursor(String cursor) {
-    if (cursor == null || !cursor.contains(":"))
-      return null;
+  private LocalDateTime parseCreatedAtFromCursor(String cursor, CommentSortBy sortBy) {
+    if (cursor == null) return null;
     try {
-      return LocalDateTime.parse(cursor.substring(0, cursor.lastIndexOf(":")));
+      String[] parts = cursor.split("\\|");
+      String createdAtPart = sortBy == CommentSortBy.LIKE_COUNT ? parts[1] : parts[0];
+      return LocalDateTime.parse(createdAtPart);
     } catch (Exception e) {
       return null;
     }

@@ -60,3 +60,7 @@ server/src/main/generated/
 /frontend/dist/
 # gradle-node-plugin 이 받는 node 배포판
 .gradle/nodejs/
+
+application-local.yml
+
+docker-compose.override.yml
