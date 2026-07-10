@@ -68,14 +68,14 @@ class CommentQueryRepositoryImplTest {
 
   @Test
   @DisplayName("좋아요 수 커서 조건 생성 성공 - lastLikeCount가 null이면 조건을 생성하지 않는다")
-    // [핵심] 좋아요 순 정렬에서도 동일하게 최초 조회 시 조건 미생성 검증
+//  좋아요 순 정렬에서도 동일하게 최초 조회 시 조건 미생성 검증
   void likeCountCursorCondition_success_nullLastLikeCount() {
     // Given
     CommentQueryRepositoryImpl repository = new CommentQueryRepositoryImpl(null);
 
     // When
     BooleanExpression result = ReflectionTestUtils.invokeMethod(
-        repository, "likeCountCursorCondition", null, UUID.randomUUID(), true
+            repository, "likeCountCursorCondition", null, null, UUID.randomUUID(), true
     );
 
     // Then
@@ -90,7 +90,8 @@ class CommentQueryRepositoryImplTest {
 
     // When
     BooleanExpression result = ReflectionTestUtils.invokeMethod(
-        repository, "likeCountCursorCondition", 5L, UUID.randomUUID(), true
+            repository, "likeCountCursorCondition",
+            5L, LocalDateTime.of(2026, 7, 1, 10, 0), UUID.randomUUID(), true
     );
 
     // Then
@@ -105,7 +106,8 @@ class CommentQueryRepositoryImplTest {
 
     // When
     BooleanExpression result = ReflectionTestUtils.invokeMethod(
-        repository, "likeCountCursorCondition", 5L, UUID.randomUUID(), false
+            repository, "likeCountCursorCondition",
+            5L, LocalDateTime.of(2026, 7, 1, 10, 0), UUID.randomUUID(), false
     );
 
     // Then
