@@ -24,75 +24,83 @@ public class CommentQueryRepositoryImpl implements CommentQueryRepository {
   ) {
 <span class="fc" id="L25">    boolean asc = isAsc(direction);</span>
 
-    // [변경] 기존 CASE WHEN 혼합 정렬 → sortBy별로 별도 쿼리 메서드로 분리
-    // (JPQL에서 타입 혼합 파라미터 때문에 발생하던 InvalidDataAccessResourceUsageException 원인 제거)
-<span class="fc" id="L29">    return queryFactory</span>
-<span class="fc" id="L30">        .selectFrom(comment)</span>
-<span class="fc" id="L31">        .join(comment.user, user).fetchJoin() // [유지] N+1 방지</span>
-<span class="fc" id="L32">        .where(</span>
-<span class="fc" id="L33">            comment.article.id.eq(articleId),</span>
-<span class="fc" id="L34">            comment.deletedAt.isNull(),</span>
-<span class="fc" id="L35">            createdAtCursorCondition(lastCreatedAt, lastId, asc)</span>
+
+<span class="fc" id="L28">    return queryFactory</span>
+<span class="fc" id="L29">        .selectFrom(comment)</span>
+<span class="fc" id="L30">        .join(comment.user, user).fetchJoin()</span>
+<span class="fc" id="L31">        .where(</span>
+<span class="fc" id="L32">            comment.article.id.eq(articleId),</span>
+<span class="fc" id="L33">            comment.deletedAt.isNull(),</span>
+<span class="fc" id="L34">            createdAtCursorCondition(lastCreatedAt, lastId, asc)</span>
         )
-<span class="fc" id="L37">        .orderBy(</span>
-<span class="fc bfc" id="L38" title="All 2 branches covered.">            asc ? comment.createdAt.asc() : comment.createdAt.desc(),</span>
-<span class="fc bfc" id="L39" title="All 2 branches covered.">            asc ? comment.id.asc() : comment.id.desc() // tie-breaker</span>
+<span class="fc" id="L36">        .orderBy(</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">            asc ? comment.createdAt.asc() : comment.createdAt.desc(),</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">            asc ? comment.id.asc() : comment.id.desc() // tie-breaker</span>
         )
-<span class="fc" id="L41">        .limit(pageable.getPageSize())</span>
-<span class="fc" id="L42">        .fetch();</span>
+<span class="fc" id="L40">        .limit(pageable.getPageSize())</span>
+<span class="fc" id="L41">        .fetch();</span>
   }
 
   @Override
   public List&lt;Comment&gt; findCommentsByArticleLikeCursor(
-      UUID articleId, Long lastLikeCount, UUID lastId, String direction, Pageable pageable
+          UUID articleId, Long lastLikeCount, LocalDateTime lastCreatedAt, UUID lastId,
+          String direction, Pageable pageable
   ) {
 <span class="fc" id="L49">    boolean asc = isAsc(direction);</span>
 
 <span class="fc" id="L51">    return queryFactory</span>
-<span class="fc" id="L52">        .selectFrom(comment)</span>
-<span class="fc" id="L53">        .join(comment.user, user).fetchJoin()</span>
-<span class="fc" id="L54">        .where(</span>
-<span class="fc" id="L55">            comment.article.id.eq(articleId),</span>
-<span class="fc" id="L56">            comment.deletedAt.isNull(),</span>
-<span class="fc" id="L57">            likeCountCursorCondition(lastLikeCount, lastId, asc)</span>
-        )
-<span class="fc" id="L59">        .orderBy(</span>
-<span class="pc bpc" id="L60" title="1 of 2 branches missed.">            asc ? comment.likeCount.asc() : comment.likeCount.desc(),</span>
-            // [[변경]] 동점자 처리를 id(랜덤 UUID) 대신 createdAt으로 변경
-            // → 좋아요 수가 같으면 같은 방향의 날짜순으로 자연스럽게 정렬됨
-<span class="pc bpc" id="L63" title="1 of 2 branches missed.">            asc ? comment.createdAt.asc() : comment.createdAt.desc(),</span>
-<span class="fc" id="L64">            comment.id.asc()</span>
-        )
-<span class="fc" id="L66">        .limit(pageable.getPageSize())</span>
-<span class="fc" id="L67">        .fetch();</span>
+<span class="fc" id="L52">            .selectFrom(comment)</span>
+<span class="fc" id="L53">            .join(comment.user, user).fetchJoin()</span>
+<span class="fc" id="L54">            .where(</span>
+<span class="fc" id="L55">                    comment.article.id.eq(articleId),</span>
+<span class="fc" id="L56">                    comment.deletedAt.isNull(),</span>
+<span class="fc" id="L57">                    likeCountCursorCondition(lastLikeCount, lastCreatedAt, lastId, asc)</span>
+            )
+<span class="fc" id="L59">            .orderBy(</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">                    asc ? comment.likeCount.asc() : comment.likeCount.desc(),</span>
+                    // [변경] 동점자는 direction과 무관하게 항상 오래된 댓글이 위
+<span class="fc" id="L62">                    comment.createdAt.asc(),</span>
+<span class="fc" id="L63">                    comment.id.asc()</span>
+            )
+<span class="fc" id="L65">            .limit(pageable.getPageSize())</span>
+<span class="fc" id="L66">            .fetch();</span>
   }
 
-  // [변경] null이면 where절에서 자동 제외 → 최초 조회(cursor 없음)에서
-  // LocalDateTime/Long 타입 추론이 꼬이던 문제가 원천적으로 발생하지 않음
-  private BooleanExpression createdAtCursorCondition(LocalDateTime lastCreatedAt, UUID lastId, boolean asc) {
-<span class="fc bfc" id="L73" title="All 2 branches covered.">    if (lastCreatedAt == null) {</span>
-<span class="fc" id="L74">      return null;</span>
+  private BooleanExpression createdAtCursorCondition(
+          LocalDateTime lastCreatedAt, UUID lastId, boolean asc
+  ) {
+<span class="fc bfc" id="L72" title="All 2 branches covered.">    if (lastCreatedAt == null) {</span>
+<span class="fc" id="L73">      return null;</span>
     }
-<span class="fc bfc" id="L76" title="All 2 branches covered.">    return asc</span>
-<span class="fc" id="L77">        ? comment.createdAt.gt(lastCreatedAt)</span>
-<span class="fc" id="L78">        .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.gt(lastId)))</span>
-<span class="fc" id="L79">        : comment.createdAt.lt(lastCreatedAt)</span>
-<span class="fc" id="L80">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.lt(lastId)));</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">    return asc</span>
+<span class="fc" id="L76">            ? comment.createdAt.gt(lastCreatedAt)</span>
+<span class="fc" id="L77">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.gt(lastId)))</span>
+<span class="fc" id="L78">            : comment.createdAt.lt(lastCreatedAt)</span>
+<span class="fc" id="L79">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.lt(lastId)));</span>
   }
 
-  private BooleanExpression likeCountCursorCondition(Long lastLikeCount, UUID lastId, boolean asc) {
-<span class="fc bfc" id="L84" title="All 2 branches covered.">    if (lastLikeCount == null) {</span>
-<span class="fc" id="L85">      return null;</span>
+
+  private BooleanExpression likeCountCursorCondition(
+          Long lastLikeCount, LocalDateTime lastCreatedAt, UUID lastId, boolean asc
+  ) {
+<span class="fc bfc" id="L86" title="All 2 branches covered.">    if (lastLikeCount == null) {</span>
+<span class="fc" id="L87">      return null;</span>
     }
-<span class="fc bfc" id="L87" title="All 2 branches covered.">    return asc</span>
-<span class="fc" id="L88">        ? comment.likeCount.gt(lastLikeCount)</span>
-<span class="fc" id="L89">        .or(comment.likeCount.eq(lastLikeCount).and(comment.id.gt(lastId)))</span>
-<span class="fc" id="L90">        : comment.likeCount.lt(lastLikeCount)</span>
-<span class="fc" id="L91">            .or(comment.likeCount.eq(lastLikeCount).and(comment.id.lt(lastId)));</span>
+
+<span class="fc bfc" id="L90" title="All 2 branches covered.">    BooleanExpression likeCountCompare = asc</span>
+<span class="fc" id="L91">            ? comment.likeCount.gt(lastLikeCount)</span>
+<span class="fc" id="L92">            : comment.likeCount.lt(lastLikeCount);</span>
+
+    // [변경] 동점자 경계를 id가 아니라 createdAt 기준으로 맞춤 (ORDER BY와 동일 기준)
+<span class="fc" id="L95">    BooleanExpression tieBreak = comment.createdAt.gt(lastCreatedAt)</span>
+<span class="fc" id="L96">            .or(comment.createdAt.eq(lastCreatedAt).and(comment.id.gt(lastId)));</span>
+
+<span class="fc" id="L98">    return likeCountCompare.or(comment.likeCount.eq(lastLikeCount).and(tieBreak));</span>
   }
+
 
   private boolean isAsc(String direction) {
-<span class="fc" id="L95">    return &quot;ASC&quot;.equalsIgnoreCase(direction);</span>
+<span class="fc" id="L103">    return &quot;ASC&quot;.equalsIgnoreCase(direction);</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
